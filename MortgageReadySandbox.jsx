@@ -499,7 +499,7 @@ export default function MortgageReadySandbox() {
       background: 'linear-gradient(135deg, #E6E9F0 0%, #EEF1F5 100%)',
       padding: '2rem 1rem'
     }}>
-      <h2 className="sr-only">Mortgage Ready Sandbox - New Zealand Bank Servicing Calculator</h2>
+      <h2 className="sr-only">Mortgage Ready Checker</h2>
       
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         {/* Header */}
