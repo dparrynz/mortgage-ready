@@ -148,16 +148,16 @@ const MoneyField = ({ label, value, onChange, placeholder = '0', hint }) => (
 const RateField = ({ label, value, onChange, placeholder = '0.00', hint }) => (
   <div style={{ marginBottom: '1.5rem' }}>
     <label style={labelStyle}>{label}</label>
-    <div style={{ ...inputWrap }}>
+    <div style={{ display: 'flex', alignItems: 'center', background: C.inputBg, padding: '1rem 1.25rem', borderRadius: '12px', gap: '8px' }}>
       <input
         type="number"
         step="0.01"
         value={value || ''}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
         placeholder={placeholder}
-        style={{ ...inputStyle, textAlign: 'left' }}
+        style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '18px', fontWeight: '500', color: C.textPrimary, outline: 'none', minWidth: 0 }}
       />
-      <span style={{ fontSize: '18px', color: C.textPrimary, fontWeight: '500' }}>%</span>
+      <span style={{ fontSize: '18px', color: C.textPrimary, fontWeight: '500', flexShrink: 0 }}>%</span>
     </div>
     {hint && <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0.5rem 0 0' }}>{hint}</p>}
   </div>
@@ -795,49 +795,54 @@ function LoanRepayment() {
               <button onClick={() => removeLoan(loan.id)} style={{ background: '#FFF0F0', border: 'none', color: '#C62828', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>Remove</button>
             )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.8fr 1.5fr 2fr 2fr', gap: '1rem', alignItems: 'end' }}>
-            <div>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            {/* Loan balance */}
+            <div style={{ width: '160px', flexShrink: 0 }}>
               <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Loan balance</label>
-              <div style={{ ...inputWrap, padding: '0.875rem 1rem' }}>
-                <span style={{ fontSize: '16px', fontWeight: '500', flexShrink: 0 }}>$</span>
-                <input type="text" value={fmtInput(loan.balance)} onChange={e => updateLoan(loan.id, 'balance', parseMoney(e.target.value))} style={{ ...inputStyle, fontSize: '16px', minWidth: 0 }} />
+              <div style={{ ...inputWrap, padding: '0.75rem 0.875rem' }}>
+                <span style={{ fontSize: '15px', fontWeight: '500', flexShrink: 0 }}>$</span>
+                <input type="text" value={fmtInput(loan.balance)} onChange={e => updateLoan(loan.id, 'balance', parseMoney(e.target.value))} style={{ ...inputStyle, fontSize: '15px', minWidth: 0 }} placeholder="500,000" />
               </div>
             </div>
-            <div>
+            {/* Rate */}
+            <div style={{ width: '90px', flexShrink: 0 }}>
               <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Rate</label>
-              <div style={{ ...inputWrap, padding: '0.875rem 0.75rem' }}>
-                <input type="number" step="0.01" value={loan.rate || ''} onChange={e => updateLoan(loan.id, 'rate', parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '16px', minWidth: 0 }} placeholder="6.5" />
-                <span style={{ fontSize: '15px', fontWeight: '500', flexShrink: 0 }}>%</span>
+              <div style={{ ...inputWrap, padding: '0.75rem 0.75rem' }}>
+                <input type="number" step="0.01" value={loan.rate || ''} onChange={e => updateLoan(loan.id, 'rate', parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '36px' }} placeholder="6.5" />
+                <span style={{ fontSize: '14px', fontWeight: '500', flexShrink: 0 }}>%</span>
               </div>
             </div>
-            <div>
+            {/* Term */}
+            <div style={{ flexShrink: 0 }}>
               <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Term</label>
               <div style={{ display: 'flex', gap: '6px' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ ...inputWrap, padding: '0.875rem 0.75rem' }}>
-                    <input type="number" min="0" max="40" value={loan.years || ''} onChange={e => updateLoan(loan.id, 'years', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '16px', minWidth: 0 }} placeholder="30" />
+                <div style={{ width: '70px' }}>
+                  <div style={{ ...inputWrap, padding: '0.75rem 0.75rem' }}>
+                    <input type="number" min="0" max="40" value={loan.years || ''} onChange={e => updateLoan(loan.id, 'years', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '32px' }} placeholder="30" />
                   </div>
                   <span style={{ fontSize: '12px', color: C.textSecondary }}>Years</span>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ ...inputWrap, padding: '0.875rem 0.75rem' }}>
-                    <input type="number" min="0" max="11" value={loan.months || ''} onChange={e => updateLoan(loan.id, 'months', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '16px', minWidth: 0 }} placeholder="0" />
+                <div style={{ width: '70px' }}>
+                  <div style={{ ...inputWrap, padding: '0.75rem 0.75rem' }}>
+                    <input type="number" min="0" max="11" value={loan.months || ''} onChange={e => updateLoan(loan.id, 'months', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '32px' }} placeholder="0" />
                   </div>
                   <span style={{ fontSize: '12px', color: C.textSecondary }}>Months</span>
                 </div>
               </div>
             </div>
-            <div>
+            {/* Loan type */}
+            <div style={{ width: '160px', flexShrink: 0 }}>
               <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Loan type</label>
-              <select value={loan.interestOnly ? 'io' : 'pi'} onChange={e => updateLoan(loan.id, 'interestOnly', e.target.value === 'io')} style={{ ...selectStyle, padding: '0.875rem 0.75rem', fontSize: '14px' }}>
-                <option value="pi">P & I</option>
+              <select value={loan.interestOnly ? 'io' : 'pi'} onChange={e => updateLoan(loan.id, 'interestOnly', e.target.value === 'io')} style={{ ...selectStyle, padding: '0.75rem 0.875rem', fontSize: '14px' }}>
+                <option value="pi">Principal & Interest</option>
                 <option value="io">Interest Only</option>
               </select>
             </div>
-            <div style={{ gridColumn: 'span 2' }}>
+            {/* Payment */}
+            <div style={{ flex: 1, minWidth: '160px' }}>
               <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>{freqLabel[freq]} payment</label>
-              <div style={{ background: C.accentLight, borderRadius: '12px', padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '26px', fontWeight: '500', color: C.green }}>${fmtNZD(calcPayment(loan), 2)}</span>
+              <div style={{ background: C.accentLight, borderRadius: '12px', padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '22px', fontWeight: '500', color: C.green }}>${fmtNZD(calcPayment(loan), 2)}</span>
                 <span style={{ fontSize: '13px', color: C.textSecondary }}>{freqLabel[freq]}</span>
               </div>
             </div>
@@ -932,15 +937,16 @@ function QuickRepay() {
     return { rows, pmt };
   };
 
-  const calcResults = () => {
+  useEffect(() => {
+    if (!loanAmount || !rate || !years) { setResults(null); return; }
     const with_ = generate(loanAmount, rate, years, freq, extraAmt, extraAfter, lumpSum, lumpAfter);
     const base = generate(loanAmount, rate, years, freq, 0, 0, 0, 0);
     const baseInt = base.rows.reduce((s, r) => s + r.interest, 0);
     const withInt = with_.rows.reduce((s, r) => s + r.interest, 0);
     setResults({ with: with_, base, interestSaved: baseInt - withInt, termSaved: base.rows.length - with_.rows.length, basePmt: base.pmt });
-  };
+  }, [loanAmount, rate, years, freq, extraAmt, extraAfter, lumpSum, lumpAfter]);
 
-  const reset = () => { setLoanAmount(300000); setRate(5.75); setYears(30); setFreq('Monthly'); setExtraAmt(0); setExtraAfter(0); setLumpSum(0); setLumpAfter(0); setResults(null); };
+  const reset = () => { setLoanAmount(300000); setRate(5.75); setYears(30); setFreq('Monthly'); setExtraAmt(0); setExtraAfter(0); setLumpSum(0); setLumpAfter(0); };
 
   const ppy = freqPeriods[freq];
 
@@ -982,10 +988,7 @@ function QuickRepay() {
               <div style={inputWrap}><input type="number" min="0" step="0.1" value={lumpAfter} onChange={e => setLumpAfter(parseFloat(e.target.value) || 0)} style={inputStyle} /></div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button onClick={calcResults} style={{ ...primaryBtn, flex: 1 }}>Calculate</button>
-            <button onClick={reset} style={{ ...secondaryBtn, flex: 1, boxShadow: 'none', background: '#FFF0F0', color: C.red }}>Reset</button>
-          </div>
+          <button onClick={reset} style={{ ...secondaryBtn, width: '100%', background: '#FFF0F0', color: C.red }}>Reset</button>
         </div>
 
         <div>
@@ -1042,7 +1045,7 @@ function QuickRepay() {
             <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', background: C.accentLight }}>
               <div style={{ textAlign: 'center' }}>
                 <i className="ti ti-calculator" style={{ fontSize: '48px', color: C.textSecondary, opacity: 0.4 }} />
-                <p style={{ color: C.textSecondary, marginTop: '1rem' }}>Enter your details and click Calculate to see results</p>
+                <p style={{ color: C.textSecondary, marginTop: '1rem' }}>Enter your loan details to see results</p>
               </div>
             </div>
           )}
