@@ -510,9 +510,6 @@ export default function MortgageReadySandbox() {
           marginBottom: '1.5rem',
           boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
         }}>
-          <h1 style={{ fontSize: '28px', fontWeight: '500', margin: '0 0 0.5rem', color: '#1a1a2e' }}>
-            Mortgage ready check
-          </h1>
           <p style={{ fontSize: '15px', color: '#4a4a68', margin: '0 0 2rem', opacity: 0.9 }}>
             Find out if you're ready to buy a home in New Zealand
           </p>
