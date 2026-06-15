@@ -1007,11 +1007,11 @@ function QuickRepay() {
               <div style={card}>
                 <h3 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 1rem', color: C.textPrimary }}>Loan balance over time</h3>
                 <ResponsiveContainer width="100%" height={250}>
-                  <LineChart>
+                  <LineChart margin={{ bottom: 20 }}>
                     <XAxis dataKey="year" type="number" domain={[0, 'dataMax']} label={{ value: 'Years', position: 'insideBottom', offset: -5 }} />
                     <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
                     <Tooltip formatter={v => [`$${fmtNZD(v)}`, '']} />
-                    <Legend />
+                    <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '20px' }} />
                     <Line data={results.with.rows} type="monotone" dataKey="balance" stroke="#1a1a2e" name="With extra payments" dot={false} strokeWidth={2} />
                     <Line data={results.base.rows} type="monotone" dataKey="balance" stroke={C.orange} name="Original schedule" dot={false} strokeDasharray="5 5" />
                   </LineChart>
@@ -1057,8 +1057,69 @@ function QuickRepay() {
 }
 
 // ─── 4. MORTGAGE COMPARISON ──────────────────────────────────────────────────
+const MCTextField = ({ label, value, onChange, placeholder }) => (
+  <div>
+    <label style={{ fontSize: '12px', fontWeight: '500', color: C.textSecondary, display: 'block', marginBottom: '0.375rem' }}>{label}</label>
+    <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+      style={{ width: '100%', background: C.inputBg, border: 'none', padding: '0.625rem 0.875rem', borderRadius: '8px', fontSize: '14px', color: C.textPrimary, outline: 'none', boxSizing: 'border-box' }} />
+  </div>
+);
+
+const MCNumField = ({ label, value, onChange, placeholder, suffix }) => (
+  <div>
+    <label style={{ fontSize: '12px', fontWeight: '500', color: C.textSecondary, display: 'block', marginBottom: '0.375rem' }}>{label}</label>
+    <div style={{ display: 'flex', alignItems: 'center', background: C.inputBg, borderRadius: '8px', overflow: 'hidden' }}>
+      <input type="number" step="0.01" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.625rem 0.875rem', fontSize: '14px', color: C.textPrimary, outline: 'none', boxSizing: 'border-box' }} />
+      {suffix && <span style={{ padding: '0 0.75rem', fontSize: '14px', color: C.textSecondary, flexShrink: 0 }}>{suffix}</span>}
+    </div>
+  </div>
+);
+
+const MCCurrencyField = ({ label, value, onChange, placeholder }) => {
+  const [display, setDisplay] = React.useState(value ? Number(value).toLocaleString('en-NZ') : '');
+
+  const handleChange = (e) => {
+    const raw = e.target.value.replace(/,/g, '');
+    setDisplay(e.target.value);
+    onChange(raw);
+  };
+
+  const handleBlur = () => {
+    const num = parseFloat(value.toString().replace(/,/g, ''));
+    if (!isNaN(num)) {
+      setDisplay(num.toLocaleString('en-NZ'));
+    } else {
+      setDisplay('');
+    }
+  };
+
+  const handleFocus = () => {
+    const raw = value.toString().replace(/,/g, '');
+    setDisplay(raw);
+  };
+
+  return (
+    <div>
+      <label style={{ fontSize: '12px', fontWeight: '500', color: C.textSecondary, display: 'block', marginBottom: '0.375rem' }}>{label}</label>
+      <div style={{ display: 'flex', alignItems: 'center', background: C.inputBg, borderRadius: '8px', padding: '0.625rem 0.875rem', gap: '4px' }}>
+        <span style={{ fontSize: '14px', color: C.textSecondary, flexShrink: 0 }}>$</span>
+        <input
+          type="text"
+          value={display}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onFocus={handleFocus}
+          placeholder={placeholder}
+          style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '14px', color: C.textPrimary, outline: 'none' }}
+        />
+      </div>
+    </div>
+  );
+};
+
 function MortgageComparison() {
-  const initLoan = () => ({ name: '', amount: 0, rate: 0, curRepayment: 0, curFreq: 'Monthly', newRate: 0, newRepayment: 0, newFreq: 'Monthly' });
+  const initLoan = () => ({ name: '', amount: '', rate: '', curRepayment: '', curFreq: 'Monthly', newRate: '', newRepayment: '', newFreq: 'Monthly' });
   const [loans, setLoans] = useState([initLoan(), initLoan(), initLoan(), initLoan()]);
   const [results, setResults] = useState([]);
 
@@ -1080,24 +1141,21 @@ function MortgageComparison() {
 
   const calc = () => {
     setResults(loans.map(l => {
-      if (!l.amount || !l.rate || !l.curRepayment) return null;
-      const cur = calcTerm(l.amount, l.rate, l.curRepayment, l.curFreq);
-      const nr = l.newRate || l.rate;
-      const nrep = l.newRepayment || l.curRepayment;
-      const nw = calcTerm(l.amount, nr, nrep, l.newFreq);
+      const amt = parseFloat(l.amount.toString().replace(/,/g, '')) || 0;
+      const rate = parseFloat(l.rate) || 0;
+      const curRep = parseFloat(l.curRepayment.toString().replace(/,/g, '')) || 0;
+      if (!amt || !rate || !curRep) return null;
+      const cur = calcTerm(amt, rate, curRep, l.curFreq);
+      const nr = parseFloat(l.newRate) || rate;
+      const nrep = parseFloat(l.newRepayment.toString().replace(/,/g, '')) || curRep;
+      const nw = calcTerm(amt, nr, nrep, l.newFreq);
       return { curTerm: fmtYrsMonths(cur.months), newTerm: fmtYrsMonths(nw.months), saved: Math.max(0, cur.months - nw.months), interestSaved: Math.max(0, cur.interest - nw.interest) };
     }));
   };
 
   const reset = () => { setLoans([initLoan(), initLoan(), initLoan(), initLoan()]); setResults([]); };
 
-  const InputSmall = ({ label, value, onChange, type = 'text', placeholder }) => (
-    <div>
-      <label style={{ fontSize: '12px', fontWeight: '500', color: C.textSecondary, display: 'block', marginBottom: '0.375rem' }}>{label}</label>
-      <input type={type} step="0.01" value={type === 'text' ? fmtInput(value) : (value || '')} onChange={e => onChange(type === 'text' ? parseMoney(e.target.value) : (parseFloat(e.target.value) || 0))} placeholder={placeholder}
-        style={{ width: '100%', background: C.inputBg, border: 'none', padding: '0.625rem 0.875rem', borderRadius: '8px', fontSize: '14px', color: C.textPrimary, outline: 'none', boxSizing: 'border-box' }} />
-    </div>
-  );
+  const inputStyle2 = { width: '100%', background: C.inputBg, border: 'none', padding: '0.625rem 0.875rem', borderRadius: '8px', fontSize: '14px', color: C.textPrimary, outline: 'none', boxSizing: 'border-box' };
 
   return (
     <div>
@@ -1111,10 +1169,10 @@ function MortgageComparison() {
           <div key={i} style={{ ...card, marginBottom: 0, padding: '1.25rem' }}>
             <h4 style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 1rem', color: C.textPrimary }}>Loan {i + 1}</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-              <InputSmall label="Loan name (optional)" value={l.name} onChange={v => update(i, 'name', v)} type="text-plain" placeholder={`Loan ${i + 1}`} />
-              <InputSmall label="Loan amount ($)" value={l.amount} onChange={v => update(i, 'amount', v)} type="text" />
-              <InputSmall label="Current interest rate (%)" value={l.rate} onChange={v => update(i, 'rate', v)} type="number" placeholder="5.99" />
-              <InputSmall label="Current repayment ($)" value={l.curRepayment} onChange={v => update(i, 'curRepayment', v)} type="text" />
+              <MCTextField label="Loan name (optional)" value={l.name} onChange={v => update(i, 'name', v)} placeholder={`Loan ${i + 1}`} />
+              <MCCurrencyField label="Loan amount ($)" value={l.amount} onChange={v => update(i, 'amount', v)} placeholder="500,000" />
+              <MCNumField label="Current interest rate" value={l.rate} onChange={v => update(i, 'rate', v)} placeholder="5.99" suffix="%" />
+              <MCCurrencyField label="Current repayment ($)" value={l.curRepayment} onChange={v => update(i, 'curRepayment', v)} placeholder="0" />
               <div>
                 <label style={{ fontSize: '12px', fontWeight: '500', color: C.textSecondary, display: 'block', marginBottom: '0.375rem' }}>Frequency</label>
                 <select value={l.curFreq} onChange={e => update(i, 'curFreq', e.target.value)} style={{ ...selectStyle, padding: '0.625rem 0.875rem', fontSize: '14px' }}>
@@ -1122,9 +1180,9 @@ function MortgageComparison() {
                 </select>
               </div>
               <div style={{ borderTop: `1px solid ${C.borderLight}`, paddingTop: '0.875rem' }}>
-                <InputSmall label="New interest rate (%)" value={l.newRate} onChange={v => update(i, 'newRate', v)} type="number" placeholder="Optional" />
+                <MCNumField label="New interest rate" value={l.newRate} onChange={v => update(i, 'newRate', v)} placeholder="Optional" suffix="%" />
               </div>
-              <InputSmall label="New repayment ($)" value={l.newRepayment} onChange={v => update(i, 'newRepayment', v)} type="text" />
+              <MCCurrencyField label="New repayment ($)" value={l.newRepayment} onChange={v => update(i, 'newRepayment', v)} placeholder="Optional" />
               <div>
                 <label style={{ fontSize: '12px', fontWeight: '500', color: C.textSecondary, display: 'block', marginBottom: '0.375rem' }}>New frequency</label>
                 <select value={l.newFreq} onChange={e => update(i, 'newFreq', e.target.value)} style={{ ...selectStyle, padding: '0.625rem 0.875rem', fontSize: '14px' }}>
@@ -1227,26 +1285,26 @@ function BreakEven() {
       </div>
 
       <div style={card}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
           <MoneyField label="Loan balance" value={balance} onChange={setBalance} />
           <RateField label="Current fixed rate (%)" value={curRate} onChange={setCurRate} />
           <MoneyField label="Break fee" value={breakFee} onChange={setBreakFee} />
           <RateField label="Proposed new rate (%)" value={newRate} onChange={setNewRate} />
-          <div>
+          <div style={{ marginBottom: '1.5rem' }}>
             <label style={labelStyle}>New fixed term (months)</label>
             <div style={inputWrap}><input type="number" value={newTermMonths} onChange={e => setNewTermMonths(parseInt(e.target.value) || 0)} style={inputStyle} /></div>
           </div>
           <RateField label="Assumed follow-on rate (%)" value={followRate} onChange={setFollowRate} hint="Rate used for 'stay' scenario after fixed expiry" />
-          <div>
-            <label style={labelStyle}>Fixed term expiry date (DD/MM/YYYY)</label>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={labelStyle}>Fixed term expiry date</label>
             <div style={inputWrap}><input type="text" value={fixedExpiry} onChange={e => setFixedExpiry(e.target.value)} placeholder="DD/MM/YYYY" style={inputStyle} /></div>
           </div>
-          <div>
-            <label style={labelStyle}>Loan maturity date (DD/MM/YYYY)</label>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={labelStyle}>Loan maturity date</label>
             <div style={inputWrap}><input type="text" value={maturityDate} onChange={e => setMaturityDate(e.target.value)} placeholder="DD/MM/YYYY" style={inputStyle} /></div>
           </div>
         </div>
-        <button onClick={calc} style={{ ...primaryBtn, width: '100%', marginTop: '1.5rem' }}>Calculate Break-Even</button>
+        <button onClick={calc} style={{ ...primaryBtn, width: '100%', marginTop: '0.5rem' }}>Calculate Break-Even</button>
       </div>
 
       {result && (
