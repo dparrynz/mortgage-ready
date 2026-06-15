@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Read(//opt/homebrew/bin/**)",
+      "Read(//Users/danielparry/.volta/bin/**)"
+    ]
+  }
+}
