@@ -724,19 +724,21 @@ function BorrowChecker() {
 
 // ─── 2. LOAN REPAYMENT ───────────────────────────────────────────────────────
 function LoanRepayment() {
-  const [loans, setLoans] = useState([{ id: '1', name: 'Loan 1', balance: 500000, rate: 6.5, years: 30, months: 0, freq: 'monthly', interestOnly: false }]);
+  const [loans, setLoans] = useState([{ id: '1', name: 'Loan 1', balance: 500000, rate: 6.5, years: 30, months: 0, interestOnly: false }]);
   const [showAmort, setShowAmort] = useState(false);
+  const [freq, setFreq] = useState('monthly');
 
   const freqMap = { monthly: 12, fortnightly: 26, weekly: 52 };
+  const freqLabel = { monthly: 'Monthly', fortnightly: 'Fortnightly', weekly: 'Weekly' };
 
-  const addLoan = () => setLoans([...loans, { id: Date.now().toString(), name: `Loan ${loans.length + 1}`, balance: 0, rate: 0, years: 30, months: 0, freq: 'monthly', interestOnly: false }]);
+  const addLoan = () => setLoans([...loans, { id: Date.now().toString(), name: `Loan ${loans.length + 1}`, balance: 0, rate: 0, years: 30, months: 0, interestOnly: false }]);
   const removeLoan = (id) => loans.length > 1 && setLoans(loans.filter(l => l.id !== id));
   const updateLoan = (id, field, value) => setLoans(loans.map(l => l.id === id ? { ...l, [field]: value } : l));
 
   const calcPayment = (l) => {
     const totalMonths = l.years * 12 + l.months;
     if (!totalMonths) return 0;
-    const ppy = freqMap[l.freq];
+    const ppy = freqMap[freq];
     const n = (totalMonths / 12) * ppy;
     const r = l.rate / 100 / ppy;
     if (l.interestOnly) return (l.balance * l.rate / 100) / ppy;
@@ -746,19 +748,18 @@ function LoanRepayment() {
 
   const totalBalance = loans.reduce((s, l) => s + l.balance, 0);
   const wtdRate = totalBalance > 0 ? loans.reduce((s, l) => s + l.rate * l.balance, 0) / totalBalance : 0;
-  const totalMonthly = loans.reduce((s, l) => {
-    const pmt = calcPayment(l);
-    return s + pmt * freqMap[l.freq] / 12;
-  }, 0);
+  const totalPayment = loans.reduce((s, l) => s + calcPayment(l), 0);
 
   const amortRows = (() => {
     const maxMonths = Math.max(...loans.map(l => l.years * 12 + l.months));
     if (!totalBalance || !maxMonths) return [];
-    const r = wtdRate / 100 / 12;
-    const pmt = r ? (totalBalance * r * Math.pow(1 + r, maxMonths)) / (Math.pow(1 + r, maxMonths) - 1) : totalBalance / maxMonths;
+    const ppy = freqMap[freq];
+    const n = (maxMonths / 12) * ppy;
+    const r = wtdRate / 100 / ppy;
+    const pmt = r ? (totalBalance * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1) : totalBalance / n;
     const rows = [];
     let bal = totalBalance;
-    for (let i = 1; i <= maxMonths && bal > 0.5; i++) {
+    for (let i = 1; i <= n && bal > 0.5; i++) {
       const int = bal * r;
       const prin = Math.min(pmt - int, bal);
       bal = Math.max(0, bal - prin);
@@ -770,8 +771,20 @@ function LoanRepayment() {
   return (
     <div>
       <div style={{ ...card, background: C.headerBg }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Loan Repayment Calculator</h1>
-        <p style={{ fontSize: '15px', color: '#4a4a68', opacity: 0.9, margin: 0 }}>Calculate your repayments and compare multiple loans</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h1 style={{ fontSize: '28px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Loan Repayment Calculator</h1>
+            <p style={{ fontSize: '15px', color: '#4a4a68', opacity: 0.9, margin: 0 }}>Calculate your repayments and compare multiple loans</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <label style={{ fontSize: '14px', fontWeight: '500', color: C.textPrimary, whiteSpace: 'nowrap' }}>Repayment frequency</label>
+            <select value={freq} onChange={e => setFreq(e.target.value)} style={{ background: 'rgba(255,255,255,0.8)', border: 'none', padding: '0.625rem 1rem', borderRadius: '10px', fontSize: '15px', fontWeight: '500', color: C.textPrimary, cursor: 'pointer', outline: 'none' }}>
+              <option value="monthly">Monthly</option>
+              <option value="fortnightly">Fortnightly</option>
+              <option value="weekly">Weekly</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {loans.map((loan) => (
@@ -782,58 +795,50 @@ function LoanRepayment() {
               <button onClick={() => removeLoan(loan.id)} style={{ background: '#FFF0F0', border: 'none', color: '#C62828', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>Remove</button>
             )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.8fr 1.5fr 2fr 2fr', gap: '1rem', alignItems: 'end' }}>
             <div>
               <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Loan balance</label>
               <div style={{ ...inputWrap, padding: '0.875rem 1rem' }}>
-                <span style={{ fontSize: '16px', fontWeight: '500' }}>$</span>
-                <input type="text" value={fmtInput(loan.balance)} onChange={e => updateLoan(loan.id, 'balance', parseMoney(e.target.value))} style={{ ...inputStyle, fontSize: '16px' }} />
+                <span style={{ fontSize: '16px', fontWeight: '500', flexShrink: 0 }}>$</span>
+                <input type="text" value={fmtInput(loan.balance)} onChange={e => updateLoan(loan.id, 'balance', parseMoney(e.target.value))} style={{ ...inputStyle, fontSize: '16px', minWidth: 0 }} />
               </div>
             </div>
             <div>
-              <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Interest rate</label>
-              <div style={{ ...inputWrap, padding: '0.875rem 1rem' }}>
-                <input type="number" step="0.01" value={loan.rate || ''} onChange={e => updateLoan(loan.id, 'rate', parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '16px' }} placeholder="6.50" />
-                <span style={{ fontSize: '16px', fontWeight: '500' }}>%</span>
+              <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Rate</label>
+              <div style={{ ...inputWrap, padding: '0.875rem 0.75rem' }}>
+                <input type="number" step="0.01" value={loan.rate || ''} onChange={e => updateLoan(loan.id, 'rate', parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '16px', minWidth: 0 }} placeholder="6.5" />
+                <span style={{ fontSize: '15px', fontWeight: '500', flexShrink: 0 }}>%</span>
               </div>
             </div>
             <div>
               <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Term</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '6px' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ ...inputWrap, padding: '0.875rem 1rem' }}>
-                    <input type="number" min="0" max="40" value={loan.years || ''} onChange={e => updateLoan(loan.id, 'years', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '16px' }} placeholder="30" />
+                  <div style={{ ...inputWrap, padding: '0.875rem 0.75rem' }}>
+                    <input type="number" min="0" max="40" value={loan.years || ''} onChange={e => updateLoan(loan.id, 'years', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '16px', minWidth: 0 }} placeholder="30" />
                   </div>
                   <span style={{ fontSize: '12px', color: C.textSecondary }}>Years</span>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ ...inputWrap, padding: '0.875rem 1rem' }}>
-                    <input type="number" min="0" max="11" value={loan.months || ''} onChange={e => updateLoan(loan.id, 'months', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '16px' }} placeholder="0" />
+                  <div style={{ ...inputWrap, padding: '0.875rem 0.75rem' }}>
+                    <input type="number" min="0" max="11" value={loan.months || ''} onChange={e => updateLoan(loan.id, 'months', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '16px', minWidth: 0 }} placeholder="0" />
                   </div>
                   <span style={{ fontSize: '12px', color: C.textSecondary }}>Months</span>
                 </div>
               </div>
             </div>
             <div>
-              <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Frequency</label>
-              <select value={loan.freq} onChange={e => updateLoan(loan.id, 'freq', e.target.value)} style={{ ...selectStyle, padding: '0.875rem 1rem', fontSize: '15px' }}>
-                <option value="monthly">Monthly</option>
-                <option value="fortnightly">Fortnightly</option>
-                <option value="weekly">Weekly</option>
-              </select>
-            </div>
-            <div>
               <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Loan type</label>
-              <select value={loan.interestOnly ? 'io' : 'pi'} onChange={e => updateLoan(loan.id, 'interestOnly', e.target.value === 'io')} style={{ ...selectStyle, padding: '0.875rem 1rem', fontSize: '15px' }}>
-                <option value="pi">Principal & Interest</option>
+              <select value={loan.interestOnly ? 'io' : 'pi'} onChange={e => updateLoan(loan.id, 'interestOnly', e.target.value === 'io')} style={{ ...selectStyle, padding: '0.875rem 0.75rem', fontSize: '14px' }}>
+                <option value="pi">P & I</option>
                 <option value="io">Interest Only</option>
               </select>
             </div>
-            <div>
-              <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Payment</label>
-              <div style={{ padding: '0.875rem 0' }}>
-                <p style={{ fontSize: '26px', fontWeight: '500', margin: '0 0 0.25rem', color: C.green }}>${fmtNZD(calcPayment(loan), 2)}</p>
-                <p style={{ fontSize: '13px', color: C.textSecondary, margin: 0, textTransform: 'capitalize' }}>{loan.freq}</p>
+            <div style={{ gridColumn: 'span 2' }}>
+              <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>{freqLabel[freq]} payment</label>
+              <div style={{ background: C.accentLight, borderRadius: '12px', padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '26px', fontWeight: '500', color: C.green }}>${fmtNZD(calcPayment(loan), 2)}</span>
+                <span style={{ fontSize: '13px', color: C.textSecondary }}>{freqLabel[freq]}</span>
               </div>
             </div>
           </div>
@@ -848,7 +853,7 @@ function LoanRepayment() {
           {[
             { label: 'Total loan amount', value: `$${fmtNZD(totalBalance)}` },
             { label: 'Weighted average rate', value: `${wtdRate.toFixed(2)}%` },
-            { label: 'Total monthly payment', value: `$${fmtNZD(totalMonthly, 2)}` },
+            { label: `Total ${freqLabel[freq].toLowerCase()} payment`, value: `$${fmtNZD(totalPayment, 2)}` },
           ].map((s, i) => (
             <div key={i}>
               <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 0.5rem' }}>{s.label}</p>
@@ -868,7 +873,7 @@ function LoanRepayment() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: C.inputBg }}>
-                  {['Month', 'Payment', 'Principal', 'Interest', 'Balance'].map(h => (
+                  {[freqLabel[freq], 'Payment', 'Principal', 'Interest', 'Balance'].map(h => (
                     <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '500', color: C.textSecondary, borderBottom: `1px solid ${C.borderLight}` }}>{h}</th>
                   ))}
                 </tr>
