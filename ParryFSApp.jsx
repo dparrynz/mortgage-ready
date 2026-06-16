@@ -404,14 +404,19 @@ function BorrowChecker() {
       );
     }
 
-    // Servicing feedback
-    if (!umiPass) {
+    // Servicing feedback - only show if DTI hasn't already failed with the same advice
+    if (!umiPass && dtiPass) {
       if (isKO) {
         feedback.push({ type: 'warning', title: 'Almost there', message: `You qualify for a Kainga Ora First Home Loan based on your deposit and income, but your monthly budget is a little tight. ${debtAdvice}` });
       } else if (!isFullDeposit) {
         feedback.push({ type: 'warning', title: 'Deposit and servicing need attention', message: `With less than 20% deposit and a tight monthly budget, lending options are limited. ${debtAdvice}`, expandable: !hasExistingDebt });
       } else {
         feedback.push({ type: 'warning', title: 'Strong deposit, servicing needs work', message: `Your deposit is solid but your monthly budget is too tight for banks to lend comfortably. ${debtAdvice}` });
+      }
+    } else if (!umiPass && !dtiPass) {
+      // Both failing - DTI message already shown, add a brief servicing note only if different advice applies
+      if (isKO) {
+        feedback.push({ type: 'warning', title: 'Monthly budget also tight', message: `Even with Kainga Ora eligibility, the mortgage repayments are too high relative to your income. ${debtAdvice}` });
       }
     } else if (umiPass && !isFullDeposit && !isKO) {
       feedback.push({ type: 'warning', title: 'Limited lending options', message: 'Your servicing is strong, but with less than 20% deposit your options are limited to select lenders and you may pay a low equity margin on your rate. Consider exploring ways to increase your deposit.', expandable: true });
