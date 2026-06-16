@@ -296,7 +296,13 @@ function BorrowChecker() {
     partnerBaseSalary, partnerVariableIncome, partnerKiwiSaverRate, partnerHasStudentLoan,
     numBoarders, boarderWeeklyIncome, creditCardLimit, bnplLimit, otherMonthlyLoans, declaredExpenses]);
 
-  useEffect(() => { if (results) setCalcLoanAmount(results.loanAmount); }, [results]);
+  useEffect(() => { 
+    if (results) {
+      setCalcLoanAmount(results.loan);
+      setCalcRate(6.5);
+      setCalcTerm(30);
+    }
+  }, [results]);
 
   function calcNetIncome(gross, ksRate) {
     if (!gross) return 0;
@@ -599,7 +605,6 @@ function BorrowChecker() {
                                   <p style={{ fontSize: '13px', lineHeight: '1.6', margin: 0, color: '#4a4a68' }}>{opt.text}</p>
                                 </div>
                               ))}
-                              <button style={{ ...primaryBtn, width: '100%', marginTop: '0.5rem' }}>Book a consultation</button>
                             </div>
                           )}
                         </div>
@@ -615,8 +620,8 @@ function BorrowChecker() {
               <StatCard label="Your deposit" value={`${((deposit / purchasePrice) * 100).toFixed(1)}%`} />
               <StatCard
                 label="Estimated repayment"
-                value={`$${fmtNZD(results.stressedPmt)}/mo`}
-                hint="Click to calculate different scenarios"
+                value={`$${fmtNZD(calcPMT(results.loan, 6.5, 30))}/mo`}
+                hint="Click to explore different rates and terms"
                 onClick={() => setShowRepayCalc(true)}
               />
               <div
@@ -678,12 +683,13 @@ function BorrowChecker() {
       {showRepayCalc && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={() => setShowRepayCalc(false)}>
           <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <h3 style={{ fontSize: '22px', fontWeight: '500', margin: 0, color: C.textPrimary }}>Repayment calculator</h3>
               <button onClick={() => setShowRepayCalc(false)} style={{ background: C.inputBg, border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer' }}>
                 <i className="ti ti-x" style={{ fontSize: '20px', color: C.textPrimary }} />
               </button>
             </div>
+            <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1.5rem' }}>Pre-filled with your loan amount. Adjust the rate and term to explore different scenarios.</p>
             <MoneyField label="Loan amount" value={calcLoanAmount} onChange={setCalcLoanAmount} />
             <div style={{ marginBottom: '2rem' }}>
               <label style={labelStyle}>Interest rate: {calcRate.toFixed(2)}%</label>
