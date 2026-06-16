@@ -325,9 +325,20 @@ function BorrowChecker() {
     const loan = purchasePrice - deposit;
     const lvr = (loan / purchasePrice) * 100;
     const totalBase = baseSalary + (applicationType === 'joint' ? partnerBaseSalary : 0);
-    const minDepPct = isFirstHomeBuyer && totalBase < 150000 ? 5 : 20;
+    
+    // Kainga Ora eligibility - individual threshold $95k, joint threshold $150k
+    const isKO = isFirstHomeBuyer && (
+      applicationType === 'single' ? baseSalary <= 95000 : totalBase <= 150000
+    );
+
+    // Minimum deposit:
+    // 5%  - Kainga Ora eligible
+    // 10% - standard low deposit (non-KO, banks will lend but limited options)
+    // 20% - full standard lending, all bank options available
+    const minDepPct = isKO ? 5 : 10;
     const minDep = purchasePrice * (minDepPct / 100);
     const depPass = deposit >= minDep;
+    const isFullDeposit = deposit >= purchasePrice * 0.20;
 
     const shadedVar = variableIncome * 0.8;
     const shadedPVar = (applicationType === 'joint' ? partnerVariableIncome : 0) * 0.8;
@@ -361,49 +372,68 @@ function BorrowChecker() {
     const stressedPmt = loan > 0 ? (loan * monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1) : 0;
     const umi = netMonthly - stressedPmt - livingExp - ccExp - bnplExp - slMonthly - otherMonthlyLoans;
 
-    const isKO = isFirstHomeBuyer && totalBase < 150000;
+    const isKO2 = isKO;
     let reqUmi = 200, umiStatus = 'standard';
-    if (lvr > 80) { reqUmi = isKO ? 200 : 500; umiStatus = isKO ? 'kainga_ora' : 'challenging'; }
+    if (!isFullDeposit) { 
+      reqUmi = isKO ? 200 : 500; 
+      umiStatus = isKO ? 'kainga_ora' : 'challenging'; 
+    }
     const umiPass = umi >= reqUmi;
 
     const feedback = [];
+    
+    const hasExistingDebt = creditCardLimit > 0 || bnplLimit > 0 || otherMonthlyLoans > 0;
+    const debtAdvice = hasExistingDebt 
+      ? 'Consider reducing existing debts or looking at a lower purchase price to improve your position.'
+      : 'Consider increasing your deposit or looking at a lower purchase price to improve your position.';
+
+    // Deposit feedback
     if (!depPass) {
       const shortfall = minDep - deposit;
       feedback.push(isKO
         ? { type: 'info', title: 'You qualify for Kainga Ora First Home Loan', message: `Great news! You're eligible for a Kainga Ora First Home Loan with just a 5% deposit. You'll need to save an additional $${fmtNZD(shortfall)} to meet this requirement.` }
-        : { type: 'danger', title: 'Deposit shortfall', message: `You'll need to save an additional $${fmtNZD(shortfall)} to meet the ${minDepPct}% deposit requirement for this property.` }
+        : { type: 'danger', title: 'Deposit too low', message: `You'll need a minimum 10% deposit ($${fmtNZD(minDep)}) to be considered for a mortgage on this property. You're $${fmtNZD(shortfall)} short.` }
       );
     }
+
+    // DTI feedback
     if (!dtiPass) {
-      const existingDebt = creditCardLimit + bnplLimit;
-      feedback.push(existingDebt > 0
+      feedback.push(hasExistingDebt
         ? { type: 'warning', title: 'Debt levels', message: 'Your total debt (including this mortgage) is higher than banks typically allow. Consider paying down existing debts or increasing your deposit to lower the loan amount.' }
         : { type: 'warning', title: 'Loan amount too high', message: 'The mortgage loan is too large relative to your income. Consider increasing your deposit or looking at a lower-priced property.' }
       );
     }
+
+    // Servicing feedback
     if (!umiPass) {
-      const shortfall = reqUmi - umi;
-      const advice = [];
-      if (bnplLimit > 0) advice.push(`closing your Buy Now Pay Later accounts (frees up $${fmtNZD(bnplLimit * 0.05)}/month)`);
-      if (creditCardLimit > 5000) advice.push('reducing credit card limits');
-      if (umiStatus === 'challenging' && !depPass) {
-        feedback.push({ type: 'warning', title: 'Deposit and servicing need attention', message: 'You may need to explore deposit-boosting options to reach the 20% threshold and improve your monthly budget position.', expandable: true });
-      } else if (advice.length > 0) {
-        feedback.push({ type: 'warning', title: 'Monthly budget tight', message: `Banks want to see at least $${fmtNZD(Math.abs(shortfall))} more breathing room in your monthly budget. You could achieve this by ${advice.join(' or ')}.` });
+      if (isKO) {
+        feedback.push({ type: 'warning', title: 'Almost there', message: `You qualify for a Kainga Ora First Home Loan based on your deposit and income, but your monthly budget is a little tight. ${debtAdvice}` });
+      } else if (!isFullDeposit) {
+        feedback.push({ type: 'warning', title: 'Deposit and servicing need attention', message: `With less than 20% deposit and a tight monthly budget, lending options are limited. ${debtAdvice}`, expandable: !hasExistingDebt });
       } else {
-        feedback.push({ type: 'warning', title: 'Monthly budget tight', message: 'Banks want to see more breathing room in your monthly budget. Consider a smaller loan, increasing your income, or reducing your purchase price.' });
+        feedback.push({ type: 'warning', title: 'Strong deposit, servicing needs work', message: `Your deposit is solid but your monthly budget is too tight for banks to lend comfortably. ${debtAdvice}` });
       }
-    } else if (umiPass && umiStatus === 'challenging') {
-      feedback.push({ type: 'warning', title: 'Limited lending options', message: 'Your servicing is strong, but with less than 20% deposit and not qualifying for Kainga Ora, your options may be limited. Consider exploring ways to increase your deposit.', expandable: true });
-    }
-    if (usingGlee) feedback.push({ type: 'info', title: 'Living expenses adjusted', message: `Banks use standard minimum living costs of $${fmtNZD(gleeFloor)} per month for your situation, which is higher than what you declared.` });
-    if (depPass && dtiPass && umiPass) {
-      if (umiStatus === 'kainga_ora') feedback.push({ type: 'success', title: 'Kainga Ora ready!', message: "Excellent! You meet all the criteria for a Kainga Ora First Home Loan. You're ready to start house hunting with confidence." });
-      else if (lvr <= 80) feedback.push({ type: 'success', title: "You're mortgage ready!", message: "Great news! With a strong deposit (20%+) and solid servicing, you'll have excellent lending options across all major banks." });
-      else feedback.push({ type: 'success', title: "You're mortgage ready!", message: "Great news! Based on your financials, you meet the bank lending criteria. You're ready to start house hunting with confidence." });
+    } else if (umiPass && !isFullDeposit && !isKO) {
+      feedback.push({ type: 'warning', title: 'Limited lending options', message: 'Your servicing is strong, but with less than 20% deposit your options are limited to select lenders and you may pay a low equity margin on your rate. Consider exploring ways to increase your deposit.', expandable: true });
     }
 
-    setResults({ loan, lvr, depPass, minDep, minDepPct, netMonthly, dti, dtiPass, stressedPmt, livingExp, ccExp, bnplExp, slMonthly, umi, reqUmi, umiPass, umiStatus, isKO, feedback, usingGlee });
+    // Living expenses floor notification
+    if (usingGlee) {
+      feedback.push({ type: 'info', title: 'Living expenses adjusted', message: `Banks use standard minimum living costs of $${fmtNZD(gleeFloor)} per month for your situation, which is higher than what you declared.` });
+    }
+
+    // Success feedback
+    if (depPass && dtiPass && umiPass) {
+      if (isKO) {
+        feedback.push({ type: 'success', title: 'Kainga Ora ready!', message: "Excellent! You meet all the criteria for a Kainga Ora First Home Loan. You're ready to start house hunting with confidence." });
+      } else if (isFullDeposit) {
+        feedback.push({ type: 'success', title: "You're mortgage ready!", message: "Great news! With a strong 20%+ deposit and solid servicing, you'll have excellent lending options across all major banks." });
+      } else {
+        feedback.push({ type: 'success', title: "You're mortgage ready!", message: "Good news! You meet the lending criteria. With less than 20% deposit you'll have a smaller selection of lenders and may pay a slightly higher rate, but you can proceed with house hunting." });
+      }
+    }
+
+    setResults({ loan, lvr, depPass, minDep, minDepPct, isFullDeposit, netMonthly, dti, dtiPass, stressedPmt, livingExp, ccExp, bnplExp, slMonthly, umi, reqUmi, umiPass, umiStatus, isKO, feedback, usingGlee });
   }
 
   const ProgressBar = () => (
@@ -663,7 +693,7 @@ function BorrowChecker() {
                       <div style={{ marginTop: '1rem', padding: '0.75rem', background: results.umiPass ? '#E8F5E9' : '#FFEBEE', borderRadius: '8px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: '12px', color: C.textSecondary }}>
-                            {results.umiStatus === 'kainga_ora' ? 'Kainga Ora requires' : results.lvr <= 80 ? 'Banks require (20%+ deposit)' : 'Banks require (<20% deposit)'}
+                            {results.umiStatus === 'kainga_ora' ? 'Kainga Ora requires' : results.isFullDeposit ? 'Banks require (20%+ deposit)' : 'Banks require (<20% deposit)'}
                           </span>
                           <span style={{ fontSize: '13px', fontWeight: '500', color: C.textPrimary }}>${fmtNZD(results.reqUmi)}</span>
                         </div>
