@@ -197,15 +197,17 @@ const inputStyle = {
 
 const selectStyle = {
   width: '100%',
-  background: C.inputBg,
+  background: `${C.inputBg} url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 1rem center`,
   border: '2px solid transparent',
-  padding: '1rem 1.25rem',
+  padding: '1rem 2.75rem 1rem 1.25rem',
   borderRadius: '12px',
   fontSize: '16px',
   fontWeight: '500',
   color: C.textPrimary,
   cursor: 'pointer',
   outline: 'none',
+  appearance: 'none',
+  WebkitAppearance: 'none',
 };
 
 const labelStyle = {
@@ -905,7 +907,7 @@ const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           WebkitOverflowScrolling: 'touch',
-          paddingRight: '56px',
+          paddingRight: '96px',
         }}>
           {TABS.map(tab => (
             <button
@@ -1445,48 +1447,55 @@ function BorrowChecker({ onSavePrompt, onSave, initialInputs }) {
                   </div>
                   <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1.5rem' }}>Enter what you know and toggle the frequency. We'll convert everything to a monthly total.</p>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
                     {Object.keys(expenseItems).map(key => (
-                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: C.inputBg, borderRadius: '12px', padding: '0.75rem 1rem' }}>
-                        <span style={{ flex: 1, fontSize: '14px', color: C.textPrimary, fontWeight: '500' }}>{expenseLabels[key]}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '4px' }}>
-                          {['weekly', 'fortnightly', 'monthly'].map(freq => (
-                            <button
-                              key={freq}
-                              onClick={() => updateExpenseItem(key, 'freq', freq)}
-                              style={{
-                                background: expenseItems[key].freq === freq ? C.accent : 'transparent',
-                                color: expenseItems[key].freq === freq ? 'white' : C.textSecondary,
-                                border: 'none',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '500',
-                                cursor: 'pointer',
-                                textTransform: 'capitalize',
-                                transition: 'all 0.15s'
-                              }}
-                            >
-                              {freq === 'fortnightly' ? 'F/N' : freq.charAt(0).toUpperCase() + freq.slice(1)}
-                            </button>
-                          ))}
+                      <div key={key} style={{ background: C.inputBg, borderRadius: '12px', padding: '0.75rem 1rem' }}>
+                        {/* Label row */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          <span style={{ fontSize: '14px', color: C.textPrimary, fontWeight: '500' }}>{expenseLabels[key]}</span>
+                          <span style={{ fontSize: '12px', color: C.textSecondary, marginLeft: '0.5rem', whiteSpace: 'nowrap' }}>
+                            {toMonthly(expenseItems[key].amount, expenseItems[key].freq) > 0
+                              ? `$${fmtNZD(toMonthly(expenseItems[key].amount, expenseItems[key].freq))}/mo`
+                              : ''}
+                          </span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '6px 10px', width: '100px' }}>
-                          <span style={{ fontSize: '14px', color: C.textSecondary }}>$</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={expenseItems[key].amount}
-                            onChange={e => updateExpenseItem(key, 'amount', e.target.value)}
-                            placeholder="0"
-                            style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '14px', color: C.textPrimary, outline: 'none', fontWeight: '500' }}
-                          />
+                        {/* Controls row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', background: 'white', borderRadius: '8px', padding: '3px' }}>
+                            {['weekly', 'fortnightly', 'monthly'].map(freq => (
+                              <button
+                                key={freq}
+                                onClick={() => updateExpenseItem(key, 'freq', freq)}
+                                style={{
+                                  background: expenseItems[key].freq === freq ? C.accent : 'transparent',
+                                  color: expenseItems[key].freq === freq ? 'white' : C.textSecondary,
+                                  border: 'none',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '11px',
+                                  fontWeight: '500',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {freq === 'fortnightly' ? 'F/N' : freq.charAt(0).toUpperCase() + freq.slice(1)}
+                              </button>
+                            ))}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '6px 10px', flex: 1 }}>
+                            <span style={{ fontSize: '14px', color: C.textSecondary }}>$</span>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min="0"
+                              value={expenseItems[key].amount}
+                              onChange={e => updateExpenseItem(key, 'amount', e.target.value)}
+                              placeholder="0"
+                              style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '14px', color: C.textPrimary, outline: 'none', fontWeight: '500' }}
+                            />
+                          </div>
                         </div>
-                        <span style={{ fontSize: '12px', color: C.textSecondary, width: '70px', textAlign: 'right' }}>
-                          {toMonthly(expenseItems[key].amount, expenseItems[key].freq) > 0
-                            ? `$${fmtNZD(toMonthly(expenseItems[key].amount, expenseItems[key].freq))}/mo`
-                            : ''}
-                        </span>
                       </div>
                     ))}
                   </div>
