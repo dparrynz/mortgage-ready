@@ -837,29 +837,26 @@ const TABS = [
 ];
 
 const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const activeTab = TABS.find(t => t.id === active);
-
   return (
     <div style={{
       background: C.accent,
-      padding: '0',
       position: 'sticky',
       top: 0,
       zIndex: 100,
       boxShadow: '0 2px 20px rgba(0,0,0,0.15)',
       width: '100%',
     }}>
-      <div style={{
-        display: 'flex',
-        overflowX: 'auto',
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none',
-        maxWidth: '1100px',
-        margin: '0 auto',
-        WebkitOverflowScrolling: 'touch',
-      }}>
-        <div style={{ display: 'flex', flex: 1 }}>
+      {/* Wrapper is position:relative so the avatar menu can escape overflow:auto */}
+      <div style={{ position: 'relative', maxWidth: '1100px', margin: '0 auto' }}>
+        {/* Scrollable tabs with right padding to avoid overlapping the avatar */}
+        <div style={{
+          display: 'flex',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          WebkitOverflowScrolling: 'touch',
+          paddingRight: '56px',
+        }}>
           {TABS.map(tab => (
             <button
               key={tab.id}
@@ -885,7 +882,9 @@ const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios
             </button>
           ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.75rem', gap: '0.5rem', flexShrink: 0 }}>
+
+        {/* Avatar / Sign in — outside the overflow:auto so the dropdown isn't clipped */}
+        <div style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', zIndex: 101 }}>
           {user ? (
             <UserMenu user={user} onSignOut={onSignOut} onSavedScenarios={onSavedScenarios} />
           ) : (
