@@ -97,24 +97,35 @@ const supabase = (() => {
     return res.ok ? { error: null } : { error: 'Failed to delete' };
   };
 
-  // Handle OAuth callback
+  // Handle OAuth callback — returns 'recovery' | 'signin' | false
   const handleOAuthCallback = async () => {
     const hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
-      const params = new URLSearchParams(hash.substring(1));
-      const session = {
-        access_token: params.get('access_token'),
-        refresh_token: params.get('refresh_token'),
-        expires_in: params.get('expires_in'),
-      };
-      localStorage.setItem('sb_session', JSON.stringify(session));
-      window.location.hash = '';
-      return true;
-    }
-    return false;
+    if (!hash || !hash.includes('access_token')) return false;
+    const params = new URLSearchParams(hash.substring(1));
+    const session = {
+      access_token: params.get('access_token'),
+      refresh_token: params.get('refresh_token'),
+      expires_in: params.get('expires_in'),
+    };
+    localStorage.setItem('sb_session', JSON.stringify(session));
+    const type = params.get('type');
+    window.location.hash = '';
+    return type === 'recovery' ? 'recovery' : 'signin';
   };
 
-  return { signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, getUser, saveScenario, getScenarios, deleteScenario, handleOAuthCallback };
+  const updatePassword = async (newPassword) => {
+    const session = await getSession();
+    if (!session?.access_token) return { error: 'Not logged in' };
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: { ...headers, 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify({ password: newPassword }),
+    });
+    const data = await res.json();
+    return res.ok ? { data, error: null } : { data: null, error: data };
+  };
+
+  return { signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, getUser, saveScenario, getScenarios, deleteScenario, handleOAuthCallback, updatePassword };
 })();
 
 // ─── WINDOW WIDTH HOOK ───────────────────────────────────────────────────────
@@ -329,17 +340,20 @@ const StatCard = ({ label, value, sub, highlight, onClick, hint }) => (
 function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isRecovery, setIsRecovery] = useState(false);
 
   useEffect(() => {
-    supabase.handleOAuthCallback().then(() => {
+    supabase.handleOAuthCallback().then(result => {
+      if (result === 'recovery') setIsRecovery(true);
       supabase.getUser().then(u => { setUser(u); setLoading(false); });
     });
   }, []);
 
   const signOut = async () => { await supabase.signOut(); setUser(null); };
   const refreshUser = async () => { const u = await supabase.getUser(); setUser(u); };
+  const clearRecovery = () => setIsRecovery(false);
 
-  return { user, loading, signOut, refreshUser };
+  return { user, loading, signOut, refreshUser, isRecovery, clearRecovery };
 }
 
 // ─── AUTH MODAL ──────────────────────────────────────────────────────────────
@@ -2394,10 +2408,97 @@ function BNPLCalc() {
   );
 }
 
+// ─── PASSWORD RESET SCREEN ───────────────────────────────────────────────────
+function PasswordResetScreen({ onDone }) {
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const passwordChecks = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+  };
+  const passwordValid = Object.values(passwordChecks).every(Boolean);
+
+  const CheckItem = ({ ok, label }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: ok ? C.green : C.textSecondary }}>
+      <i className={`ti ti-${ok ? 'check' : 'circle'}`} style={{ fontSize: '14px' }} />
+      {label}
+    </div>
+  );
+
+  const handleSubmit = async () => {
+    if (!passwordValid) { setError('Please meet all password requirements'); return; }
+    setLoading(true);
+    setError('');
+    const { error: err } = await supabase.updatePassword(password);
+    setLoading(false);
+    if (err) { setError(err.message || err.error_description || 'Failed to update password. Please try again.'); return; }
+    setSuccess(true);
+    setTimeout(() => onDone(), 2000);
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '420px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: C.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
+            <i className="ti ti-lock" style={{ fontSize: '28px', color: C.textPrimary }} />
+          </div>
+          <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Set new password</h2>
+          <p style={{ fontSize: '14px', color: C.textSecondary, margin: 0 }}>Choose a strong password for your account</p>
+        </div>
+
+        {success ? (
+          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+            <i className="ti ti-circle-check" style={{ fontSize: '48px', color: C.green }} />
+            <p style={{ fontSize: '15px', fontWeight: '500', color: C.green, marginTop: '1rem' }}>Password updated! Redirecting...</p>
+          </div>
+        ) : (
+          <>
+            <div style={{ marginBottom: password.length > 0 ? '0.75rem' : '1.5rem' }}>
+              <label style={labelStyle}>New password</label>
+              <div style={{ ...inputWrap, padding: '0.875rem 1rem' }}>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  style={{ ...inputStyle, fontSize: '15px' }}
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {password.length > 0 && (
+              <div style={{ background: C.inputBg, borderRadius: '10px', padding: '0.875rem', marginBottom: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <CheckItem ok={passwordChecks.length} label="8+ characters" />
+                <CheckItem ok={passwordChecks.uppercase} label="Uppercase letter" />
+                <CheckItem ok={passwordChecks.number} label="Number" />
+                <CheckItem ok={passwordChecks.special} label="Special character" />
+              </div>
+            )}
+
+            {error && <p style={{ fontSize: '13px', color: C.red, margin: '0 0 1rem', padding: '0.75rem', background: '#FFEBEE', borderRadius: '8px' }}>{error}</p>}
+
+            <button onClick={handleSubmit} disabled={loading} style={{ ...primaryBtn, width: '100%', opacity: loading ? 0.7 : 1 }}>
+              {loading ? 'Updating...' : 'Update password'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [activeTab, setActiveTab] = useState('borrow');
-  const { user, loading, signOut, refreshUser } = useAuth();
+  const { user, loading, signOut, refreshUser, isRecovery, clearRecovery } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSavedScenarios, setShowSavedScenarios] = useState(false);
   const [showSaveName, setShowSaveName] = useState(false);
@@ -2425,7 +2526,12 @@ export default function App() {
   const handleSaveConfirm = async () => {
     if (!pendingSave) return;
     const name = scenarioName.trim() || 'My Scenario';
-    await supabase.saveScenario(name, pendingSave.inputs, pendingSave.results);
+    const { error } = await supabase.saveScenario(name, pendingSave.inputs, pendingSave.results);
+    if (error) {
+      console.error('Save scenario failed:', error);
+      alert('Failed to save scenario. Please try again.');
+      return;
+    }
     setShowSaveName(false);
     setPendingSave(null);
     setScenarioName('');
@@ -2456,6 +2562,8 @@ export default function App() {
       <p style={{ color: C.textSecondary }}>Loading...</p>
     </div>
   );
+
+  if (isRecovery) return <PasswordResetScreen onDone={() => { clearRecovery(); }} />;
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, width: '100%', boxSizing: 'border-box' }}>
