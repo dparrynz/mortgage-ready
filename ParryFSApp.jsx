@@ -374,7 +374,7 @@ function AuthModal({ onClose, onSuccess }) {
   const turnstileWidgetId = useRef(null);
 
   useEffect(() => {
-    if (mode === 'forgot' || mode === 'confirm') return;
+    if (mode === 'confirm') return;
     setTurnstileToken('');
     const render = () => {
       if (!turnstileRef.current || !window.turnstile) return;
@@ -428,11 +428,11 @@ function AuthModal({ onClose, onSuccess }) {
       const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
         method: 'POST',
         headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, redirect_to: 'https://parryfs.com' })
+        body: JSON.stringify({ email, redirect_to: 'https://parryfs.com', gotrue_meta_security: { captcha_token: turnstileToken } })
       });
       setLoading(false);
       if (res.ok) { setMode('confirm'); setConfirmEmail(email); }
-      else setError('Could not send reset email. Please try again.');
+      else { setError('Could not send reset email. Please try again.'); resetTurnstile(); }
       return;
     }
 
@@ -602,14 +602,14 @@ function AuthModal({ onClose, onSuccess }) {
 
             {error && <p style={{ fontSize: '13px', color: C.red, margin: '0 0 1rem', padding: '0.75rem', background: '#FFEBEE', borderRadius: '8px' }}>{error}</p>}
 
-            {(mode === 'signin' || mode === 'signup') && (
+            {(mode === 'signin' || mode === 'signup' || mode === 'forgot') && (
               <div ref={turnstileRef} style={{ marginBottom: '1rem', minHeight: '65px' }} />
             )}
 
             <button
               onClick={handleSubmit}
-              disabled={loading || (mode !== 'forgot' && !turnstileToken)}
-              style={{ ...primaryBtn, width: '100%', opacity: (loading || (mode !== 'forgot' && !turnstileToken)) ? 0.7 : 1, cursor: (mode !== 'forgot' && !turnstileToken) ? 'not-allowed' : 'pointer' }}
+              disabled={loading || !turnstileToken}
+              style={{ ...primaryBtn, width: '100%', opacity: (loading || !turnstileToken) ? 0.7 : 1, cursor: !turnstileToken ? 'not-allowed' : 'pointer' }}
             >
               {loading ? 'Please wait...' : mode === 'signin' ? 'Sign in' : mode === 'forgot' ? 'Send reset link' : 'Create account'}
             </button>
