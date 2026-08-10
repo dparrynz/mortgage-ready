@@ -1574,7 +1574,13 @@ function BorrowChecker({ onSavePrompt, onSave }) {
             )}
             {onSave && (
               <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-                <button onClick={onSave} style={{ ...primaryBtn }}>
+                <button onClick={() => onSave({
+                  purchasePrice, deposit, applicationType, isFirstHomeBuyer, dependents,
+                  applicantAge, partnerAge, baseSalary, variableIncome, kiwiSaverRate,
+                  hasStudentLoan, partnerBaseSalary, partnerVariableIncome, partnerKiwiSaverRate,
+                  partnerHasStudentLoan, numBoarders, boarderWeeklyIncome, creditCardLimit,
+                  bnplLimit, otherMonthlyLoans, declaredExpenses,
+                }, results)} style={{ ...primaryBtn }}>
                   <i className="ti ti-bookmark" style={{ marginRight: '6px' }} />
                   Save this scenario
                 </button>
@@ -2525,10 +2531,16 @@ export default function App() {
   const handleSaveConfirm = async () => {
     if (!pendingSave) return;
     const name = scenarioName.trim() || 'My Scenario';
-    const { error } = await supabase.saveScenario(name, pendingSave.inputs, pendingSave.results);
-    if (error) {
-      console.error('Save scenario failed:', error);
-      alert('Failed to save scenario. Please try again.');
+    try {
+      const { error } = await supabase.saveScenario(name, pendingSave.inputs, pendingSave.results);
+      if (error) {
+        console.error('Save scenario failed:', error);
+        alert('Failed to save scenario: ' + (error.message || JSON.stringify(error)));
+        return;
+      }
+    } catch (err) {
+      console.error('Save scenario threw:', err);
+      alert('Failed to save scenario: ' + err.message);
       return;
     }
     setShowSaveName(false);
