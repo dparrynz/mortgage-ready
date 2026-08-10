@@ -1012,16 +1012,15 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     for (const b of brackets) {
       if (gross > b.lower) tax += (Math.min(gross, b.upper) - b.lower) * b.rate;
     }
-    // IETC (Independent Earner Tax Credit)
+    // IETC (Independent Earner Tax Credit) - matches ASB calculator
     // Full credit $520 for incomes $24,000 - $66,000
-    // Phases out at 13 cents per dollar between $44,000 and $70,000
+    // Phases out at 13 cents per dollar between $66,000 and $70,000
+    // No credit above $70,000 or below $24,000
     let ietc = 0;
-    if (gross >= 24000 && gross <= 66000) {
-      if (gross <= 44000) {
-        ietc = 520;
-      } else {
-        ietc = Math.max(0, 520 - (gross - 44000) * 0.13);
-      }
+    if (gross >= 24000 && gross < 66000) {
+      ietc = 520;
+    } else if (gross >= 66000 && gross < 70000) {
+      ietc = Math.max(0, 520 - (gross - 66000) * 0.13);
     }
     return gross - tax - acc + ietc - gross * (ksRate / 100);
   }
