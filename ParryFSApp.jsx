@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 // ─── SUPABASE CLIENT ─────────────────────────────────────────────────────────
@@ -18,10 +18,12 @@ const supabase = (() => {
     window.location.href = redirectUrl;
   };
 
-  const signInWithEmail = async (email, password) => {
+  const signInWithEmail = async (email, password, captchaToken) => {
+    const body = { email, password };
+    if (captchaToken) body.gotrue_meta_security = { captcha_token: captchaToken };
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: 'POST', headers,
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify(body)
     });
     const data = await res.json();
     if (data.access_token) {
@@ -31,17 +33,17 @@ const supabase = (() => {
     return { data: null, error: data };
   };
 
-  const signUpWithEmail = async (email, password) => {
+  const signUpWithEmail = async (email, password, captchaToken) => {
+    const body = { email, password };
+    if (captchaToken) body.gotrue_meta_security = { captcha_token: captchaToken };
     const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
       method: 'POST', headers,
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify(body)
     });
     const data = await res.json();
-    if (data.access_token) {
-      localStorage.setItem('sb_session', JSON.stringify(data));
-      return { data, error: null };
-    }
-    return { data: null, error: data };
+    if (!res.ok) return { data: null, error: data };
+    if (data.access_token) localStorage.setItem('sb_session', JSON.stringify(data));
+    return { data, error: null };
   };
 
   const signOut = async () => {
@@ -367,6 +369,45 @@ function AuthModal({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState('');
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileRef = useRef(null);
+  const turnstileWidgetId = useRef(null);
+
+  useEffect(() => {
+    if (mode === 'forgot' || mode === 'confirm') return;
+    setTurnstileToken('');
+    const render = () => {
+      if (!turnstileRef.current || !window.turnstile) return;
+      if (turnstileWidgetId.current !== null) {
+        try { window.turnstile.remove(turnstileWidgetId.current); } catch (e) {}
+      }
+      turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
+        sitekey: '0x4AAAAAAEMcpiwecImEEMk6ueElFhr2hro',
+        callback: (token) => setTurnstileToken(token),
+        'expired-callback': () => setTurnstileToken(''),
+        'error-callback': () => setTurnstileToken(''),
+      });
+    };
+    if (window.turnstile) {
+      render();
+    } else {
+      const timer = setInterval(() => { if (window.turnstile) { clearInterval(timer); render(); } }, 100);
+      return () => clearInterval(timer);
+    }
+    return () => {
+      if (turnstileWidgetId.current !== null && window.turnstile) {
+        try { window.turnstile.remove(turnstileWidgetId.current); } catch (e) {}
+        turnstileWidgetId.current = null;
+      }
+    };
+  }, [mode]);
+
+  const resetTurnstile = () => {
+    setTurnstileToken('');
+    if (turnstileWidgetId.current !== null && window.turnstile) {
+      try { window.turnstile.reset(turnstileWidgetId.current); } catch (e) {}
+    }
+  };
 
   const passwordChecks = {
     length: password.length >= 8,
@@ -396,27 +437,28 @@ function AuthModal({ onClose, onSuccess }) {
     }
 
     if (mode === 'signup') {
-      const { data, error: err } = await supabase.signUpWithEmail(email, password);
+      const { data, error: err } = await supabase.signUpWithEmail(email, password, turnstileToken);
       setLoading(false);
       if (err) {
         const msg = err.message || err.error_description || '';
         if (msg.includes('already registered')) setError('An account with this email already exists. Please sign in.');
         else setError(msg || 'Something went wrong. Please try again.');
+        resetTurnstile();
         return;
       }
-      // Success - show confirmation screen regardless of whether access_token exists
       setConfirmEmail(email);
       setMode('confirm');
       return;
     }
 
-    const { data, error: err } = await supabase.signInWithEmail(email, password);
+    const { data, error: err } = await supabase.signInWithEmail(email, password, turnstileToken);
     setLoading(false);
     if (err) {
       const msg = err.message || err.error_description || '';
       if (msg.includes('Invalid login')) setError('Incorrect email or password. Please try again.');
       else if (msg.includes('Email not confirmed')) setError('Please confirm your email first. Check your inbox.');
       else setError(msg || 'Something went wrong. Please try again.');
+      resetTurnstile();
       return;
     }
     onSuccess();
@@ -560,7 +602,15 @@ function AuthModal({ onClose, onSuccess }) {
 
             {error && <p style={{ fontSize: '13px', color: C.red, margin: '0 0 1rem', padding: '0.75rem', background: '#FFEBEE', borderRadius: '8px' }}>{error}</p>}
 
-            <button onClick={handleSubmit} disabled={loading} style={{ ...primaryBtn, width: '100%', opacity: loading ? 0.7 : 1 }}>
+            {(mode === 'signin' || mode === 'signup') && (
+              <div ref={turnstileRef} style={{ marginBottom: '1rem', minHeight: '65px' }} />
+            )}
+
+            <button
+              onClick={handleSubmit}
+              disabled={loading || (mode !== 'forgot' && !turnstileToken)}
+              style={{ ...primaryBtn, width: '100%', opacity: (loading || (mode !== 'forgot' && !turnstileToken)) ? 0.7 : 1, cursor: (mode !== 'forgot' && !turnstileToken) ? 'not-allowed' : 'pointer' }}
+            >
               {loading ? 'Please wait...' : mode === 'signin' ? 'Sign in' : mode === 'forgot' ? 'Send reset link' : 'Create account'}
             </button>
 
