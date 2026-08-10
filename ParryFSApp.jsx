@@ -1318,7 +1318,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
               </select>
             </div>
             {numBoarders > 0 && (
-              <MoneyField label="Weekly rent per boarder (before tax)" value={boarderWeeklyIncome} onChange={setBoarderWeeklyIncome} placeholder="200" hint="Banks cap this at $240 per week per boarder" />
+              <MoneyField label="Weekly rent per boarder (before tax)" value={boarderWeeklyIncome} onChange={setBoarderWeeklyIncome} placeholder="200" hint="Lenders may cap boarder income to a reasonable figure or as otherwise stated in their credit policy." />
             )}
           </div>
         )}
