@@ -948,6 +948,8 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     otherLiving: 'Other living expenses',
   };
 
+  const ADDITIONAL_EXPENSE_KEYS = ['entertainmentRecreation', 'donationsTithing', 'childSupport'];
+
   const toMonthly = (amount, freq) => {
     const num = parseFloat(amount) || 0;
     if (freq === 'weekly') return num * 52 / 12;
@@ -956,6 +958,14 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   };
 
   const totalExpenses = Object.values(expenseItems).reduce((sum, item) => sum + toMonthly(item.amount, item.freq), 0);
+  
+  const coreExpenses = Object.entries(expenseItems)
+    .filter(([key]) => !ADDITIONAL_EXPENSE_KEYS.includes(key))
+    .reduce((sum, [, item]) => sum + toMonthly(item.amount, item.freq), 0);
+
+  const additionalExpenses = Object.entries(expenseItems)
+    .filter(([key]) => ADDITIONAL_EXPENSE_KEYS.includes(key))
+    .reduce((sum, [, item]) => sum + toMonthly(item.amount, item.freq), 0);
 
   const applyExpenses = () => {
     setDeclaredExpenses(Math.round(totalExpenses));
@@ -978,7 +988,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   }, [page, purchasePrice, deposit, applicationType, isFirstHomeBuyer, dependents, applicantAge, partnerAge,
     baseSalary, variableIncome, kiwiSaverRate, hasStudentLoan,
     partnerBaseSalary, partnerVariableIncome, partnerKiwiSaverRate, partnerHasStudentLoan,
-    numBoarders, boarderWeeklyIncome, creditCardLimit, bnplLimit, otherMonthlyLoans, declaredExpenses]);
+    numBoarders, boarderWeeklyIncome, creditCardLimit, bnplLimit, otherMonthlyLoans, declaredExpenses, additionalExpenses]);
 
   useEffect(() => { 
     if (results) {
@@ -1037,8 +1047,12 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const netMonthly = (primaryNet + partnerNet) / 12 + boarderNet;
 
     const gleeFloor = 829 + (applicationType === 'single' ? 430 : 860) + dependents * 161 + Math.round((usableGross / 12) * 0.07);
-    const livingExp = Math.max(declaredExpenses, gleeFloor);
-    const usingGlee = livingExp === gleeFloor;
+    
+    // Core declared expenses (compared against GLEE floor)
+    // Additional expenses (entertainment, donations, child support) always added on top
+    const coreDeclared = Math.round(declaredExpenses - additionalExpenses);
+    const livingExp = Math.max(coreDeclared, gleeFloor) + Math.round(additionalExpenses);
+    const usingGlee = Math.max(coreDeclared, gleeFloor) === gleeFloor;
 
     const ccExp = creditCardLimit * 0.038;
     const bnplExp = bnplLimit * 0.05;
@@ -1316,7 +1330,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
             <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 2rem' }}>Be honest here - banks will check these anyway</p>
             <MoneyField label="Total credit card limits" value={creditCardLimit} onChange={setCreditCardLimit} placeholder="0" hint="Add up all your credit card limits, even if you don't use them" />
             <MoneyField label="Buy Now Pay Later limits (Afterpay, Zip, etc.)" value={bnplLimit} onChange={setBnplLimit} placeholder="0" />
-            <MoneyField label="Other loan repayments per month (car loans, personal loans, etc.)" value={otherMonthlyLoans} onChange={setOtherMonthlyLoans} placeholder="0" />
+            <MoneyField label="Other loan repayments per month (car loans, personal loans, etc.)" value={otherMonthlyLoans} onChange={setOtherMonthlyLoans} placeholder="0" hint="For loan repayments only - not child support (add that in the expense calculator above)" />
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={labelStyle}>Monthly living expenses</label>
               <div style={inputWrap}>
