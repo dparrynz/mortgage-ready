@@ -949,33 +949,34 @@ const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios
 };
 
 // ─── 1. BORROW CHECKER ───────────────────────────────────────────────────────
-function BorrowChecker({ onSavePrompt, onSave }) {
+function BorrowChecker({ onSavePrompt, onSave, initialInputs }) {
+  const i = initialInputs || {};
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialInputs ? 5 : 1);
   const totalPages = 5;
 
-  const [purchasePrice, setPurchasePrice] = useState(650000);
-  const [deposit, setDeposit] = useState(130000);
-  const [applicationType, setApplicationType] = useState('single');
-  const [isFirstHomeBuyer, setIsFirstHomeBuyer] = useState(false);
-  const [dependents, setDependents] = useState(0);
-  const [applicantAge, setApplicantAge] = useState('');
-  const [partnerAge, setPartnerAge] = useState('');
-  const [baseSalary, setBaseSalary] = useState(85000);
-  const [variableIncome, setVariableIncome] = useState(0);
-  const [kiwiSaverRate, setKiwiSaverRate] = useState(3.5);
-  const [hasStudentLoan, setHasStudentLoan] = useState(false);
-  const [partnerBaseSalary, setPartnerBaseSalary] = useState(0);
-  const [partnerVariableIncome, setPartnerVariableIncome] = useState(0);
-  const [partnerKiwiSaverRate, setPartnerKiwiSaverRate] = useState(3.5);
-  const [partnerHasStudentLoan, setPartnerHasStudentLoan] = useState(false);
-  const [numBoarders, setNumBoarders] = useState(0);
-  const [boarderWeeklyIncome, setBoarderWeeklyIncome] = useState(0);
-  const [creditCardLimit, setCreditCardLimit] = useState(0);
-  const [bnplLimit, setBnplLimit] = useState(0);
-  const [otherMonthlyLoans, setOtherMonthlyLoans] = useState(0);
-  const [declaredExpenses, setDeclaredExpenses] = useState(2000);
+  const [purchasePrice, setPurchasePrice] = useState(i.purchasePrice ?? 650000);
+  const [deposit, setDeposit] = useState(i.deposit ?? 130000);
+  const [applicationType, setApplicationType] = useState(i.applicationType ?? 'single');
+  const [isFirstHomeBuyer, setIsFirstHomeBuyer] = useState(i.isFirstHomeBuyer ?? false);
+  const [dependents, setDependents] = useState(i.dependents ?? 0);
+  const [applicantAge, setApplicantAge] = useState(i.applicantAge ?? '');
+  const [partnerAge, setPartnerAge] = useState(i.partnerAge ?? '');
+  const [baseSalary, setBaseSalary] = useState(i.baseSalary ?? 85000);
+  const [variableIncome, setVariableIncome] = useState(i.variableIncome ?? 0);
+  const [kiwiSaverRate, setKiwiSaverRate] = useState(i.kiwiSaverRate ?? 3.5);
+  const [hasStudentLoan, setHasStudentLoan] = useState(i.hasStudentLoan ?? false);
+  const [partnerBaseSalary, setPartnerBaseSalary] = useState(i.partnerBaseSalary ?? 0);
+  const [partnerVariableIncome, setPartnerVariableIncome] = useState(i.partnerVariableIncome ?? 0);
+  const [partnerKiwiSaverRate, setPartnerKiwiSaverRate] = useState(i.partnerKiwiSaverRate ?? 3.5);
+  const [partnerHasStudentLoan, setPartnerHasStudentLoan] = useState(i.partnerHasStudentLoan ?? false);
+  const [numBoarders, setNumBoarders] = useState(i.numBoarders ?? 0);
+  const [boarderWeeklyIncome, setBoarderWeeklyIncome] = useState(i.boarderWeeklyIncome ?? 0);
+  const [creditCardLimit, setCreditCardLimit] = useState(i.creditCardLimit ?? 0);
+  const [bnplLimit, setBnplLimit] = useState(i.bnplLimit ?? 0);
+  const [otherMonthlyLoans, setOtherMonthlyLoans] = useState(i.otherMonthlyLoans ?? 0);
+  const [declaredExpenses, setDeclaredExpenses] = useState(i.declaredExpenses ?? 2000);
   const [showExpenseCalc, setShowExpenseCalc] = useState(false);
   const [expenseItems, setExpenseItems] = useState({
     homeContentsInsurance: { amount: '', freq: 'monthly' },
@@ -2561,6 +2562,8 @@ export default function App() {
   const [pendingSave, setPendingSave] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [loadedInputs, setLoadedInputs] = useState(null);
+  const [borrowKey, setBorrowKey] = useState(0);
 
   const handleSavePrompt = (inputs, results) => {
     if (!user) {
@@ -2604,6 +2607,8 @@ export default function App() {
     switch (activeTab) {
       case 'borrow': return (
         <BorrowChecker
+          key={borrowKey}
+          initialInputs={loadedInputs}
           onSavePrompt={!user ? () => { setShowAuthModal(true); } : null}
           onSave={user ? (inputs, results) => handleSavePrompt(inputs, results) : null}
         />
@@ -2656,7 +2661,10 @@ export default function App() {
         <SavedScenarios
           onClose={() => setShowSavedScenarios(false)}
           onLoad={(scenario) => {
+            setLoadedInputs(scenario.inputs || {});
+            setBorrowKey(k => k + 1);
             setActiveTab('borrow');
+            setShowSavedScenarios(false);
           }}
         />
       )}
