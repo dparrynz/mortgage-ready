@@ -382,7 +382,7 @@ function AuthModal({ onClose, onSuccess }) {
         try { window.turnstile.remove(turnstileWidgetId.current); } catch (e) {}
       }
       turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
-        sitekey: '0x4AAAAAAEMcpiwecImEEMk6ueElFhr2hro',
+        sitekey: '0x4AAAAAAEMcplqQ59H2Bmy',
         callback: (token) => setTurnstileToken(token),
         'expired-callback': () => setTurnstileToken(''),
         'error-callback': () => setTurnstileToken(''),
