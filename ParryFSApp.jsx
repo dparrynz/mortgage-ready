@@ -1,6 +1,133 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
+// ─── SUPABASE CLIENT ─────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://cpwbixddgcyingntsxci.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwd2JpeGRkZ2N5aW5nbnRzeGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwNjgzMjksImV4cCI6MjEwMTY0NDMyOX0.-K5k0pyWV_piJCdcwQUiAzUND-PM35VOXSZSaBSbP6g';
+
+const supabase = (() => {
+  const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' };
+  
+  const getSession = async () => {
+    const stored = localStorage.getItem('sb_session');
+    return stored ? JSON.parse(stored) : null;
+  };
+
+  const signInWithGoogle = async () => {
+    const redirectUrl = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(window.location.origin)}`;
+    window.location.href = redirectUrl;
+  };
+
+  const signInWithEmail = async (email, password) => {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (data.access_token) {
+      localStorage.setItem('sb_session', JSON.stringify(data));
+      return { data, error: null };
+    }
+    return { data: null, error: data };
+  };
+
+  const signUpWithEmail = async (email, password) => {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (data.access_token) {
+      localStorage.setItem('sb_session', JSON.stringify(data));
+      return { data, error: null };
+    }
+    return { data: null, error: data };
+  };
+
+  const signOut = async () => {
+    const session = await getSession();
+    if (session?.access_token) {
+      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+        method: 'POST',
+        headers: { ...headers, 'Authorization': `Bearer ${session.access_token}` }
+      });
+    }
+    localStorage.removeItem('sb_session');
+  };
+
+  const getUser = async () => {
+    const session = await getSession();
+    if (!session?.access_token) return null;
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { ...headers, 'Authorization': `Bearer ${session.access_token}` }
+    });
+    if (!res.ok) { localStorage.removeItem('sb_session'); return null; }
+    return await res.json();
+  };
+
+  const saveScenario = async (name, inputs, results) => {
+    const session = await getSession();
+    if (!session?.access_token) return { error: 'Not logged in' };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/saved_scenarios`, {
+      method: 'POST',
+      headers: { ...headers, 'Authorization': `Bearer ${session.access_token}`, 'Prefer': 'return=representation' },
+      body: JSON.stringify({ name, inputs, results, user_id: session.user?.id || JSON.parse(atob(session.access_token.split('.')[1])).sub })
+    });
+    const data = await res.json();
+    return res.ok ? { data, error: null } : { data: null, error: data };
+  };
+
+  const getScenarios = async () => {
+    const session = await getSession();
+    if (!session?.access_token) return { data: [], error: null };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/saved_scenarios?order=created_at.desc`, {
+      headers: { ...headers, 'Authorization': `Bearer ${session.access_token}` }
+    });
+    const data = await res.json();
+    return res.ok ? { data, error: null } : { data: [], error: data };
+  };
+
+  const deleteScenario = async (id) => {
+    const session = await getSession();
+    if (!session?.access_token) return { error: 'Not logged in' };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/saved_scenarios?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: { ...headers, 'Authorization': `Bearer ${session.access_token}` }
+    });
+    return res.ok ? { error: null } : { error: 'Failed to delete' };
+  };
+
+  // Handle OAuth callback
+  const handleOAuthCallback = async () => {
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      const params = new URLSearchParams(hash.substring(1));
+      const session = {
+        access_token: params.get('access_token'),
+        refresh_token: params.get('refresh_token'),
+        expires_in: params.get('expires_in'),
+      };
+      localStorage.setItem('sb_session', JSON.stringify(session));
+      window.location.hash = '';
+      return true;
+    }
+    return false;
+  };
+
+  return { signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, getUser, saveScenario, getScenarios, deleteScenario, handleOAuthCallback };
+})();
+
+// ─── WINDOW WIDTH HOOK ───────────────────────────────────────────────────────
+function useWindowWidth() {
+  const [width, setWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  return width;
+}
+
 // ─── SHARED STYLES ───────────────────────────────────────────────────────────
 const C = {
   bg: 'linear-gradient(135deg, #E6E9F0 0%, #EEF1F5 100%)',
@@ -135,6 +262,7 @@ const MoneyField = ({ label, value, onChange, placeholder = '0', hint }) => (
       <span style={{ fontSize: '18px', color: C.textPrimary, fontWeight: '500' }}>$</span>
       <input
         type="text"
+        inputMode="numeric"
         value={fmtInput(value)}
         onChange={(e) => onChange(parseMoney(e.target.value))}
         placeholder={placeholder}
@@ -151,6 +279,7 @@ const RateField = ({ label, value, onChange, placeholder = '0.00', hint }) => (
     <div style={{ display: 'flex', alignItems: 'center', background: C.inputBg, padding: '1rem 1.25rem', borderRadius: '12px', gap: '8px' }}>
       <input
         type="number"
+        inputMode="decimal"
         step="0.01"
         value={value || ''}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
@@ -196,6 +325,492 @@ const StatCard = ({ label, value, sub, highlight, onClick, hint }) => (
   </div>
 );
 
+// ─── AUTH HOOK ───────────────────────────────────────────────────────────────
+function useAuth() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.handleOAuthCallback().then(() => {
+      supabase.getUser().then(u => { setUser(u); setLoading(false); });
+    });
+  }, []);
+
+  const signOut = async () => { await supabase.signOut(); setUser(null); };
+  const refreshUser = async () => { const u = await supabase.getUser(); setUser(u); };
+
+  return { user, loading, signOut, refreshUser };
+}
+
+// ─── AUTH MODAL ──────────────────────────────────────────────────────────────
+function AuthModal({ onClose, onSuccess }) {
+  const [mode, setMode] = useState('signin'); // signin | signup | forgot | confirm
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [showPrivacy, setShowPrivacy] = useState(false);
+
+  const passwordChecks = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+  };
+  const passwordValid = Object.values(passwordChecks).every(Boolean);
+
+  const handleSubmit = async () => {
+    setError('');
+    if (mode === 'signup' && !passwordValid) { setError('Please meet all password requirements'); return; }
+    if (mode === 'signup' && (!firstName.trim() || !lastName.trim())) { setError('Please enter your first and last name'); return; }
+    
+    setLoading(true);
+
+    if (mode === 'forgot') {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, redirect_to: 'https://parryfs.com' })
+      });
+      setLoading(false);
+      if (res.ok) { setMode('confirm'); setConfirmEmail(email); }
+      else setError('Could not send reset email. Please try again.');
+      return;
+    }
+
+    if (mode === 'signup') {
+      const { data, error: err } = await supabase.signUpWithEmail(email, password);
+      setLoading(false);
+      if (err) {
+        const msg = err.message || err.error_description || '';
+        if (msg.includes('already registered')) setError('An account with this email already exists. Please sign in.');
+        else setError(msg || 'Something went wrong. Please try again.');
+        return;
+      }
+      // Success - show confirmation screen regardless of whether access_token exists
+      setConfirmEmail(email);
+      setMode('confirm');
+      return;
+    }
+
+    const { data, error: err } = await supabase.signInWithEmail(email, password);
+    setLoading(false);
+    if (err) {
+      const msg = err.message || err.error_description || '';
+      if (msg.includes('Invalid login')) setError('Incorrect email or password. Please try again.');
+      else if (msg.includes('Email not confirmed')) setError('Please confirm your email first. Check your inbox.');
+      else setError(msg || 'Something went wrong. Please try again.');
+      return;
+    }
+    onSuccess();
+  };
+
+  const CheckItem = ({ ok, label }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: ok ? C.green : C.textSecondary }}>
+      <i className={`ti ti-${ok ? 'check' : 'circle'}`} style={{ fontSize: '14px' }} />
+      {label}
+    </div>
+  );
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }} onClick={onClose}>
+      <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '420px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+        
+        {/* Privacy Policy sub-view */}
+        {showPrivacy ? (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <button onClick={() => setShowPrivacy(false)} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontSize: '14px', fontWeight: '500', padding: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <i className="ti ti-arrow-left" /> Back
+              </button>
+              <button onClick={onClose} style={{ background: C.inputBg, border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className="ti ti-x" style={{ fontSize: '18px', color: C.textPrimary }} />
+              </button>
+            </div>
+            <h3 style={{ fontSize: '20px', fontWeight: '500', margin: '0 0 1rem', color: C.textPrimary }}>Privacy Policy</h3>
+            <PRIVACY_POLICY_CONTENT />
+          </>
+        ) : mode === 'confirm' ? (
+          /* Email confirmation / forgot password sent state */
+          <>
+            <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: C.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+                <i className="ti ti-mail" style={{ fontSize: '32px', color: C.textPrimary }} />
+              </div>
+              <h3 style={{ fontSize: '20px', fontWeight: '500', margin: '0 0 0.75rem', color: C.textPrimary }}>
+                {mode === 'confirm' && email === confirmEmail && password ? 'Check your email' : 'Reset link sent'}
+              </h3>
+              <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: '1.6', margin: '0 0 1.5rem' }}>
+                We've sent an email to <strong>{confirmEmail}</strong>.{' '}
+                {password ? 'Click the confirmation link to activate your account.' : 'Click the link to reset your password.'}
+              </p>
+              <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 1.5rem' }}>
+                Can't find it? Check your spam folder.
+              </p>
+              <button onClick={onClose} style={{ ...primaryBtn, width: '100%' }}>Got it</button>
+              <button onClick={() => { setMode('signin'); setPassword(''); }} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontSize: '14px', marginTop: '1rem', fontWeight: '500' }}>
+                Back to sign in
+              </button>
+            </div>
+          </>
+        ) : (
+          /* Sign in / Sign up form */
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '22px', fontWeight: '500', margin: 0, color: C.textPrimary }}>
+                {mode === 'signin' ? 'Sign in' : mode === 'forgot' ? 'Reset password' : 'Create account'}
+              </h3>
+              <button onClick={onClose} style={{ background: C.inputBg, border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className="ti ti-x" style={{ fontSize: '18px', color: C.textPrimary }} />
+              </button>
+            </div>
+
+            {mode !== 'forgot' && (
+              <>
+                <button
+                  onClick={() => supabase.signInWithGoogle()}
+                  style={{ width: '100%', background: 'white', border: `2px solid ${C.borderLight}`, borderRadius: '12px', padding: '0.875rem', fontSize: '15px', fontWeight: '500', color: C.textPrimary, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '1.5rem', transition: 'all 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = C.purple}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = C.borderLight}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                  Continue with Google
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <div style={{ flex: 1, height: '1px', background: C.borderLight }} />
+                  <span style={{ fontSize: '13px', color: C.textSecondary }}>or</span>
+                  <div style={{ flex: 1, height: '1px', background: C.borderLight }} />
+                </div>
+              </>
+            )}
+
+            {/* Name fields for signup */}
+            {mode === 'signup' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ ...labelStyle, marginBottom: '0.5rem', fontSize: '13px' }}>First name</label>
+                  <div style={{ ...inputWrap, padding: '0.75rem 1rem' }}>
+                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="John" style={{ ...inputStyle, fontSize: '14px' }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ ...labelStyle, marginBottom: '0.5rem', fontSize: '13px' }}>Last name</label>
+                  <div style={{ ...inputWrap, padding: '0.75rem 1rem' }}>
+                    <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Smith" style={{ ...inputStyle, fontSize: '14px' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Email</label>
+              <div style={{ ...inputWrap, padding: '0.875rem 1rem' }}>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" style={{ ...inputStyle, fontSize: '15px' }} />
+              </div>
+            </div>
+
+            {mode !== 'forgot' && (
+              <div style={{ marginBottom: mode === 'signup' ? '0.75rem' : '1.5rem' }}>
+                <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Password</label>
+                <div style={{ ...inputWrap, padding: '0.875rem 1rem' }}>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={{ ...inputStyle, fontSize: '15px' }} onKeyDown={e => e.key === 'Enter' && handleSubmit()} />
+                </div>
+              </div>
+            )}
+
+            {/* Password requirements for signup */}
+            {mode === 'signup' && password.length > 0 && (
+              <div style={{ background: C.inputBg, borderRadius: '10px', padding: '0.875rem', marginBottom: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <CheckItem ok={passwordChecks.length} label="8+ characters" />
+                <CheckItem ok={passwordChecks.uppercase} label="Uppercase letter" />
+                <CheckItem ok={passwordChecks.number} label="Number" />
+                <CheckItem ok={passwordChecks.special} label="Special character" />
+              </div>
+            )}
+
+            {mode === 'signin' && (
+              <div style={{ textAlign: 'right', marginBottom: '1.25rem', marginTop: '-0.5rem' }}>
+                <button onClick={() => { setMode('forgot'); setError(''); }} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontSize: '13px', fontWeight: '500', padding: 0 }}>
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {error && <p style={{ fontSize: '13px', color: C.red, margin: '0 0 1rem', padding: '0.75rem', background: '#FFEBEE', borderRadius: '8px' }}>{error}</p>}
+
+            <button onClick={handleSubmit} disabled={loading} style={{ ...primaryBtn, width: '100%', opacity: loading ? 0.7 : 1 }}>
+              {loading ? 'Please wait...' : mode === 'signin' ? 'Sign in' : mode === 'forgot' ? 'Send reset link' : 'Create account'}
+            </button>
+
+            {mode !== 'forgot' && (
+              <p style={{ textAlign: 'center', fontSize: '14px', color: C.textSecondary, marginTop: '1.25rem', marginBottom: 0 }}>
+                {mode === 'signin' ? "Don't have an account? " : "Already have an account? "}
+                <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); }} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontWeight: '500', fontSize: '14px', padding: 0 }}>
+                  {mode === 'signin' ? 'Sign up' : 'Sign in'}
+                </button>
+              </p>
+            )}
+
+            {mode === 'forgot' && (
+              <p style={{ textAlign: 'center', fontSize: '14px', color: C.textSecondary, marginTop: '1.25rem', marginBottom: 0 }}>
+                <button onClick={() => { setMode('signin'); setError(''); }} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontWeight: '500', fontSize: '14px', padding: 0 }}>
+                  Back to sign in
+                </button>
+              </p>
+            )}
+
+            <p style={{ textAlign: 'center', fontSize: '12px', color: C.textSecondary, marginTop: '1.25rem', marginBottom: 0 }}>
+              By continuing, you agree to our{' '}
+              <button onClick={() => setShowPrivacy(true)} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontSize: '12px', padding: 0, textDecoration: 'underline' }}>
+                Privacy Policy
+              </button>
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const PRIVACY_POLICY_CONTENT = () => (
+  <div style={{ fontSize: '13px', color: '#4a4a68', lineHeight: '1.7' }}>
+    <p><strong>Parry Financial Services</strong><br />Last updated: August 2026</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>1. Introduction</h4>
+    <p>Parry Financial Services ("we", "us", "our") operates the mortgage calculator tools available at parryfs.com. We are committed to protecting your personal information in accordance with the New Zealand Privacy Act 2020.</p>
+    <p>This policy explains what information we collect, why we collect it, how we use it, and your rights regarding that information.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>2. Who We Are</h4>
+    <p>
+      <strong>Business name:</strong> Parry Financial Services<br />
+      <strong>Trading as:</strong> Parry Financial Services (a Mike Pero Mortgages franchise)<br />
+      <strong>Contact:</strong> dan@parryfs.com<br />
+      <strong>Location:</strong> Auckland, New Zealand
+    </p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>3. What Information We Collect</h4>
+    <p><strong>If you use the calculators without an account:</strong><br />We do not collect any personal information. All calculations happen in your browser and no data is stored.</p>
+    <p><strong>If you create an account:</strong></p>
+    <ul style={{ paddingLeft: '1.25rem' }}>
+      <li>First and last name</li>
+      <li>Email address</li>
+      <li>Password (stored as an encrypted hash - we never see your actual password)</li>
+      <li>Calculator inputs you choose to save (purchase price, deposit, income, debts, expenses, age)</li>
+      <li>Saved scenario results</li>
+      <li>Date and time of account creation and last sign in</li>
+    </ul>
+    <p><strong>If you sign in with Google:</strong><br />Your name and email address as provided by Google. We do not receive your Google password.</p>
+    <p><strong>Automatically collected:</strong><br />Basic usage data, IP address (for security only), browser type and device type.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>4. What We Do Not Collect</h4>
+    <ul style={{ paddingLeft: '1.25rem' }}>
+      <li>Credit card or payment information</li>
+      <li>IRD number or tax information</li>
+      <li>Bank account details</li>
+      <li>Information about specific properties beyond what you enter into the calculator</li>
+    </ul>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>5. Why We Collect Your Information</h4>
+    <ul style={{ paddingLeft: '1.25rem' }}>
+      <li>To create and manage your account</li>
+      <li>To save and retrieve your calculator scenarios</li>
+      <li>To send account confirmation and password reset emails</li>
+      <li>To improve the calculator tools over time</li>
+      <li>To protect against fraud and abuse</li>
+    </ul>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>6. Who We Share Your Information With</h4>
+    <p><strong>We do not sell your personal information to anyone, ever.</strong></p>
+    <p>We use the following trusted third-party services:</p>
+    <ul style={{ paddingLeft: '1.25rem' }}>
+      <li><strong>Supabase</strong> - Secure database and authentication (Oceania region)</li>
+      <li><strong>Google</strong> - Authentication only (if you use Google sign-in)</li>
+      <li><strong>Resend</strong> - Sending confirmation and password reset emails</li>
+      <li><strong>Vercel</strong> - Website hosting</li>
+    </ul>
+    <p>We do not share your information with mortgage lenders, banks, real estate agents, marketing companies, or data brokers.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>7. How Long We Keep Your Information</h4>
+    <ul style={{ paddingLeft: '1.25rem' }}>
+      <li>Account information: Until you delete your account</li>
+      <li>Saved scenarios: Until you delete them or close your account</li>
+      <li>Usage logs: 90 days</li>
+      <li>Email logs: 30 days</li>
+    </ul>
+    <p>When you delete your account, all personal information and saved scenarios are permanently deleted within 30 days.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>8. Security</h4>
+    <ul style={{ paddingLeft: '1.25rem' }}>
+      <li>All data transmitted over encrypted HTTPS connections</li>
+      <li>Passwords hashed using industry-standard encryption</li>
+      <li>Database access protected by Row Level Security (RLS)</li>
+      <li>Reputable, security-audited third-party services</li>
+    </ul>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>9. Children</h4>
+    <p>This service is intended for adults (18 years and over). We do not knowingly collect information from anyone under 18. Contact us at dan@parryfs.com if you believe a minor has created an account.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>10. Your Rights Under the NZ Privacy Act 2020</h4>
+    <ul style={{ paddingLeft: '1.25rem' }}>
+      <li><strong>Access</strong> - Request a copy of the personal information we hold about you</li>
+      <li><strong>Correct</strong> - Ask us to correct inaccurate or incomplete information</li>
+      <li><strong>Delete</strong> - Request deletion of your account and all associated data</li>
+      <li><strong>Withdraw consent</strong> - Delete your account at any time through the app</li>
+    </ul>
+    <p>Contact us at <strong>dan@parryfs.com</strong>. We will respond within 20 working days as required by the Privacy Act 2020.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>11. Cookies</h4>
+    <ul style={{ paddingLeft: '1.25rem' }}>
+      <li>Authentication token - Keeps you signed in (Session / 7 days)</li>
+      <li>Session data - Security and fraud prevention (Session)</li>
+    </ul>
+    <p>We do not use advertising cookies or tracking cookies.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>12. Disclaimer</h4>
+    <p>The calculators on parryfs.com are provided for general information purposes only. They do not constitute financial advice and do not create an adviser/client relationship. Results are estimates based on information you provide and typical bank lending criteria, which may differ from actual bank decisions. For personalised financial advice, please contact a licensed mortgage adviser.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>13. Changes to This Policy</h4>
+    <p>We may update this policy from time to time. Continued use of parryfs.com after changes are posted constitutes acceptance of the updated policy. Registered users will be notified of significant changes by email.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>14. Complaints</h4>
+    <p>Contact us first at <strong>dan@parryfs.com</strong>. If unsatisfied, you may contact the <strong>Office of the Privacy Commissioner</strong>:</p>
+    <ul style={{ paddingLeft: '1.25rem' }}>
+      <li>Website: privacy.org.nz</li>
+      <li>Phone: 0800 803 909</li>
+      <li>Email: enquiries@privacy.org.nz</li>
+    </ul>
+
+    <p style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: `1px solid ${C.borderLight}`, fontSize: '12px' }}>
+      Parry Financial Services | parryfs.com | dan@parryfs.com
+    </p>
+  </div>
+);
+function SavedScenarios({ onClose, onLoad }) {
+  const [scenarios, setScenarios] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.getScenarios().then(({ data }) => { setScenarios(data || []); setLoading(false); });
+  }, []);
+
+  const handleDelete = async (id) => {
+    await supabase.deleteScenario(id);
+    setScenarios(scenarios.filter(s => s.id !== id));
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }} onClick={onClose}>
+      <div style={{ background: 'white', borderRadius: '24px', padding: '2rem', maxWidth: '560px', width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ fontSize: '20px', fontWeight: '500', margin: 0, color: C.textPrimary }}>Saved scenarios</h3>
+          <button onClick={onClose} style={{ background: C.inputBg, border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <i className="ti ti-x" style={{ fontSize: '18px', color: C.textPrimary }} />
+          </button>
+        </div>
+
+        {loading ? (
+          <p style={{ textAlign: 'center', color: C.textSecondary, padding: '2rem 0' }}>Loading...</p>
+        ) : scenarios.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+            <i className="ti ti-inbox" style={{ fontSize: '48px', color: C.textSecondary, opacity: 0.3 }} />
+            <p style={{ color: C.textSecondary, marginTop: '1rem' }}>No saved scenarios yet. Complete the Borrow Checker and save your results!</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+            {scenarios.map(s => (
+              <div key={s.id} style={{ background: C.inputBg, borderRadius: '12px', padding: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                  <div>
+                    <h4 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 0.25rem', color: C.textPrimary }}>{s.name}</h4>
+                    <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0 }}>{new Date(s.created_at).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={() => { onLoad(s); onClose(); }} style={{ ...primaryBtn, padding: '0.5rem 1rem', fontSize: '13px' }}>Load</button>
+                    <button onClick={() => handleDelete(s.id)} style={{ background: '#FFF0F0', border: 'none', color: C.red, padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>Delete</button>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', fontSize: '12px' }}>
+                  <div><span style={{ color: C.textSecondary }}>Loan</span><br /><strong>${(s.results?.loan || 0).toLocaleString('en-NZ')}</strong></div>
+                  <div><span style={{ color: C.textSecondary }}>Deposit</span><br /><strong>{s.results?.lvr ? (100 - s.results.lvr).toFixed(1) : 0}%</strong></div>
+                  <div><span style={{ color: C.textSecondary }}>Result</span><br /><strong style={{ color: s.results?.umiPass && s.results?.dtiPass ? C.green : C.orange }}>{s.results?.umiPass && s.results?.dtiPass ? 'Pass' : 'Review'}</strong></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── USER MENU ───────────────────────────────────────────────────────────────
+function UserMenu({ user, onSignOut, onSavedScenarios }) {
+  const [open, setOpen] = useState(false);
+  const initial = (user?.email || '?')[0].toUpperCase();
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: '36px', height: '36px', borderRadius: '50%',
+          background: 'white', border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '14px', fontWeight: '700', color: C.textPrimary,
+          flexShrink: 0
+        }}
+      >
+        {initial}
+      </button>
+
+      {open && (
+        <>
+          {/* Backdrop to close menu */}
+          <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setOpen(false)} />
+          <div style={{
+            position: 'absolute', top: '44px', right: 0,
+            background: 'white', borderRadius: '12px',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+            minWidth: '200px', zIndex: 100,
+            overflow: 'hidden'
+          }}>
+            <div style={{ padding: '0.875rem 1rem', borderBottom: `1px solid ${C.borderLight}` }}>
+              <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0 }}>Signed in as</p>
+              <p style={{ fontSize: '13px', fontWeight: '500', color: C.textPrimary, margin: '0.25rem 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</p>
+            </div>
+            <button
+              onClick={() => { setOpen(false); onSavedScenarios(); }}
+              style={{ width: '100%', background: 'none', border: 'none', padding: '0.875rem 1rem', textAlign: 'left', cursor: 'pointer', fontSize: '14px', color: C.textPrimary, display: 'flex', alignItems: 'center', gap: '10px' }}
+              onMouseEnter={e => e.currentTarget.style.background = C.inputBg}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+            >
+              <i className="ti ti-bookmark" style={{ fontSize: '16px', color: C.textSecondary }} />
+              Saved scenarios
+            </button>
+            <button
+              onClick={() => { setOpen(false); onSignOut(); }}
+              style={{ width: '100%', background: 'none', border: 'none', padding: '0.875rem 1rem', textAlign: 'left', cursor: 'pointer', fontSize: '14px', color: C.red, display: 'flex', alignItems: 'center', gap: '10px', borderTop: `1px solid ${C.borderLight}` }}
+              onMouseEnter={e => e.currentTarget.style.background = '#FFF0F0'}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+            >
+              <i className="ti ti-logout" style={{ fontSize: '16px' }} />
+              Sign out
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── TOP NAV ─────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'borrow', label: 'Borrow Checker', icon: 'ti-home-check' },
@@ -207,7 +822,7 @@ const TABS = [
   { id: 'bnpl', label: 'BNPL', icon: 'ti-credit-card' },
 ];
 
-const TopNav = ({ active, setActive }) => {
+const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const activeTab = TABS.find(t => t.id === active);
 
@@ -219,46 +834,61 @@ const TopNav = ({ active, setActive }) => {
       top: 0,
       zIndex: 100,
       boxShadow: '0 2px 20px rgba(0,0,0,0.15)',
+      width: '100%',
     }}>
-      {/* Desktop nav */}
       <div style={{
         display: 'flex',
         overflowX: 'auto',
         scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
         maxWidth: '1100px',
         margin: '0 auto',
+        WebkitOverflowScrolling: 'touch',
       }}>
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActive(tab.id)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: active === tab.id ? 'white' : 'rgba(255,255,255,0.55)',
-              padding: '1rem 1.25rem',
-              fontSize: '13px',
-              fontWeight: active === tab.id ? '600' : '400',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              borderBottom: active === tab.id ? '3px solid white' : '3px solid transparent',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <i className={`ti ${tab.icon}`} style={{ fontSize: '16px' }} />
-            {tab.label}
-          </button>
-        ))}
+        <div style={{ display: 'flex', flex: 1 }}>
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActive(tab.id)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: active === tab.id ? 'white' : 'rgba(255,255,255,0.55)',
+                padding: '1rem 1.25rem',
+                fontSize: '13px',
+                fontWeight: active === tab.id ? '600' : '400',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                borderBottom: active === tab.id ? '3px solid white' : '3px solid transparent',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <i className={`ti ${tab.icon}`} style={{ fontSize: '16px' }} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.75rem', gap: '0.5rem', flexShrink: 0 }}>
+          {user ? (
+            <UserMenu user={user} onSignOut={onSignOut} onSavedScenarios={onSavedScenarios} />
+          ) : (
+            <button onClick={onSignIn} style={{ background: 'white', border: 'none', color: C.textPrimary, padding: '0.5rem 1.25rem', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>
+              Sign in
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
 // ─── 1. BORROW CHECKER ───────────────────────────────────────────────────────
-function BorrowChecker() {
+function BorrowChecker({ onSavePrompt, onSave }) {
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   const [page, setPage] = useState(1);
   const totalPages = 5;
 
@@ -267,6 +897,8 @@ function BorrowChecker() {
   const [applicationType, setApplicationType] = useState('single');
   const [isFirstHomeBuyer, setIsFirstHomeBuyer] = useState(false);
   const [dependents, setDependents] = useState(0);
+  const [applicantAge, setApplicantAge] = useState('');
+  const [partnerAge, setPartnerAge] = useState('');
   const [baseSalary, setBaseSalary] = useState(85000);
   const [variableIncome, setVariableIncome] = useState(0);
   const [kiwiSaverRate, setKiwiSaverRate] = useState(3.5);
@@ -281,6 +913,58 @@ function BorrowChecker() {
   const [bnplLimit, setBnplLimit] = useState(0);
   const [otherMonthlyLoans, setOtherMonthlyLoans] = useState(0);
   const [declaredExpenses, setDeclaredExpenses] = useState(2000);
+  const [showExpenseCalc, setShowExpenseCalc] = useState(false);
+  const [expenseItems, setExpenseItems] = useState({
+    homeContentsInsurance: { amount: '', freq: 'monthly' },
+    lifeDisabilityIncome: { amount: '', freq: 'monthly' },
+    powerGas: { amount: '', freq: 'monthly' },
+    phoneInternet: { amount: '', freq: 'monthly' },
+    transportFuel: { amount: '', freq: 'monthly' },
+    groceries: { amount: '', freq: 'weekly' },
+    education: { amount: '', freq: 'monthly' },
+    childcare: { amount: '', freq: 'monthly' },
+    childSupport: { amount: '', freq: 'monthly' },
+    clothingPersonalCare: { amount: '', freq: 'monthly' },
+    donationsTithing: { amount: '', freq: 'monthly' },
+    entertainmentRecreation: { amount: '', freq: 'monthly' },
+    healthMedicalInsurance: { amount: '', freq: 'monthly' },
+    otherLiving: { amount: '', freq: 'monthly' },
+  });
+
+  const expenseLabels = {
+    homeContentsInsurance: 'Home & contents insurance',
+    lifeDisabilityIncome: 'Life, disability & income protection',
+    powerGas: 'Power & gas',
+    phoneInternet: 'Phone & internet',
+    transportFuel: 'Transport & fuel',
+    groceries: 'Groceries',
+    education: 'Education',
+    childcare: 'Childcare',
+    childSupport: 'Child support',
+    clothingPersonalCare: 'Clothing & personal care',
+    donationsTithing: 'Donations & tithing',
+    entertainmentRecreation: 'Entertainment & recreation',
+    healthMedicalInsurance: 'Health & medical insurance',
+    otherLiving: 'Other living expenses',
+  };
+
+  const toMonthly = (amount, freq) => {
+    const num = parseFloat(amount) || 0;
+    if (freq === 'weekly') return num * 52 / 12;
+    if (freq === 'fortnightly') return num * 26 / 12;
+    return num;
+  };
+
+  const totalExpenses = Object.values(expenseItems).reduce((sum, item) => sum + toMonthly(item.amount, item.freq), 0);
+
+  const applyExpenses = () => {
+    setDeclaredExpenses(Math.round(totalExpenses));
+    setShowExpenseCalc(false);
+  };
+
+  const updateExpenseItem = (key, field, value) => {
+    setExpenseItems(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
+  };
   const [results, setResults] = useState(null);
   const [showRepayCalc, setShowRepayCalc] = useState(false);
   const [showDepositOptions, setShowDepositOptions] = useState(false);
@@ -291,7 +975,7 @@ function BorrowChecker() {
 
   useEffect(() => {
     if (page === 5) calculate();
-  }, [page, purchasePrice, deposit, applicationType, isFirstHomeBuyer, dependents,
+  }, [page, purchasePrice, deposit, applicationType, isFirstHomeBuyer, dependents, applicantAge, partnerAge,
     baseSalary, variableIncome, kiwiSaverRate, hasStudentLoan,
     partnerBaseSalary, partnerVariableIncome, partnerKiwiSaverRate, partnerHasStudentLoan,
     numBoarders, boarderWeeklyIncome, creditCardLimit, bnplLimit, otherMonthlyLoans, declaredExpenses]);
@@ -348,14 +1032,15 @@ function BorrowChecker() {
 
     const primaryNet = calcNetIncome(baseSalary + shadedVar, kiwiSaverRate);
     const partnerNet = applicationType === 'joint' ? calcNetIncome(partnerBaseSalary + shadedPVar, partnerKiwiSaverRate) : 0;
-    const boarderNet = shadedBoarder > 0 ? shadedBoarder * 0.7 : 0;
-    const netMonthly = (primaryNet + partnerNet + boarderNet) / 12;
+    // Boarder income - 80% shade already applied, no additional tax deduction
+    const boarderNet = shadedBoarder / 12;
+    const netMonthly = (primaryNet + partnerNet) / 12 + boarderNet;
 
     const gleeFloor = 829 + (applicationType === 'single' ? 430 : 860) + dependents * 161 + Math.round((usableGross / 12) * 0.07);
     const livingExp = Math.max(declaredExpenses, gleeFloor);
     const usingGlee = livingExp === gleeFloor;
 
-    const ccExp = creditCardLimit * 0.03;
+    const ccExp = creditCardLimit * 0.038;
     const bnplExp = bnplLimit * 0.05;
     const slThreshold = 24128;
     const primaryGross = baseSalary + shadedVar;
@@ -367,8 +1052,18 @@ function BorrowChecker() {
     const dti = usableGross > 0 ? totalDebt / usableGross : 0;
     const dtiPass = dti <= 6.0;
 
+    // Loan term calculation
+    // KO: hard cap, loan must mature before age 72, use older borrower
+    // Standard: 30 years always (banks handle age case-by-case)
+    const primaryAge = parseInt(applicantAge) || 0;
+    const partnerAgeInt = parseInt(partnerAge) || 0;
+    const olderAge = applicationType === 'joint' ? Math.max(primaryAge, partnerAgeInt) : primaryAge;
+    const koLoanTerm = olderAge > 0 ? Math.min(30, Math.max(1, 72 - olderAge)) : 30;
+    const loanTerm = isKO && olderAge > 0 ? koLoanTerm : 30;
+    const isOver55 = olderAge >= 55 && !isKO;
+
     const monthlyRate = 0.07 / 12;
-    const n = 360;
+    const n = loanTerm * 12;
     const stressedPmt = loan > 0 ? (loan * monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1) : 0;
     const umi = netMonthly - stressedPmt - livingExp - ccExp - bnplExp - slMonthly - otherMonthlyLoans;
 
@@ -398,13 +1093,18 @@ function BorrowChecker() {
 
     // DTI feedback
     if (!dtiPass) {
-      feedback.push(hasExistingDebt
-        ? { type: 'warning', title: 'Debt levels', message: 'Your total debt (including this mortgage) is higher than banks typically allow. Consider paying down existing debts or increasing your deposit to lower the loan amount.' }
-        : { type: 'warning', title: 'Loan amount too high', message: 'The mortgage loan is too large relative to your income. Consider increasing your deposit or looking at a lower-priced property.' }
-      );
+      if (isKO && !umiPass) {
+        // Merge DTI and KO UMI fail into single message
+        feedback.push({ type: 'warning', title: 'Loan amount too high', message: `The mortgage is too large relative to your income. Even with Kainga Ora eligibility, the repayments can't be serviced at this price. ${debtAdvice}` });
+      } else {
+        feedback.push(hasExistingDebt
+          ? { type: 'warning', title: 'Debt levels', message: 'Your total debt (including this mortgage) is higher than banks typically allow. Consider paying down existing debts or increasing your deposit to lower the loan amount.' }
+          : { type: 'warning', title: 'Loan amount too high', message: 'The mortgage loan is too large relative to your income. Consider increasing your deposit or looking at a lower-priced property.' }
+        );
+      }
     }
 
-    // Servicing feedback - only show if DTI hasn't already failed with the same advice
+    // Servicing feedback - only show if DTI hasn't already failed
     if (!umiPass && dtiPass) {
       if (isKO) {
         feedback.push({ type: 'warning', title: 'Almost there', message: `You qualify for a Kainga Ora First Home Loan based on your deposit and income, but your monthly budget is a little tight. ${debtAdvice}` });
@@ -413,11 +1113,6 @@ function BorrowChecker() {
       } else {
         feedback.push({ type: 'warning', title: 'Strong deposit, servicing needs work', message: `Your deposit is solid but your monthly budget is too tight for banks to lend comfortably. ${debtAdvice}` });
       }
-    } else if (!umiPass && !dtiPass) {
-      // Both failing - DTI message already shown, add a brief servicing note only if different advice applies
-      if (isKO) {
-        feedback.push({ type: 'warning', title: 'Monthly budget also tight', message: `Even with Kainga Ora eligibility, the mortgage repayments are too high relative to your income. ${debtAdvice}` });
-      }
     } else if (umiPass && !isFullDeposit && !isKO) {
       feedback.push({ type: 'warning', title: 'Limited lending options', message: 'Your servicing is strong, but with less than 20% deposit your options are limited to select lenders and you may pay a low equity margin on your rate. Consider exploring ways to increase your deposit.', expandable: true });
     }
@@ -425,6 +1120,11 @@ function BorrowChecker() {
     // Living expenses floor notification
     if (usingGlee) {
       feedback.push({ type: 'info', title: 'Living expenses adjusted', message: `Banks use standard minimum living costs of $${fmtNZD(gleeFloor)} per month for your situation, which is higher than what you declared.` });
+    }
+
+    // Over 55 note for standard lending
+    if (isOver55) {
+      feedback.push({ type: 'info', title: 'Age consideration', message: `As you're over 55, your mortgage adviser will need to document a retirement repayment strategy as part of your application. This is standard practice and doesn't prevent you from borrowing.` });
     }
 
     // Success feedback
@@ -438,7 +1138,7 @@ function BorrowChecker() {
       }
     }
 
-    setResults({ loan, lvr, depPass, minDep, minDepPct, isFullDeposit, netMonthly, dti, dtiPass, stressedPmt, livingExp, ccExp, bnplExp, slMonthly, umi, reqUmi, umiPass, umiStatus, isKO, feedback, usingGlee });
+    setResults({ loan, lvr, depPass, minDep, minDepPct, isFullDeposit, netMonthly, dti, dtiPass, stressedPmt, loanTerm, isOver55, livingExp, ccExp, bnplExp, slMonthly, umi, reqUmi, umiPass, umiStatus, isKO, feedback, usingGlee });
   }
 
   const ProgressBar = () => (
@@ -500,6 +1200,22 @@ function BorrowChecker() {
                 <option value="joint">With a partner</option>
               </select>
             </div>
+
+            <div style={{ marginBottom: '2rem' }}>
+              <label style={labelStyle}>{applicationType === 'joint' ? 'Your age' : 'Your age'}</label>
+              <div style={inputWrap}>
+                <input type="number" inputMode="numeric" min="18" max="75" value={applicantAge} onChange={e => setApplicantAge(e.target.value)} placeholder="e.g. 32" style={inputStyle} />
+              </div>
+            </div>
+
+            {applicationType === 'joint' && (
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={labelStyle}>Partner's age</label>
+                <div style={inputWrap}>
+                  <input type="number" inputMode="numeric" min="18" max="75" value={partnerAge} onChange={e => setPartnerAge(e.target.value)} placeholder="e.g. 30" style={inputStyle} />
+                </div>
+              </div>
+            )}
             <div style={{ background: C.inputBg, padding: '1.25rem', borderRadius: '12px', marginBottom: '2rem' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
                 <input type="checkbox" checked={isFirstHomeBuyer} onChange={e => setIsFirstHomeBuyer(e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
@@ -601,7 +1317,109 @@ function BorrowChecker() {
             <MoneyField label="Total credit card limits" value={creditCardLimit} onChange={setCreditCardLimit} placeholder="0" hint="Add up all your credit card limits, even if you don't use them" />
             <MoneyField label="Buy Now Pay Later limits (Afterpay, Zip, etc.)" value={bnplLimit} onChange={setBnplLimit} placeholder="0" />
             <MoneyField label="Other loan repayments per month (car loans, personal loans, etc.)" value={otherMonthlyLoans} onChange={setOtherMonthlyLoans} placeholder="0" />
-            <MoneyField label="Monthly living expenses (groceries, power, phone, insurance, etc.)" value={declaredExpenses} onChange={setDeclaredExpenses} placeholder="2,000" hint="Banks have minimum requirements based on household size" />
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={labelStyle}>Monthly living expenses</label>
+              <div style={inputWrap}>
+                <span style={{ fontSize: '18px', color: C.textPrimary, fontWeight: '500' }}>$</span>
+                <input
+                  type="text"
+                  value={fmtInput(declaredExpenses)}
+                  onChange={e => setDeclaredExpenses(parseMoney(e.target.value))}
+                  placeholder="2,000"
+                  style={inputStyle}
+                />
+              </div>
+              <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0.5rem 0 0' }}>Banks have minimum requirements based on household size</p>
+              <button
+                onClick={() => setShowExpenseCalc(true)}
+                style={{ background: 'none', border: 'none', padding: '0.5rem 0 0', fontSize: '14px', color: C.blue, cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <i className="ti ti-calculator" style={{ fontSize: '16px' }} />
+                Not sure? Help me calculate my expenses
+              </button>
+            </div>
+
+            {/* Expense Calculator Modal */}
+            {showExpenseCalc && (
+              <div
+                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}
+                onClick={() => setShowExpenseCalc(false)}
+              >
+                <div
+                  style={{ background: 'white', borderRadius: '24px', padding: '2rem', maxWidth: '560px', width: '100%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 style={{ fontSize: '20px', fontWeight: '500', margin: 0, color: C.textPrimary }}>Expense calculator</h3>
+                    <button onClick={() => setShowExpenseCalc(false)} style={{ background: C.inputBg, border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <i className="ti ti-x" style={{ fontSize: '18px', color: C.textPrimary }} />
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1.5rem' }}>Enter what you know and toggle the frequency. We'll convert everything to a monthly total.</p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', marginBottom: '1.5rem' }}>
+                    {Object.keys(expenseItems).map(key => (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: C.inputBg, borderRadius: '12px', padding: '0.75rem 1rem' }}>
+                        <span style={{ flex: 1, fontSize: '14px', color: C.textPrimary, fontWeight: '500' }}>{expenseLabels[key]}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '4px' }}>
+                          {['weekly', 'fortnightly', 'monthly'].map(freq => (
+                            <button
+                              key={freq}
+                              onClick={() => updateExpenseItem(key, 'freq', freq)}
+                              style={{
+                                background: expenseItems[key].freq === freq ? C.accent : 'transparent',
+                                color: expenseItems[key].freq === freq ? 'white' : C.textSecondary,
+                                border: 'none',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                textTransform: 'capitalize',
+                                transition: 'all 0.15s'
+                              }}
+                            >
+                              {freq === 'fortnightly' ? 'F/N' : freq.charAt(0).toUpperCase() + freq.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '6px 10px', width: '100px' }}>
+                          <span style={{ fontSize: '14px', color: C.textSecondary }}>$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={expenseItems[key].amount}
+                            onChange={e => updateExpenseItem(key, 'amount', e.target.value)}
+                            placeholder="0"
+                            style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '14px', color: C.textPrimary, outline: 'none', fontWeight: '500' }}
+                          />
+                        </div>
+                        <span style={{ fontSize: '12px', color: C.textSecondary, width: '70px', textAlign: 'right' }}>
+                          {toMonthly(expenseItems[key].amount, expenseItems[key].freq) > 0
+                            ? `$${fmtNZD(toMonthly(expenseItems[key].amount, expenseItems[key].freq))}/mo`
+                            : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Total */}
+                  <div style={{ background: C.headerBg, borderRadius: '16px', padding: '1.25rem', marginBottom: '1.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '16px', fontWeight: '500', color: C.textPrimary }}>Total monthly expenses</span>
+                      <span style={{ fontSize: '26px', fontWeight: '500', color: C.textPrimary }}>${fmtNZD(Math.round(totalExpenses))}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={applyExpenses}
+                    style={{ ...primaryBtn, width: '100%' }}
+                  >
+                    Use this amount
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -650,7 +1468,7 @@ function BorrowChecker() {
               ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
               <StatCard label="Loan amount" value={`$${fmtNZD(results.loan)}`} />
               <StatCard label="Your deposit" value={`${((deposit / purchasePrice) * 100).toFixed(1)}%`} />
               <StatCard
@@ -679,28 +1497,28 @@ function BorrowChecker() {
                     <div style={{ fontSize: '13px' }}>
                       {[
                         { label: 'Your net monthly income', value: `+$${fmtNZD(results.netMonthly)}`, color: C.green },
-                        { label: 'Mortgage repayment (stressed at 7%)', value: `-$${fmtNZD(results.stressedPmt)}`, color: C.red },
+                        { label: `Mortgage (stressed at 7% / ${results.loanTerm} yrs)`, value: `-$${fmtNZD(results.stressedPmt)}`, color: C.red },
                         { label: 'Living expenses', value: `-$${fmtNZD(results.livingExp)}`, color: C.red },
-                        ...(results.ccExp > 0 ? [{ label: 'Credit cards (3% of limits)', value: `-$${fmtNZD(results.ccExp)}`, color: C.red }] : []),
+                        ...(results.ccExp > 0 ? [{ label: 'Credit cards (3.8% of limits)', value: `-$${fmtNZD(results.ccExp)}`, color: C.red }] : []),
                         ...(results.bnplExp > 0 ? [{ label: 'BNPL (5% of limits)', value: `-$${fmtNZD(results.bnplExp)}`, color: C.red }] : []),
                         ...((hasStudentLoan || partnerHasStudentLoan) && results.slMonthly > 0 ? [{ label: 'Student loan repayment', value: `-$${fmtNZD(results.slMonthly)}`, color: C.red }] : []),
                         ...(otherMonthlyLoans > 0 ? [{ label: 'Other loan repayments', value: `-$${fmtNZD(otherMonthlyLoans)}`, color: C.red }] : []),
                       ].map((row, j) => (
-                        <div key={j} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                          <span style={{ color: C.textSecondary }}>{row.label}</span>
-                          <span style={{ fontWeight: '500', color: row.color }}>{row.value}</span>
+                        <div key={j} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '0.5rem' }}>
+                          <span style={{ color: C.textSecondary, flex: 1 }}>{row.label}</span>
+                          <span style={{ fontWeight: '500', color: row.color, flexShrink: 0 }}>{row.value}</span>
                         </div>
                       ))}
-                      <div style={{ borderTop: `2px solid ${C.borderLight}`, paddingTop: '0.75rem', marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: '500', color: C.textPrimary }}>Uncommitted monthly income</span>
-                        <span style={{ fontWeight: '600', fontSize: '16px', color: results.umiPass ? C.green : C.red }}>${fmtNZD(Math.max(0, results.umi))}</span>
+                      <div style={{ borderTop: `2px solid ${C.borderLight}`, paddingTop: '0.75rem', marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: '500', color: C.textPrimary, flex: 1 }}>Uncommitted monthly income</span>
+                        <span style={{ fontWeight: '600', fontSize: '16px', color: results.umiPass ? C.green : C.red, flexShrink: 0 }}>${fmtNZD(Math.max(0, results.umi))}</span>
                       </div>
                       <div style={{ marginTop: '1rem', padding: '0.75rem', background: results.umiPass ? '#E8F5E9' : '#FFEBEE', borderRadius: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: '12px', color: C.textSecondary }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '12px', color: C.textSecondary, flex: 1 }}>
                             {results.umiStatus === 'kainga_ora' ? 'Kainga Ora requires' : results.isFullDeposit ? 'Banks require (20%+ deposit)' : 'Banks require (<20% deposit)'}
                           </span>
-                          <span style={{ fontSize: '13px', fontWeight: '500', color: C.textPrimary }}>${fmtNZD(results.reqUmi)}</span>
+                          <span style={{ fontSize: '13px', fontWeight: '500', color: C.textPrimary, flexShrink: 0 }}>${fmtNZD(results.reqUmi)}</span>
                         </div>
                       </div>
                     </div>
@@ -709,6 +1527,22 @@ function BorrowChecker() {
               </div>
             </div>
             <Disclaimer />
+            {onSavePrompt && (
+              <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem', marginTop: '1rem', border: `1px solid rgba(168,181,229,0.3)`, textAlign: 'center' }}>
+                <i className="ti ti-bookmark" style={{ fontSize: '28px', color: C.textSecondary, marginBottom: '0.5rem', display: 'block' }} />
+                <h4 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Save your results</h4>
+                <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1rem' }}>Create a free account to save this scenario and come back to it anytime.</p>
+                <button onClick={onSavePrompt} style={{ ...primaryBtn }}>Save my results</button>
+              </div>
+            )}
+            {onSave && (
+              <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                <button onClick={onSave} style={{ ...primaryBtn }}>
+                  <i className="ti ti-bookmark" style={{ marginRight: '6px' }} />
+                  Save this scenario
+                </button>
+              </div>
+            )}
           </div>
         )}
         <Nav />
@@ -846,10 +1680,10 @@ function LoanRepayment() {
               </div>
             </div>
             {/* Rate */}
-            <div style={{ width: '90px', flexShrink: 0 }}>
+            <div style={{ width: '110px', flexShrink: 0 }}>
               <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Rate</label>
               <div style={{ ...inputWrap, padding: '0.75rem 0.75rem' }}>
-                <input type="number" step="0.01" value={loan.rate || ''} onChange={e => updateLoan(loan.id, 'rate', parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '36px' }} placeholder="6.5" />
+                <input type="number" inputMode="decimal" step="0.01" value={loan.rate || ''} onChange={e => updateLoan(loan.id, 'rate', parseFloat(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '52px' }} placeholder="6.5" />
                 <span style={{ fontSize: '14px', fontWeight: '500', flexShrink: 0 }}>%</span>
               </div>
             </div>
@@ -859,13 +1693,13 @@ function LoanRepayment() {
               <div style={{ display: 'flex', gap: '6px' }}>
                 <div style={{ width: '70px' }}>
                   <div style={{ ...inputWrap, padding: '0.75rem 0.75rem' }}>
-                    <input type="number" min="0" max="40" value={loan.years || ''} onChange={e => updateLoan(loan.id, 'years', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '32px' }} placeholder="30" />
+                    <input type="number" inputMode="numeric" min="0" max="40" value={loan.years || ''} onChange={e => updateLoan(loan.id, 'years', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '32px' }} placeholder="30" />
                   </div>
                   <span style={{ fontSize: '12px', color: C.textSecondary }}>Years</span>
                 </div>
                 <div style={{ width: '70px' }}>
                   <div style={{ ...inputWrap, padding: '0.75rem 0.75rem' }}>
-                    <input type="number" min="0" max="11" value={loan.months || ''} onChange={e => updateLoan(loan.id, 'months', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '32px' }} placeholder="0" />
+                    <input type="number" inputMode="numeric" min="0" max="11" value={loan.months || ''} onChange={e => updateLoan(loan.id, 'months', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '32px' }} placeholder="0" />
                   </div>
                   <span style={{ fontSize: '12px', color: C.textSecondary }}>Months</span>
                 </div>
@@ -946,6 +1780,8 @@ function LoanRepayment() {
 
 // ─── 3. QUICK REPAY ──────────────────────────────────────────────────────────
 function QuickRepay() {
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
   const [loanAmount, setLoanAmount] = useState(300000);
   const [rate, setRate] = useState(5.75);
   const [years, setYears] = useState(30);
@@ -998,14 +1834,14 @@ function QuickRepay() {
         <p style={{ fontSize: '15px', color: '#4a4a68', opacity: 0.9, margin: 0 }}>See how extra repayments can save you interest and time</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '280px 1fr', gap: '1.5rem' }}>
         <div style={card}>
           <h3 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 1.5rem', color: C.textPrimary }}>Inputs</h3>
           <MoneyField label="Loan amount" value={loanAmount} onChange={setLoanAmount} placeholder="300,000" />
           <RateField label="Interest rate" value={rate} onChange={setRate} placeholder="5.75" />
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={labelStyle}>Term (years)</label>
-            <div style={inputWrap}><input type="number" min="1" value={years} onChange={e => setYears(parseInt(e.target.value) || 1)} style={inputStyle} /></div>
+            <div style={inputWrap}><input type="number" inputMode="numeric" min="1" value={years} onChange={e => setYears(parseInt(e.target.value) || 1)} style={inputStyle} /></div>
           </div>
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={labelStyle}>Frequency</label>
@@ -1018,7 +1854,7 @@ function QuickRepay() {
             <MoneyField label="Amount per period" value={extraAmt} onChange={setExtraAmt} placeholder="0" />
             <div>
               <label style={labelStyle}>Starting after (years)</label>
-              <div style={inputWrap}><input type="number" min="0" step="0.1" value={extraAfter} onChange={e => setExtraAfter(parseFloat(e.target.value) || 0)} style={inputStyle} /></div>
+              <div style={inputWrap}><input type="number" inputMode="decimal" min="0" step="0.1" value={extraAfter} onChange={e => setExtraAfter(parseFloat(e.target.value) || 0)} style={inputStyle} /></div>
             </div>
           </div>
           <div style={{ marginBottom: '1.5rem', padding: '1rem', background: C.accentLight, borderRadius: '12px' }}>
@@ -1026,7 +1862,7 @@ function QuickRepay() {
             <MoneyField label="Amount" value={lumpSum} onChange={setLumpSum} placeholder="0" />
             <div>
               <label style={labelStyle}>After (years)</label>
-              <div style={inputWrap}><input type="number" min="0" step="0.1" value={lumpAfter} onChange={e => setLumpAfter(parseFloat(e.target.value) || 0)} style={inputStyle} /></div>
+              <div style={inputWrap}><input type="number" inputMode="decimal" min="0" step="0.1" value={lumpAfter} onChange={e => setLumpAfter(parseFloat(e.target.value) || 0)} style={inputStyle} /></div>
             </div>
           </div>
           <button onClick={reset} style={{ ...secondaryBtn, width: '100%', background: '#FFF0F0', color: C.red }}>Reset</button>
@@ -1037,7 +1873,7 @@ function QuickRepay() {
             <>
               <div style={{ ...card, background: C.accentLight }}>
                 <h3 style={{ fontSize: '18px', fontWeight: '500', margin: '0 0 1.5rem', color: C.textPrimary }}>Summary</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '1rem' }}>
                   <StatCard label="Regular payment" value={`$${fmtNZD(results.basePmt, 2)}`} sub={freq} />
                   <StatCard label="Total payments" value={results.with.rows.length.toString()} />
                   {results.interestSaved > 0 && <StatCard label="Interest saved" value={`$${fmtNZD(results.interestSaved)}`} highlight="green" />}
@@ -1110,7 +1946,7 @@ const MCNumField = ({ label, value, onChange, placeholder, suffix }) => (
   <div>
     <label style={{ fontSize: '12px', fontWeight: '500', color: C.textSecondary, display: 'block', marginBottom: '0.375rem' }}>{label}</label>
     <div style={{ display: 'flex', alignItems: 'center', background: C.inputBg, borderRadius: '8px', overflow: 'hidden' }}>
-      <input type="number" step="0.01" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+      <input type="number" inputMode="decimal" step="0.01" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         style={{ flex: 1, border: 'none', background: 'transparent', padding: '0.625rem 0.875rem', fontSize: '14px', color: C.textPrimary, outline: 'none', boxSizing: 'border-box' }} />
       {suffix && <span style={{ padding: '0 0.75rem', fontSize: '14px', color: C.textSecondary, flexShrink: 0 }}>{suffix}</span>}
     </div>
@@ -1147,6 +1983,7 @@ const MCCurrencyField = ({ label, value, onChange, placeholder }) => {
         <span style={{ fontSize: '14px', color: C.textSecondary, flexShrink: 0 }}>$</span>
         <input
           type="text"
+          inputMode="numeric"
           value={display}
           onChange={handleChange}
           onBlur={handleBlur}
@@ -1333,7 +2170,7 @@ function BreakEven() {
           <RateField label="Proposed new rate (%)" value={newRate} onChange={setNewRate} />
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={labelStyle}>New fixed term (months)</label>
-            <div style={inputWrap}><input type="number" value={newTermMonths} onChange={e => setNewTermMonths(parseInt(e.target.value) || 0)} style={inputStyle} /></div>
+            <div style={inputWrap}><input type="number" inputMode="numeric" value={newTermMonths} onChange={e => setNewTermMonths(parseInt(e.target.value) || 0)} style={inputStyle} /></div>
           </div>
           <RateField label="Assumed follow-on rate (%)" value={followRate} onChange={setFollowRate} hint="Rate used for 'stay' scenario after fixed expiry" />
           <div style={{ marginBottom: '1.5rem' }}>
@@ -1536,10 +2373,50 @@ function BNPLCalc() {
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [activeTab, setActiveTab] = useState('borrow');
+  const { user, loading, signOut, refreshUser } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showSavedScenarios, setShowSavedScenarios] = useState(false);
+  const [showSaveName, setShowSaveName] = useState(false);
+  const [scenarioName, setScenarioName] = useState('');
+  const [pendingSave, setPendingSave] = useState(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+
+  const handleSavePrompt = (inputs, results) => {
+    if (!user) {
+      setPendingSave({ inputs, results });
+      setShowAuthModal(true);
+    } else {
+      setPendingSave({ inputs, results });
+      setShowSaveName(true);
+    }
+  };
+
+  const handleAuthSuccess = async () => {
+    await refreshUser();
+    setShowAuthModal(false);
+    if (pendingSave) setShowSaveName(true);
+  };
+
+  const handleSaveConfirm = async () => {
+    if (!pendingSave) return;
+    const name = scenarioName.trim() || 'My Scenario';
+    await supabase.saveScenario(name, pendingSave.inputs, pendingSave.results);
+    setShowSaveName(false);
+    setPendingSave(null);
+    setScenarioName('');
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
+  };
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'borrow': return <BorrowChecker />;
+      case 'borrow': return (
+        <BorrowChecker
+          onSavePrompt={!user ? () => { setShowAuthModal(true); } : null}
+          onSave={user ? (inputs, results) => handleSavePrompt(inputs, results) : null}
+        />
+      );
       case 'repayment': return <LoanRepayment />;
       case 'quickrepay': return <QuickRepay />;
       case 'comparison': return <MortgageComparison />;
@@ -1550,15 +2427,94 @@ export default function App() {
     }
   };
 
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: C.textSecondary }}>Loading...</p>
+    </div>
+  );
+
   return (
-    <div style={{ minHeight: '100vh', background: C.bg }}>
-      <TopNav active={activeTab} setActive={setActiveTab} />
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 1rem' }}>
+    <div style={{ minHeight: '100vh', background: C.bg, width: '100%', boxSizing: 'border-box' }}>
+      <TopNav
+        active={activeTab}
+        setActive={setActiveTab}
+        user={user}
+        onSignIn={() => setShowAuthModal(true)}
+        onSignOut={signOut}
+        onSavedScenarios={() => setShowSavedScenarios(true)}
+      />
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '1.5rem 1rem', boxSizing: 'border-box' }}>
         {renderTab()}
         <p style={{ textAlign: 'center', fontSize: '13px', color: C.textMuted, marginTop: '2rem' }}>
-          parryfs.com - NZ mortgage calculators
+          parryfs.com - NZ mortgage calculators · <button onClick={() => setShowPrivacyPolicy(true)} style={{ background: 'none', border: 'none', color: C.textMuted, cursor: 'pointer', fontSize: '13px', textDecoration: 'underline', padding: 0 }}>Privacy Policy</button>
         </p>
       </div>
+
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => { setShowAuthModal(false); setPendingSave(null); }}
+          onSuccess={handleAuthSuccess}
+        />
+      )}
+
+      {/* Saved Scenarios */}
+      {showSavedScenarios && (
+        <SavedScenarios
+          onClose={() => setShowSavedScenarios(false)}
+          onLoad={(scenario) => {
+            setActiveTab('borrow');
+          }}
+        />
+      )}
+
+      {/* Save Name Modal */}
+      {showSaveName && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }} onClick={() => setShowSaveName(false)}>
+          <div style={{ background: 'white', borderRadius: '24px', padding: '2rem', maxWidth: '400px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: '20px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Name your scenario</h3>
+            <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1.5rem' }}>Give this scenario a name so you can find it easily later.</p>
+            <div style={{ ...inputWrap, marginBottom: '1.5rem' }}>
+              <input
+                type="text"
+                value={scenarioName}
+                onChange={e => setScenarioName(e.target.value)}
+                placeholder="e.g. Mount Eden 3-bed"
+                style={{ ...inputStyle }}
+                autoFocus
+                onKeyDown={e => e.key === 'Enter' && handleSaveConfirm()}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button onClick={() => setShowSaveName(false)} style={{ ...secondaryBtn, flex: 1 }}>Cancel</button>
+              <button onClick={handleSaveConfirm} style={{ ...primaryBtn, flex: 1 }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Privacy Policy Modal */}
+      {showPrivacyPolicy && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }} onClick={() => setShowPrivacyPolicy(false)}>
+          <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '520px', width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: '500', margin: 0, color: C.textPrimary }}>Privacy Policy</h3>
+              <button onClick={() => setShowPrivacyPolicy(false)} style={{ background: C.inputBg, border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className="ti ti-x" style={{ fontSize: '18px', color: C.textPrimary }} />
+              </button>
+            </div>
+            <PRIVACY_POLICY_CONTENT />
+          </div>
+        </div>
+      )}
+
+      {/* Save Success Toast */}
+      {saveSuccess && (
+        <div style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', background: C.accent, color: 'white', padding: '0.875rem 1.5rem', borderRadius: '12px', fontSize: '14px', fontWeight: '500', boxShadow: '0 4px 20px rgba(0,0,0,0.2)', zIndex: 3000, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <i className="ti ti-check" />
+          Scenario saved!
+        </div>
+      )}
     </div>
   );
 }
