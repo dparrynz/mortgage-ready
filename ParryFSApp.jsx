@@ -1002,13 +1002,21 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     partnerBaseSalary, partnerVariableIncome, partnerKiwiSaverRate, partnerHasStudentLoan,
     numBoarders, boarderWeeklyIncome, creditCardLimit, bnplLimit, otherMonthlyLoans, declaredExpenses, additionalExpenses, mode]);
 
-  useEffect(() => { 
+  useEffect(() => {
     if (results) {
       setCalcLoanAmount(results.loan);
       setCalcRate(6.5);
       setCalcTerm(30);
     }
   }, [results]);
+
+  useEffect(() => {
+    if (maxBorrowing && maxBorrowing.canBorrow) {
+      setCalcLoanAmount(maxBorrowing.maxLoan);
+      setCalcRate(6.5);
+      setCalcTerm(30);
+    }
+  }, [maxBorrowing]);
 
   function calcNetIncome(gross, ksRate) {
     if (!gross) return 0;
@@ -1633,12 +1641,19 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                 </div>
 
                 {/* Estimated repayment */}
-                <div style={{ background: C.inputBg, borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+                <div
+                  onClick={() => setShowRepayCalc(true)}
+                  style={{ background: C.inputBg, borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                >
                   <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 0.25rem' }}>Estimated monthly repayment</p>
                   <p style={{ fontSize: '20px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.25rem' }}>
                     ${fmtNZD(calcPMT(maxBorrowing.maxLoan, 6.5, 30))}/mo
                   </p>
-                  <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0 }}>Based on 6.5% interest rate, 30 year term</p>
+                  <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <i className="ti ti-click" style={{ fontSize: '14px' }} /> Based on 6.5% interest rate, 30 year term — click to explore different rates and terms
+                  </p>
                 </div>
 
                 {/* Tips section */}
@@ -1822,8 +1837,19 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                 <i className="ti ti-x" style={{ fontSize: '20px', color: C.textPrimary }} />
               </button>
             </div>
-            <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1.5rem' }}>Pre-filled with your loan amount. Adjust the rate and term to explore different scenarios.</p>
-            <MoneyField label="Loan amount" value={calcLoanAmount} onChange={setCalcLoanAmount} />
+            <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1.5rem' }}>
+              {mode === 'discover'
+                ? 'Pre-filled with your maximum borrowing amount. Adjust the rate and term to explore different scenarios.'
+                : 'Pre-filled with your loan amount. Adjust the rate and term to explore different scenarios.'}
+            </p>
+            {mode === 'discover' ? (
+              <div style={{ ...inputWrap, marginBottom: '1.5rem' }}>
+                <span style={{ fontSize: '13px', color: C.textSecondary, flex: 1 }}>Loan amount</span>
+                <span style={{ fontSize: '18px', fontWeight: '500', color: C.textPrimary }}>${fmtNZD(calcLoanAmount)}</span>
+              </div>
+            ) : (
+              <MoneyField label="Loan amount" value={calcLoanAmount} onChange={setCalcLoanAmount} />
+            )}
             <div style={{ marginBottom: '2rem' }}>
               <label style={labelStyle}>Interest rate: {calcRate.toFixed(2)}%</label>
               <input type="range" min="3" max="10" step="0.1" value={calcRate} onChange={e => setCalcRate(Number(e.target.value))} style={{ width: '100%', height: '8px', borderRadius: '4px', outline: 'none', cursor: 'pointer' }} />
