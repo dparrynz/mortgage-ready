@@ -1327,10 +1327,27 @@ function BorrowChecker({ onSavePrompt, onSave }) {
               <>
                 <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Tell us about your deposit</h2>
                 <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 2rem' }}>Break down where your deposit is coming from</p>
-                <MoneyField label="KiwiSaver" value={depositKiwiSaver} onChange={v => { setDepositKiwiSaver(v); setDeposit(v + depositSavings + depositGift + depositOther); }} placeholder="0" hint="Your KiwiSaver balance available for withdrawal" />
+
+                {/* First home buyer checkbox */}
+                <div style={{ background: C.inputBg, padding: '1.25rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={isFirstHomeBuyer} onChange={e => setIsFirstHomeBuyer(e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                    <div>
+                      <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>I'm buying my first home</span>
+                      <span style={{ fontSize: '13px', color: C.textSecondary }}>First home buyers may qualify for Kainga Ora and lower deposit requirements</span>
+                    </div>
+                  </label>
+                </div>
+
+                {/* KiwiSaver - only shown for first home buyers */}
+                {isFirstHomeBuyer && (
+                  <MoneyField label="KiwiSaver" value={depositKiwiSaver} onChange={v => { setDepositKiwiSaver(v); setDeposit(v + depositSavings + depositGift + depositOther); }} placeholder="0" hint="Your KiwiSaver balance available for first home withdrawal" />
+                )}
+
                 <MoneyField label="Savings" value={depositSavings} onChange={v => { setDepositSavings(v); setDeposit(depositKiwiSaver + v + depositGift + depositOther); }} placeholder="0" hint="Cash savings in your bank account" />
                 <MoneyField label="Family gift" value={depositGift} onChange={v => { setDepositGift(v); setDeposit(depositKiwiSaver + depositSavings + v + depositOther); }} placeholder="0" hint="Cash contribution from family" />
                 <MoneyField label="Other" value={depositOther} onChange={v => { setDepositOther(v); setDeposit(depositKiwiSaver + depositSavings + depositGift + v); }} placeholder="0" hint="Any other sources" />
+
                 {deposit > 0 && (
                   <div style={{ background: C.accentLight, borderRadius: '12px', padding: '1rem 1.25rem', marginTop: '0.5rem' }}>
                     <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 0.25rem' }}>Total deposit</p>
@@ -1370,15 +1387,17 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                 </div>
               </div>
             )}
-            <div style={{ background: C.inputBg, padding: '1.25rem', borderRadius: '12px', marginBottom: '2rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                <input type="checkbox" checked={isFirstHomeBuyer} onChange={e => setIsFirstHomeBuyer(e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
-                <div>
-                  <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>I'm buying my first home</span>
-                  <span style={{ fontSize: '13px', color: C.textSecondary }}>First home buyers may qualify for lower deposit requirements</span>
-                </div>
-              </label>
-            </div>
+            {mode !== 'discover' && (
+              <div style={{ background: C.inputBg, padding: '1.25rem', borderRadius: '12px', marginBottom: '2rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={isFirstHomeBuyer} onChange={e => setIsFirstHomeBuyer(e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                  <div>
+                    <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>I'm buying my first home</span>
+                    <span style={{ fontSize: '13px', color: C.textSecondary }}>First home buyers may qualify for lower deposit requirements</span>
+                  </div>
+                </label>
+              </div>
+            )}
             <div>
               <label style={labelStyle}>How many dependents do you have?</label>
               <select value={dependents} onChange={e => setDependents(Number(e.target.value))} style={selectStyle}>
