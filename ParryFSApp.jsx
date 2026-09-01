@@ -893,7 +893,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   const totalPages = 5;
 
   const [purchasePrice, setPurchasePrice] = useState(650000);
-  const [deposit, setDeposit] = useState(130000);
+  const [deposit, setDeposit] = useState(0);
   const [mode, setMode] = useState(null); // null = not chosen, 'know' = knows price, 'discover' = wants to find out
   const [depositKiwiSaver, setDepositKiwiSaver] = useState(0);
   const [depositSavings, setDepositSavings] = useState(0);
