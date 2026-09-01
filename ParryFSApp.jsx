@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 // ─── SUPABASE CLIENT ─────────────────────────────────────────────────────────
@@ -18,12 +18,10 @@ const supabase = (() => {
     window.location.href = redirectUrl;
   };
 
-  const signInWithEmail = async (email, password, captchaToken) => {
-    const body = { email, password };
-    if (captchaToken) body.gotrue_meta_security = { captcha_token: captchaToken };
+  const signInWithEmail = async (email, password) => {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: 'POST', headers,
-      body: JSON.stringify(body)
+      body: JSON.stringify({ email, password })
     });
     const data = await res.json();
     if (data.access_token) {
@@ -33,17 +31,17 @@ const supabase = (() => {
     return { data: null, error: data };
   };
 
-  const signUpWithEmail = async (email, password, captchaToken) => {
-    const body = { email, password };
-    if (captchaToken) body.gotrue_meta_security = { captcha_token: captchaToken };
+  const signUpWithEmail = async (email, password) => {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
       method: 'POST', headers,
-      body: JSON.stringify(body)
+      body: JSON.stringify({ email, password })
     });
     const data = await res.json();
-    if (!res.ok) return { data: null, error: data };
-    if (data.access_token) localStorage.setItem('sb_session', JSON.stringify(data));
-    return { data, error: null };
+    if (data.access_token) {
+      localStorage.setItem('sb_session', JSON.stringify(data));
+      return { data, error: null };
+    }
+    return { data: null, error: data };
   };
 
   const signOut = async () => {
@@ -99,35 +97,24 @@ const supabase = (() => {
     return res.ok ? { error: null } : { error: 'Failed to delete' };
   };
 
-  // Handle OAuth callback — returns 'recovery' | 'signin' | false
+  // Handle OAuth callback
   const handleOAuthCallback = async () => {
     const hash = window.location.hash;
-    if (!hash || !hash.includes('access_token')) return false;
-    const params = new URLSearchParams(hash.substring(1));
-    const session = {
-      access_token: params.get('access_token'),
-      refresh_token: params.get('refresh_token'),
-      expires_in: params.get('expires_in'),
-    };
-    localStorage.setItem('sb_session', JSON.stringify(session));
-    const type = params.get('type');
-    window.location.hash = '';
-    return type === 'recovery' ? 'recovery' : 'signin';
+    if (hash && hash.includes('access_token')) {
+      const params = new URLSearchParams(hash.substring(1));
+      const session = {
+        access_token: params.get('access_token'),
+        refresh_token: params.get('refresh_token'),
+        expires_in: params.get('expires_in'),
+      };
+      localStorage.setItem('sb_session', JSON.stringify(session));
+      window.location.hash = '';
+      return true;
+    }
+    return false;
   };
 
-  const updatePassword = async (newPassword) => {
-    const session = await getSession();
-    if (!session?.access_token) return { error: 'Not logged in' };
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      method: 'PUT',
-      headers: { ...headers, 'Authorization': `Bearer ${session.access_token}` },
-      body: JSON.stringify({ password: newPassword }),
-    });
-    const data = await res.json();
-    return res.ok ? { data, error: null } : { data: null, error: data };
-  };
-
-  return { signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, getUser, saveScenario, getScenarios, deleteScenario, handleOAuthCallback, updatePassword };
+  return { signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, getUser, saveScenario, getScenarios, deleteScenario, handleOAuthCallback };
 })();
 
 // ─── WINDOW WIDTH HOOK ───────────────────────────────────────────────────────
@@ -197,17 +184,15 @@ const inputStyle = {
 
 const selectStyle = {
   width: '100%',
-  background: `${C.inputBg} url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 1rem center`,
+  background: C.inputBg,
   border: '2px solid transparent',
-  padding: '1rem 2.75rem 1rem 1.25rem',
+  padding: '1rem 1.25rem',
   borderRadius: '12px',
   fontSize: '16px',
   fontWeight: '500',
   color: C.textPrimary,
   cursor: 'pointer',
   outline: 'none',
-  appearance: 'none',
-  WebkitAppearance: 'none',
 };
 
 const labelStyle = {
@@ -344,20 +329,17 @@ const StatCard = ({ label, value, sub, highlight, onClick, hint }) => (
 function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isRecovery, setIsRecovery] = useState(false);
 
   useEffect(() => {
-    supabase.handleOAuthCallback().then(result => {
-      if (result === 'recovery') setIsRecovery(true);
+    supabase.handleOAuthCallback().then(() => {
       supabase.getUser().then(u => { setUser(u); setLoading(false); });
     });
   }, []);
 
   const signOut = async () => { await supabase.signOut(); setUser(null); };
   const refreshUser = async () => { const u = await supabase.getUser(); setUser(u); };
-  const clearRecovery = () => setIsRecovery(false);
 
-  return { user, loading, signOut, refreshUser, isRecovery, clearRecovery };
+  return { user, loading, signOut, refreshUser };
 }
 
 // ─── AUTH MODAL ──────────────────────────────────────────────────────────────
@@ -371,45 +353,6 @@ function AuthModal({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState('');
   const [showPrivacy, setShowPrivacy] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const turnstileRef = useRef(null);
-  const turnstileWidgetId = useRef(null);
-
-  useEffect(() => {
-    if (mode === 'confirm') return;
-    setTurnstileToken('');
-    const render = () => {
-      if (!turnstileRef.current || !window.turnstile) return;
-      if (turnstileWidgetId.current !== null) {
-        try { window.turnstile.remove(turnstileWidgetId.current); } catch (e) {}
-      }
-      turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
-        sitekey: '0x4AAAAAAEMcplqQ59H92Bmy',
-        callback: (token) => setTurnstileToken(token),
-        'expired-callback': () => setTurnstileToken(''),
-        'error-callback': () => setTurnstileToken(''),
-      });
-    };
-    if (window.turnstile) {
-      render();
-    } else {
-      const timer = setInterval(() => { if (window.turnstile) { clearInterval(timer); render(); } }, 100);
-      return () => clearInterval(timer);
-    }
-    return () => {
-      if (turnstileWidgetId.current !== null && window.turnstile) {
-        try { window.turnstile.remove(turnstileWidgetId.current); } catch (e) {}
-        turnstileWidgetId.current = null;
-      }
-    };
-  }, [mode]);
-
-  const resetTurnstile = () => {
-    setTurnstileToken('');
-    if (turnstileWidgetId.current !== null && window.turnstile) {
-      try { window.turnstile.reset(turnstileWidgetId.current); } catch (e) {}
-    }
-  };
 
   const passwordChecks = {
     length: password.length >= 8,
@@ -430,37 +373,36 @@ function AuthModal({ onClose, onSuccess }) {
       const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
         method: 'POST',
         headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, redirect_to: 'https://parryfs.com', gotrue_meta_security: { captcha_token: turnstileToken } })
+        body: JSON.stringify({ email, redirect_to: 'https://parryfs.com' })
       });
       setLoading(false);
       if (res.ok) { setMode('confirm'); setConfirmEmail(email); }
-      else { setError('Could not send reset email. Please try again.'); resetTurnstile(); }
+      else setError('Could not send reset email. Please try again.');
       return;
     }
 
     if (mode === 'signup') {
-      const { data, error: err } = await supabase.signUpWithEmail(email, password, turnstileToken);
+      const { data, error: err } = await supabase.signUpWithEmail(email, password);
       setLoading(false);
       if (err) {
         const msg = err.message || err.error_description || '';
         if (msg.includes('already registered')) setError('An account with this email already exists. Please sign in.');
         else setError(msg || 'Something went wrong. Please try again.');
-        resetTurnstile();
         return;
       }
+      // Success - show confirmation screen regardless of whether access_token exists
       setConfirmEmail(email);
       setMode('confirm');
       return;
     }
 
-    const { data, error: err } = await supabase.signInWithEmail(email, password, turnstileToken);
+    const { data, error: err } = await supabase.signInWithEmail(email, password);
     setLoading(false);
     if (err) {
       const msg = err.message || err.error_description || '';
       if (msg.includes('Invalid login')) setError('Incorrect email or password. Please try again.');
       else if (msg.includes('Email not confirmed')) setError('Please confirm your email first. Check your inbox.');
       else setError(msg || 'Something went wrong. Please try again.');
-      resetTurnstile();
       return;
     }
     onSuccess();
@@ -604,15 +546,7 @@ function AuthModal({ onClose, onSuccess }) {
 
             {error && <p style={{ fontSize: '13px', color: C.red, margin: '0 0 1rem', padding: '0.75rem', background: '#FFEBEE', borderRadius: '8px' }}>{error}</p>}
 
-            {(mode === 'signin' || mode === 'signup' || mode === 'forgot') && (
-              <div ref={turnstileRef} style={{ marginBottom: '1rem', minHeight: '65px' }} />
-            )}
-
-            <button
-              onClick={handleSubmit}
-              disabled={loading || !turnstileToken}
-              style={{ ...primaryBtn, width: '100%', opacity: (loading || !turnstileToken) ? 0.7 : 1, cursor: !turnstileToken ? 'not-allowed' : 'pointer' }}
-            >
+            <button onClick={handleSubmit} disabled={loading} style={{ ...primaryBtn, width: '100%', opacity: loading ? 0.7 : 1 }}>
               {loading ? 'Please wait...' : mode === 'signin' ? 'Sign in' : mode === 'forgot' ? 'Send reset link' : 'Create account'}
             </button>
 
@@ -889,26 +823,29 @@ const TABS = [
 ];
 
 const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const activeTab = TABS.find(t => t.id === active);
+
   return (
     <div style={{
       background: C.accent,
+      padding: '0',
       position: 'sticky',
       top: 0,
       zIndex: 100,
       boxShadow: '0 2px 20px rgba(0,0,0,0.15)',
       width: '100%',
     }}>
-      {/* Wrapper is position:relative so the avatar menu can escape overflow:auto */}
-      <div style={{ position: 'relative', maxWidth: '1100px', margin: '0 auto' }}>
-        {/* Scrollable tabs with right padding to avoid overlapping the avatar */}
-        <div style={{
-          display: 'flex',
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          WebkitOverflowScrolling: 'touch',
-          paddingRight: '96px',
-        }}>
+      <div style={{
+        display: 'flex',
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none',
+        maxWidth: '1100px',
+        margin: '0 auto',
+        WebkitOverflowScrolling: 'touch',
+      }}>
+        <div style={{ display: 'flex', flex: 1 }}>
           {TABS.map(tab => (
             <button
               key={tab.id}
@@ -934,9 +871,7 @@ const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios
             </button>
           ))}
         </div>
-
-        {/* Avatar / Sign in — outside the overflow:auto so the dropdown isn't clipped */}
-        <div style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', zIndex: 101 }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.75rem', gap: '0.5rem', flexShrink: 0 }}>
           {user ? (
             <UserMenu user={user} onSignOut={onSignOut} onSavedScenarios={onSavedScenarios} />
           ) : (
@@ -951,34 +886,39 @@ const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios
 };
 
 // ─── 1. BORROW CHECKER ───────────────────────────────────────────────────────
-function BorrowChecker({ onSavePrompt, onSave, initialInputs }) {
-  const i = initialInputs || {};
+function BorrowChecker({ onSavePrompt, onSave }) {
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
-  const [page, setPage] = useState(initialInputs ? 5 : 1);
+  const [page, setPage] = useState(1);
   const totalPages = 5;
 
-  const [purchasePrice, setPurchasePrice] = useState(i.purchasePrice ?? 650000);
-  const [deposit, setDeposit] = useState(i.deposit ?? 130000);
-  const [applicationType, setApplicationType] = useState(i.applicationType ?? 'single');
-  const [isFirstHomeBuyer, setIsFirstHomeBuyer] = useState(i.isFirstHomeBuyer ?? false);
-  const [dependents, setDependents] = useState(i.dependents ?? 0);
-  const [applicantAge, setApplicantAge] = useState(i.applicantAge ?? '');
-  const [partnerAge, setPartnerAge] = useState(i.partnerAge ?? '');
-  const [baseSalary, setBaseSalary] = useState(i.baseSalary ?? 85000);
-  const [variableIncome, setVariableIncome] = useState(i.variableIncome ?? 0);
-  const [kiwiSaverRate, setKiwiSaverRate] = useState(i.kiwiSaverRate ?? 3.5);
-  const [hasStudentLoan, setHasStudentLoan] = useState(i.hasStudentLoan ?? false);
-  const [partnerBaseSalary, setPartnerBaseSalary] = useState(i.partnerBaseSalary ?? 0);
-  const [partnerVariableIncome, setPartnerVariableIncome] = useState(i.partnerVariableIncome ?? 0);
-  const [partnerKiwiSaverRate, setPartnerKiwiSaverRate] = useState(i.partnerKiwiSaverRate ?? 3.5);
-  const [partnerHasStudentLoan, setPartnerHasStudentLoan] = useState(i.partnerHasStudentLoan ?? false);
-  const [numBoarders, setNumBoarders] = useState(i.numBoarders ?? 0);
-  const [boarderWeeklyIncome, setBoarderWeeklyIncome] = useState(i.boarderWeeklyIncome ?? 0);
-  const [creditCardLimit, setCreditCardLimit] = useState(i.creditCardLimit ?? 0);
-  const [bnplLimit, setBnplLimit] = useState(i.bnplLimit ?? 0);
-  const [otherMonthlyLoans, setOtherMonthlyLoans] = useState(i.otherMonthlyLoans ?? 0);
-  const [declaredExpenses, setDeclaredExpenses] = useState(i.declaredExpenses ?? 2000);
+  const [purchasePrice, setPurchasePrice] = useState(650000);
+  const [deposit, setDeposit] = useState(130000);
+  const [mode, setMode] = useState(null); // null = not chosen, 'know' = knows price, 'discover' = wants to find out
+  const [depositKiwiSaver, setDepositKiwiSaver] = useState(0);
+  const [depositSavings, setDepositSavings] = useState(0);
+  const [depositGift, setDepositGift] = useState(0);
+  const [depositOther, setDepositOther] = useState(0);
+  const [maxBorrowing, setMaxBorrowing] = useState(null);
+  const [applicationType, setApplicationType] = useState('single');
+  const [isFirstHomeBuyer, setIsFirstHomeBuyer] = useState(false);
+  const [dependents, setDependents] = useState(0);
+  const [applicantAge, setApplicantAge] = useState('');
+  const [partnerAge, setPartnerAge] = useState('');
+  const [baseSalary, setBaseSalary] = useState(85000);
+  const [variableIncome, setVariableIncome] = useState(0);
+  const [kiwiSaverRate, setKiwiSaverRate] = useState(3.5);
+  const [hasStudentLoan, setHasStudentLoan] = useState(false);
+  const [partnerBaseSalary, setPartnerBaseSalary] = useState(0);
+  const [partnerVariableIncome, setPartnerVariableIncome] = useState(0);
+  const [partnerKiwiSaverRate, setPartnerKiwiSaverRate] = useState(3.5);
+  const [partnerHasStudentLoan, setPartnerHasStudentLoan] = useState(false);
+  const [numBoarders, setNumBoarders] = useState(0);
+  const [boarderWeeklyIncome, setBoarderWeeklyIncome] = useState(0);
+  const [creditCardLimit, setCreditCardLimit] = useState(0);
+  const [bnplLimit, setBnplLimit] = useState(0);
+  const [otherMonthlyLoans, setOtherMonthlyLoans] = useState(0);
+  const [declaredExpenses, setDeclaredExpenses] = useState(2000);
   const [showExpenseCalc, setShowExpenseCalc] = useState(false);
   const [expenseItems, setExpenseItems] = useState({
     homeContentsInsurance: { amount: '', freq: 'monthly' },
@@ -1050,11 +990,17 @@ function BorrowChecker({ onSavePrompt, onSave, initialInputs }) {
   const [calcTerm, setCalcTerm] = useState(30);
 
   useEffect(() => {
-    if (page === 5) calculate();
+    if (page === 5) {
+      if (mode === 'discover') {
+        calculateMaxBorrowing();
+      } else {
+        calculate();
+      }
+    }
   }, [page, purchasePrice, deposit, applicationType, isFirstHomeBuyer, dependents, applicantAge, partnerAge,
     baseSalary, variableIncome, kiwiSaverRate, hasStudentLoan,
     partnerBaseSalary, partnerVariableIncome, partnerKiwiSaverRate, partnerHasStudentLoan,
-    numBoarders, boarderWeeklyIncome, creditCardLimit, bnplLimit, otherMonthlyLoans, declaredExpenses, additionalExpenses]);
+    numBoarders, boarderWeeklyIncome, creditCardLimit, bnplLimit, otherMonthlyLoans, declaredExpenses, additionalExpenses, mode]);
 
   useEffect(() => { 
     if (results) {
@@ -1231,6 +1177,70 @@ function BorrowChecker({ onSavePrompt, onSave, initialInputs }) {
     setResults({ loan, lvr, depPass, minDep, minDepPct, isFullDeposit, netMonthly, dti, dtiPass, stressedPmt, loanTerm, isOver55, livingExp, ccExp, bnplExp, slMonthly, umi, reqUmi, umiPass, umiStatus, isKO, feedback, usingGlee });
   }
 
+  function calculateMaxBorrowing() {
+    const shadedVar = variableIncome * 0.8;
+    const shadedPVar = partnerVariableIncome * 0.8;
+    const primaryNet = calcNetIncome(baseSalary + shadedVar, kiwiSaverRate);
+    const partnerNet = applicationType === 'joint' ? calcNetIncome(partnerBaseSalary + shadedPVar, partnerKiwiSaverRate) : 0;
+    const boarderNet = (Math.min(boarderWeeklyIncome, 240) * 52 * numBoarders * 0.8) / 12;
+    const netMonthly = (primaryNet + partnerNet) / 12 + boarderNet;
+
+    const usableGross = baseSalary + shadedVar + (applicationType === 'joint' ? partnerBaseSalary : 0) + shadedPVar;
+    const gleeFloor = 829 + (applicationType === 'single' ? 430 : 860) + dependents * 161 + Math.round((usableGross / 12) * 0.07);
+    const coreDeclared = Math.round(declaredExpenses - additionalExpenses);
+    const livingExp = Math.max(coreDeclared, gleeFloor) + Math.round(additionalExpenses);
+
+    const ccExp = creditCardLimit * 0.038;
+    const bnplExp = bnplLimit * 0.05;
+    const slThreshold = 24128;
+    const primarySL = hasStudentLoan ? Math.max(0, (baseSalary - slThreshold) * 0.12 / 12) : 0;
+    const partnerSL = partnerHasStudentLoan ? Math.max(0, (partnerBaseSalary - slThreshold) * 0.12 / 12) : 0;
+    const slMonthly = primarySL + partnerSL;
+
+    const totalBase = baseSalary + (applicationType === 'joint' ? partnerBaseSalary : 0);
+    const isKO = isFirstHomeBuyer && (applicationType === 'single' ? baseSalary <= 95000 : totalBase <= 150000);
+    const reqUmi = isKO ? 200 : 500;
+
+    const availableForMortgage = netMonthly - livingExp - ccExp - bnplExp - slMonthly - otherMonthlyLoans - reqUmi;
+
+    if (availableForMortgage <= 0) {
+      setMaxBorrowing({ maxLoan: 0, maxPurchase: deposit, canBorrow: false, tips: [] });
+      return;
+    }
+
+    const primaryAge = parseInt(applicantAge) || 0;
+    const partnerAgeInt = parseInt(partnerAge) || 0;
+    const olderAge = applicationType === 'joint' ? Math.max(primaryAge, partnerAgeInt) : primaryAge;
+    const loanTerm = isKO && olderAge > 0 ? Math.min(30, Math.max(1, 72 - olderAge)) : 30;
+    const n = loanTerm * 12;
+    const r = 0.07 / 12;
+
+    const maxLoanFromServicing = availableForMortgage * (Math.pow(1 + r, n) - 1) / (r * Math.pow(1 + r, n));
+    const maxLoanFromDTI = usableGross * 6 - creditCardLimit - bnplLimit;
+    const maxLoan = Math.max(0, Math.min(maxLoanFromServicing, maxLoanFromDTI));
+    const maxPurchase = maxLoan + deposit;
+
+    const tips = [];
+
+    if (creditCardLimit > 0) {
+      const ccImpact = creditCardLimit * 0.038 * (Math.pow(1 + r, n) - 1) / (r * Math.pow(1 + r, n));
+      tips.push({ type: 'credit_card', message: `Reducing or closing your credit card limits could increase your borrowing capacity by approximately $${fmtNZD(Math.round(ccImpact / 1000) * 1000)}. Contact your bank to reduce limits on cards you don't fully use.` });
+    }
+
+    if (bnplLimit > 0) {
+      const bnplImpact = bnplLimit * 0.05 * (Math.pow(1 + r, n) - 1) / (r * Math.pow(1 + r, n));
+      tips.push({ type: 'bnpl', message: `Closing your Buy Now Pay Later accounts (Afterpay, Laybuy etc.) could increase your borrowing capacity by approximately $${fmtNZD(Math.round(bnplImpact / 1000) * 1000)}. These are easy to close online.` });
+    }
+
+    const currentDepositPct = maxPurchase > 0 ? (deposit / maxPurchase) * 100 : 0;
+    if (currentDepositPct < 20) {
+      const amountTo20 = maxPurchase * 0.20 - deposit;
+      if (amountTo20 > 0) tips.push({ type: 'deposit', message: `Saving an additional $${fmtNZD(Math.round(amountTo20 / 1000) * 1000)} would get you to a 20% deposit, opening up more lenders and potentially a better interest rate.` });
+    }
+
+    setMaxBorrowing({ maxLoan: Math.round(maxLoan), maxPurchase: Math.round(maxPurchase), canBorrow: maxLoan > 0, tips, depositPct: currentDepositPct, isKO, loanTerm, netMonthly, livingExp });
+  }
+
   const ProgressBar = () => (
     <div>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '0.75rem' }}>
@@ -1244,12 +1254,20 @@ function BorrowChecker({ onSavePrompt, onSave, initialInputs }) {
 
   const Nav = () => (
     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem', gap: '1rem' }}>
-      <button onClick={() => setPage(Math.max(1, page - 1))} style={{ ...secondaryBtn, opacity: page === 1 ? 0 : 1, pointerEvents: page === 1 ? 'none' : 'auto' }}>
+      <button onClick={() => {
+        if (page === 1 && mode !== null) {
+          setMode(null);
+        } else {
+          setPage(Math.max(1, page - 1));
+        }
+      }} style={{ ...secondaryBtn, opacity: (page === 1 && mode === null) ? 0 : 1, pointerEvents: (page === 1 && mode === null) ? 'none' : 'auto' }}>
         <i className="ti ti-arrow-left" style={{ marginRight: '6px' }} /> Back
       </button>
       {page < totalPages
-        ? <button onClick={() => setPage(page + 1)} style={primaryBtn}>Continue <i className="ti ti-arrow-right" style={{ marginLeft: '6px' }} /></button>
-        : <button onClick={() => { setPage(1); setResults(null); }} style={secondaryBtn}>Start Over</button>
+        ? (page === 1 && mode === null
+            ? null
+            : <button onClick={() => setPage(page + 1)} style={primaryBtn}>Continue <i className="ti ti-arrow-right" style={{ marginLeft: '6px' }} /></button>)
+        : <button onClick={() => { setPage(1); setResults(null); setMaxBorrowing(null); setMode(null); }} style={secondaryBtn}>Start Over</button>
       }
     </div>
   );
@@ -1271,10 +1289,56 @@ function BorrowChecker({ onSavePrompt, onSave, initialInputs }) {
         {/* PAGE 1 */}
         {page === 1 && (
           <div>
-            <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>What property are you looking at?</h2>
-            <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 2rem' }}>Tell us about the property you want to buy</p>
-            <MoneyField label="Purchase price" value={purchasePrice} onChange={setPurchasePrice} placeholder="650,000" />
-            <MoneyField label="How much deposit have you saved?" value={deposit} onChange={setDeposit} placeholder="130,000" />
+            {mode === null ? (
+              <>
+                <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Let's get started</h2>
+                <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 2rem' }}>Do you have a property in mind?</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <button
+                    onClick={() => setMode('know')}
+                    style={{ background: C.inputBg, border: `2px solid transparent`, borderRadius: '16px', padding: '1.5rem', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = C.purple}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
+                  >
+                    <div style={{ fontSize: '24px', marginBottom: '0.5rem' }}>🏡</div>
+                    <p style={{ fontSize: '16px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.25rem' }}>Yes, I have a property in mind</p>
+                    <p style={{ fontSize: '13px', color: C.textSecondary, margin: 0 }}>I know the purchase price and want to check if I can afford it</p>
+                  </button>
+                  <button
+                    onClick={() => setMode('discover')}
+                    style={{ background: C.inputBg, border: `2px solid transparent`, borderRadius: '16px', padding: '1.5rem', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = C.purple}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
+                  >
+                    <div style={{ fontSize: '24px', marginBottom: '0.5rem' }}>🔍</div>
+                    <p style={{ fontSize: '16px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.25rem' }}>No, I want to find out what I can afford</p>
+                    <p style={{ fontSize: '13px', color: C.textSecondary, margin: 0 }}>Tell me my maximum borrowing power based on my deposit and income</p>
+                  </button>
+                </div>
+              </>
+            ) : mode === 'know' ? (
+              <>
+                <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>What property are you looking at?</h2>
+                <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 2rem' }}>Tell us about the property you want to buy</p>
+                <MoneyField label="Purchase price" value={purchasePrice} onChange={setPurchasePrice} placeholder="650,000" />
+                <MoneyField label="How much deposit have you saved?" value={deposit} onChange={setDeposit} placeholder="130,000" />
+              </>
+            ) : (
+              <>
+                <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Tell us about your deposit</h2>
+                <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 2rem' }}>Break down where your deposit is coming from</p>
+                <MoneyField label="KiwiSaver" value={depositKiwiSaver} onChange={v => { setDepositKiwiSaver(v); setDeposit(v + depositSavings + depositGift + depositOther); }} placeholder="0" hint="Your KiwiSaver balance available for withdrawal" />
+                <MoneyField label="Savings" value={depositSavings} onChange={v => { setDepositSavings(v); setDeposit(depositKiwiSaver + v + depositGift + depositOther); }} placeholder="0" hint="Cash savings in your bank account" />
+                <MoneyField label="Family gift" value={depositGift} onChange={v => { setDepositGift(v); setDeposit(depositKiwiSaver + depositSavings + v + depositOther); }} placeholder="0" hint="Cash contribution from family" />
+                <MoneyField label="Other" value={depositOther} onChange={v => { setDepositOther(v); setDeposit(depositKiwiSaver + depositSavings + depositGift + v); }} placeholder="0" hint="Any other sources" />
+                {deposit > 0 && (
+                  <div style={{ background: C.accentLight, borderRadius: '12px', padding: '1rem 1.25rem', marginTop: '0.5rem' }}>
+                    <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 0.25rem' }}>Total deposit</p>
+                    <p style={{ fontSize: '24px', fontWeight: '500', color: C.textPrimary, margin: 0 }}>${fmtNZD(deposit)}</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
@@ -1447,55 +1511,48 @@ function BorrowChecker({ onSavePrompt, onSave, initialInputs }) {
                   </div>
                   <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1.5rem' }}>Enter what you know and toggle the frequency. We'll convert everything to a monthly total.</p>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', marginBottom: '1.5rem' }}>
                     {Object.keys(expenseItems).map(key => (
-                      <div key={key} style={{ background: C.inputBg, borderRadius: '12px', padding: '0.75rem 1rem' }}>
-                        {/* Label row */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                          <span style={{ fontSize: '14px', color: C.textPrimary, fontWeight: '500' }}>{expenseLabels[key]}</span>
-                          <span style={{ fontSize: '12px', color: C.textSecondary, marginLeft: '0.5rem', whiteSpace: 'nowrap' }}>
-                            {toMonthly(expenseItems[key].amount, expenseItems[key].freq) > 0
-                              ? `$${fmtNZD(toMonthly(expenseItems[key].amount, expenseItems[key].freq))}/mo`
-                              : ''}
-                          </span>
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: C.inputBg, borderRadius: '12px', padding: '0.75rem 1rem' }}>
+                        <span style={{ flex: 1, fontSize: '14px', color: C.textPrimary, fontWeight: '500' }}>{expenseLabels[key]}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '4px' }}>
+                          {['weekly', 'fortnightly', 'monthly'].map(freq => (
+                            <button
+                              key={freq}
+                              onClick={() => updateExpenseItem(key, 'freq', freq)}
+                              style={{
+                                background: expenseItems[key].freq === freq ? C.accent : 'transparent',
+                                color: expenseItems[key].freq === freq ? 'white' : C.textSecondary,
+                                border: 'none',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '500',
+                                cursor: 'pointer',
+                                textTransform: 'capitalize',
+                                transition: 'all 0.15s'
+                              }}
+                            >
+                              {freq === 'fortnightly' ? 'F/N' : freq.charAt(0).toUpperCase() + freq.slice(1)}
+                            </button>
+                          ))}
                         </div>
-                        {/* Controls row */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', background: 'white', borderRadius: '8px', padding: '3px' }}>
-                            {['weekly', 'fortnightly', 'monthly'].map(freq => (
-                              <button
-                                key={freq}
-                                onClick={() => updateExpenseItem(key, 'freq', freq)}
-                                style={{
-                                  background: expenseItems[key].freq === freq ? C.accent : 'transparent',
-                                  color: expenseItems[key].freq === freq ? 'white' : C.textSecondary,
-                                  border: 'none',
-                                  padding: '4px 8px',
-                                  borderRadius: '6px',
-                                  fontSize: '11px',
-                                  fontWeight: '500',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.15s',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                {freq === 'fortnightly' ? 'F/N' : freq.charAt(0).toUpperCase() + freq.slice(1)}
-                              </button>
-                            ))}
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '6px 10px', flex: 1 }}>
-                            <span style={{ fontSize: '14px', color: C.textSecondary }}>$</span>
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              min="0"
-                              value={expenseItems[key].amount}
-                              onChange={e => updateExpenseItem(key, 'amount', e.target.value)}
-                              placeholder="0"
-                              style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '14px', color: C.textPrimary, outline: 'none', fontWeight: '500' }}
-                            />
-                          </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '6px 10px', width: '100px' }}>
+                          <span style={{ fontSize: '14px', color: C.textSecondary }}>$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={expenseItems[key].amount}
+                            onChange={e => updateExpenseItem(key, 'amount', e.target.value)}
+                            placeholder="0"
+                            style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '14px', color: C.textPrimary, outline: 'none', fontWeight: '500' }}
+                          />
                         </div>
+                        <span style={{ fontSize: '12px', color: C.textSecondary, width: '70px', textAlign: 'right' }}>
+                          {toMonthly(expenseItems[key].amount, expenseItems[key].freq) > 0
+                            ? `$${fmtNZD(toMonthly(expenseItems[key].amount, expenseItems[key].freq))}/mo`
+                            : ''}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1520,8 +1577,99 @@ function BorrowChecker({ onSavePrompt, onSave, initialInputs }) {
           </div>
         )}
 
-        {/* PAGE 5 - RESULTS */}
-        {page === 5 && results && (
+        {/* PAGE 5 - DISCOVER MODE RESULTS */}
+        {page === 5 && mode === 'discover' && maxBorrowing && (
+          <div>
+            <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 2rem', color: C.textPrimary }}>Your borrowing power</h2>
+
+            {maxBorrowing.canBorrow ? (
+              <>
+                {/* Main result cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+                  <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem' }}>
+                    <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 0.5rem' }}>Maximum borrowing</p>
+                    <p style={{ fontSize: '32px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.25rem' }}>${fmtNZD(maxBorrowing.maxLoan)}</p>
+                    <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0 }}>Stressed at 7% over {maxBorrowing.loanTerm} years</p>
+                  </div>
+                  <div style={{ background: C.green + '18', borderRadius: '16px', padding: '1.5rem', border: `2px solid ${C.green}` }}>
+                    <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 0.5rem' }}>Maximum purchase price</p>
+                    <p style={{ fontSize: '32px', fontWeight: '500', color: C.green, margin: '0 0 0.25rem' }}>${fmtNZD(maxBorrowing.maxPurchase)}</p>
+                    <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0 }}>Your loan + ${fmtNZD(deposit)} deposit</p>
+                  </div>
+                </div>
+
+                {/* Deposit info */}
+                <div style={{ background: C.inputBg, borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 0.25rem' }}>Your deposit</p>
+                      <p style={{ fontSize: '20px', fontWeight: '500', color: C.textPrimary, margin: 0 }}>${fmtNZD(deposit)} ({maxBorrowing.depositPct.toFixed(1)}%)</p>
+                    </div>
+                    {maxBorrowing.isKO && (
+                      <div style={{ background: C.green + '18', borderRadius: '8px', padding: '0.5rem 1rem' }}>
+                        <p style={{ fontSize: '12px', fontWeight: '500', color: C.green, margin: 0 }}>Kainga Ora eligible ✓</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Estimated repayment */}
+                <div style={{ background: C.inputBg, borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+                  <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 0.25rem' }}>Estimated monthly repayment</p>
+                  <p style={{ fontSize: '20px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.25rem' }}>
+                    ${fmtNZD(calcPMT(maxBorrowing.maxLoan, 6.5, 30))}/mo
+                  </p>
+                  <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0 }}>Based on 6.5% interest rate, 30 year term</p>
+                </div>
+
+                {/* Tips section */}
+                {maxBorrowing.tips.length > 0 && (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: '500', color: C.textPrimary, margin: '0 0 1rem' }}>💡 Ways to increase your borrowing power</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                      {maxBorrowing.tips.map((tip, i) => (
+                        <div key={i} style={{ background: '#FFF8E7', borderRadius: '12px', padding: '1rem 1.25rem', border: '1px solid #FFE082' }}>
+                          <p style={{ fontSize: '14px', color: C.textPrimary, margin: 0, lineHeight: '1.6' }}>
+                            {tip.type === 'credit_card' && '💳 '}
+                            {tip.type === 'bnpl' && '📱 '}
+                            {tip.type === 'deposit' && '💰 '}
+                            {tip.message}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ background: '#FFEBEE', borderRadius: '16px', padding: '2rem', textAlign: 'center', marginBottom: '1.5rem' }}>
+                <p style={{ fontSize: '24px', margin: '0 0 1rem' }}>😔</p>
+                <h3 style={{ fontSize: '18px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.5rem' }}>Borrowing capacity is limited</h3>
+                <p style={{ fontSize: '14px', color: C.textSecondary, margin: 0, lineHeight: '1.6' }}>Based on your current income and expenses, we're unable to calculate a borrowing capacity. Consider reducing debts or speaking with a mortgage adviser to explore your options.</p>
+              </div>
+            )}
+
+            <Disclaimer />
+            {onSavePrompt && (
+              <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem', marginTop: '1rem', textAlign: 'center' }}>
+                <h4 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Save your results</h4>
+                <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1rem' }}>Create a free account to save this and come back anytime.</p>
+                <button onClick={onSavePrompt} style={{ ...primaryBtn }}>Save my results</button>
+              </div>
+            )}
+            {onSave && (
+              <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                <button onClick={() => onSave({}, maxBorrowing)} style={{ ...primaryBtn }}>
+                  <i className="ti ti-bookmark" style={{ marginRight: '6px' }} />
+                  Save this scenario
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PAGE 5 - STANDARD RESULTS */}
+        {page === 5 && mode !== 'discover' && results && (
           <div>
             <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 2rem', color: C.textPrimary }}>Your results</h2>
 
@@ -1634,13 +1782,7 @@ function BorrowChecker({ onSavePrompt, onSave, initialInputs }) {
             )}
             {onSave && (
               <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-                <button onClick={() => onSave({
-                  purchasePrice, deposit, applicationType, isFirstHomeBuyer, dependents,
-                  applicantAge, partnerAge, baseSalary, variableIncome, kiwiSaverRate,
-                  hasStudentLoan, partnerBaseSalary, partnerVariableIncome, partnerKiwiSaverRate,
-                  partnerHasStudentLoan, numBoarders, boarderWeeklyIncome, creditCardLimit,
-                  bnplLimit, otherMonthlyLoans, declaredExpenses,
-                }, results)} style={{ ...primaryBtn }}>
+                <button onClick={onSave} style={{ ...primaryBtn }}>
                   <i className="ti ti-bookmark" style={{ marginRight: '6px' }} />
                   Save this scenario
                 </button>
@@ -2473,97 +2615,10 @@ function BNPLCalc() {
   );
 }
 
-// ─── PASSWORD RESET SCREEN ───────────────────────────────────────────────────
-function PasswordResetScreen({ onDone }) {
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-
-  const passwordChecks = {
-    length: password.length >= 8,
-    uppercase: /[A-Z]/.test(password),
-    number: /[0-9]/.test(password),
-    special: /[^A-Za-z0-9]/.test(password),
-  };
-  const passwordValid = Object.values(passwordChecks).every(Boolean);
-
-  const CheckItem = ({ ok, label }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: ok ? C.green : C.textSecondary }}>
-      <i className={`ti ti-${ok ? 'check' : 'circle'}`} style={{ fontSize: '14px' }} />
-      {label}
-    </div>
-  );
-
-  const handleSubmit = async () => {
-    if (!passwordValid) { setError('Please meet all password requirements'); return; }
-    setLoading(true);
-    setError('');
-    const { error: err } = await supabase.updatePassword(password);
-    setLoading(false);
-    if (err) { setError(err.message || err.error_description || 'Failed to update password. Please try again.'); return; }
-    setSuccess(true);
-    setTimeout(() => onDone(), 2000);
-  };
-
-  return (
-    <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '420px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: C.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
-            <i className="ti ti-lock" style={{ fontSize: '28px', color: C.textPrimary }} />
-          </div>
-          <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Set new password</h2>
-          <p style={{ fontSize: '14px', color: C.textSecondary, margin: 0 }}>Choose a strong password for your account</p>
-        </div>
-
-        {success ? (
-          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-            <i className="ti ti-circle-check" style={{ fontSize: '48px', color: C.green }} />
-            <p style={{ fontSize: '15px', fontWeight: '500', color: C.green, marginTop: '1rem' }}>Password updated! Redirecting...</p>
-          </div>
-        ) : (
-          <>
-            <div style={{ marginBottom: password.length > 0 ? '0.75rem' : '1.5rem' }}>
-              <label style={labelStyle}>New password</label>
-              <div style={{ ...inputWrap, padding: '0.875rem 1rem' }}>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  style={{ ...inputStyle, fontSize: '15px' }}
-                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                  autoFocus
-                />
-              </div>
-            </div>
-
-            {password.length > 0 && (
-              <div style={{ background: C.inputBg, borderRadius: '10px', padding: '0.875rem', marginBottom: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <CheckItem ok={passwordChecks.length} label="8+ characters" />
-                <CheckItem ok={passwordChecks.uppercase} label="Uppercase letter" />
-                <CheckItem ok={passwordChecks.number} label="Number" />
-                <CheckItem ok={passwordChecks.special} label="Special character" />
-              </div>
-            )}
-
-            {error && <p style={{ fontSize: '13px', color: C.red, margin: '0 0 1rem', padding: '0.75rem', background: '#FFEBEE', borderRadius: '8px' }}>{error}</p>}
-
-            <button onClick={handleSubmit} disabled={loading} style={{ ...primaryBtn, width: '100%', opacity: loading ? 0.7 : 1 }}>
-              {loading ? 'Updating...' : 'Update password'}
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [activeTab, setActiveTab] = useState('borrow');
-  const { user, loading, signOut, refreshUser, isRecovery, clearRecovery } = useAuth();
+  const { user, loading, signOut, refreshUser } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSavedScenarios, setShowSavedScenarios] = useState(false);
   const [showSaveName, setShowSaveName] = useState(false);
@@ -2571,8 +2626,6 @@ export default function App() {
   const [pendingSave, setPendingSave] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
-  const [loadedInputs, setLoadedInputs] = useState(null);
-  const [borrowKey, setBorrowKey] = useState(0);
 
   const handleSavePrompt = (inputs, results) => {
     if (!user) {
@@ -2593,18 +2646,7 @@ export default function App() {
   const handleSaveConfirm = async () => {
     if (!pendingSave) return;
     const name = scenarioName.trim() || 'My Scenario';
-    try {
-      const { error } = await supabase.saveScenario(name, pendingSave.inputs, pendingSave.results);
-      if (error) {
-        console.error('Save scenario failed:', error);
-        alert('Failed to save scenario: ' + (error.message || JSON.stringify(error)));
-        return;
-      }
-    } catch (err) {
-      console.error('Save scenario threw:', err);
-      alert('Failed to save scenario: ' + err.message);
-      return;
-    }
+    await supabase.saveScenario(name, pendingSave.inputs, pendingSave.results);
     setShowSaveName(false);
     setPendingSave(null);
     setScenarioName('');
@@ -2616,8 +2658,6 @@ export default function App() {
     switch (activeTab) {
       case 'borrow': return (
         <BorrowChecker
-          key={borrowKey}
-          initialInputs={loadedInputs}
           onSavePrompt={!user ? () => { setShowAuthModal(true); } : null}
           onSave={user ? (inputs, results) => handleSavePrompt(inputs, results) : null}
         />
@@ -2637,8 +2677,6 @@ export default function App() {
       <p style={{ color: C.textSecondary }}>Loading...</p>
     </div>
   );
-
-  if (isRecovery) return <PasswordResetScreen onDone={() => { clearRecovery(); }} />;
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, width: '100%', boxSizing: 'border-box' }}>
@@ -2670,10 +2708,7 @@ export default function App() {
         <SavedScenarios
           onClose={() => setShowSavedScenarios(false)}
           onLoad={(scenario) => {
-            setLoadedInputs(scenario.inputs || {});
-            setBorrowKey(k => k + 1);
             setActiveTab('borrow');
-            setShowSavedScenarios(false);
           }}
         />
       )}
