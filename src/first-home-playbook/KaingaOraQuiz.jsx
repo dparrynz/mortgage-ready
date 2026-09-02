@@ -14,7 +14,6 @@ const initial = {
   ownership: null,
   ownerOccupier: null,
   buyers: null,
-  income: null,
   deposit: null,
 };
 
@@ -27,7 +26,8 @@ export default function KaingaOraQuiz({ onExit, onBackToHub, onNavigate }) {
   const set = (key, val) => setAnswers((a) => ({ ...a, [key]: val }));
 
   const isJoint = answers.buyers === 'joint';
-  const allAnswered = Object.entries(answers).every(([k, v]) => v !== null);
+  const incomeAnswered = incomeA > 0 && (!isJoint || incomeB > 0);
+  const allAnswered = Object.values(answers).every((v) => v !== null) && incomeAnswered;
 
   const evaluate = () => {
     const hardFails = [
@@ -80,9 +80,6 @@ export default function KaingaOraQuiz({ onExit, onBackToHub, onNavigate }) {
                   <MoneyField label="Their income" value={incomeB} onChange={setIncomeB} hint="$150,000 or less (combined) for two or more buyers, regardless of the number of dependants." />
                 </>
               )}
-              <button onClick={() => set('income', 'answered')} style={{ marginTop: '0.5rem', background: 'none', border: 'none', color: C.textMuted, fontSize: '12px', cursor: 'pointer', padding: 0, textDecoration: answers.income ? 'none' : 'underline' }}>
-                {answers.income ? 'Income noted ✓' : 'Confirm income'}
-              </button>
             </div>
 
             <QuizQuestion label="Do you have at least a 5% deposit available or nearly available?" value={answers.deposit} onChange={(v) => set('deposit', v)} options={[['yes', 'Yes'], ['not-yet', 'Not yet']]} />
