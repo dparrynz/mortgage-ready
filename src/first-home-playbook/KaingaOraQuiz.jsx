@@ -20,14 +20,14 @@ const initial = {
 
 export default function KaingaOraQuiz({ onExit, onBackToHub, onNavigate }) {
   const [answers, setAnswers] = useState(initial);
-  const [incomeSingle, setIncomeSingle] = useState(0);
-  const [incomeJoint, setIncomeJoint] = useState(0);
+  const [incomeA, setIncomeA] = useState(0);
+  const [incomeB, setIncomeB] = useState(0);
   const [submitted, setSubmitted] = useState(false);
 
   const set = (key, val) => setAnswers((a) => ({ ...a, [key]: val }));
 
   const isJoint = answers.buyers === 'joint';
-  const allAnswered = Object.entries(answers).every(([k, v]) => v !== null) && (isJoint ? incomeJoint > 0 || incomeJoint === 0 : true);
+  const allAnswered = Object.entries(answers).every(([k, v]) => v !== null);
 
   const evaluate = () => {
     const hardFails = [
@@ -39,8 +39,8 @@ export default function KaingaOraQuiz({ onExit, onBackToHub, onNavigate }) {
 
     const incomeEligible = checkKaingaOraIncomeCap({
       applicationType: isJoint ? 'joint' : 'single',
-      baseSalary: isJoint ? incomeJoint / 2 : incomeSingle,
-      partnerBaseSalary: isJoint ? incomeJoint / 2 : 0,
+      baseSalary: incomeA,
+      partnerBaseSalary: isJoint ? incomeB : 0,
     });
 
     if (!incomeEligible) return 'not-eligible';
@@ -73,9 +73,12 @@ export default function KaingaOraQuiz({ onExit, onBackToHub, onNavigate }) {
             <div style={{ marginBottom: '1.5rem' }}>
               <p style={{ fontSize: '15px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>What's your gross income before tax over the last 12 months?</p>
               {!isJoint ? (
-                <MoneyField label="Your income" value={incomeSingle} onChange={setIncomeSingle} hint="Single buyer cap is $95,000, or $150,000 with dependants." />
+                <MoneyField label="Your income" value={incomeA} onChange={setIncomeA} hint="Single buyer cap is $95,000, or $150,000 with dependants." />
               ) : (
-                <MoneyField label="Combined income" value={incomeJoint} onChange={setIncomeJoint} hint="Combined cap for two or more buyers is $150,000." />
+                <>
+                  <MoneyField label="Your income" value={incomeA} onChange={setIncomeA} />
+                  <MoneyField label="Their income" value={incomeB} onChange={setIncomeB} hint="$150,000 or less (combined) for two or more buyers, regardless of the number of dependants." />
+                </>
               )}
               <button onClick={() => set('income', 'answered')} style={{ marginTop: '0.5rem', background: 'none', border: 'none', color: C.textMuted, fontSize: '12px', cursor: 'pointer', padding: 0, textDecoration: answers.income ? 'none' : 'underline' }}>
                 {answers.income ? 'Income noted ✓' : 'Confirm income'}
@@ -102,7 +105,7 @@ export default function KaingaOraQuiz({ onExit, onBackToHub, onNavigate }) {
             </div>
             <BookCallCTA onNavigate={onNavigate} />
             <button
-              onClick={() => { setSubmitted(false); setAnswers(initial); setIncomeSingle(0); setIncomeJoint(0); }}
+              onClick={() => { setSubmitted(false); setAnswers(initial); setIncomeA(0); setIncomeB(0); }}
               style={{ display: 'block', background: 'none', border: 'none', color: C.textMuted, fontSize: '13px', textDecoration: 'underline', cursor: 'pointer', marginTop: '1rem', padding: 0 }}
             >
               Retake the quiz
