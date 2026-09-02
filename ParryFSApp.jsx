@@ -1201,8 +1201,8 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const ccExp = creditCardLimit * 0.038;
     const bnplExp = bnplLimit * 0.05;
     const slThreshold = 24128;
-    const primarySL = hasStudentLoan ? Math.max(0, (baseSalary - slThreshold) * 0.12 / 12) : 0;
-    const partnerSL = partnerHasStudentLoan ? Math.max(0, (partnerBaseSalary - slThreshold) * 0.12 / 12) : 0;
+    const primarySL = hasStudentLoan ? Math.max(0, (baseSalary + shadedVar - slThreshold) * 0.12 / 12) : 0;
+    const partnerSL = partnerHasStudentLoan ? Math.max(0, (partnerBaseSalary + shadedPVar - slThreshold) * 0.12 / 12) : 0;
     const slMonthly = primarySL + partnerSL;
 
     const totalBase = baseSalary + (applicationType === 'joint' ? partnerBaseSalary : 0);
