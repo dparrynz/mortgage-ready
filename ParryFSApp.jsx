@@ -954,7 +954,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     otherLiving: 'Other living expenses',
   };
 
-  const ADDITIONAL_EXPENSE_KEYS = ['entertainmentRecreation', 'donationsTithing', 'childSupport', 'otherLiving', 'lifeDisabilityIncome'];
+  const ADDITIONAL_EXPENSE_KEYS = ['entertainmentRecreation', 'donationsTithing', 'childSupport', 'otherLiving'];
 
   const toMonthly = (amount, freq) => {
     const num = parseFloat(amount) || 0;
