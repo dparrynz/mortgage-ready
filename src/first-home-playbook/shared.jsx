@@ -10,7 +10,7 @@ export const PLAYBOOK_ROOT = '/first-home-playbook';
 export const TILES = [
   { id: 'calculator', title: 'Know Your Numbers', blurb: 'Run the Borrow Checker calculator to see what you could borrow.', icon: 'ti-calculator', path: '/calculator' },
   { id: 'are-you-ready', title: 'Are You Ready?', blurb: 'A quick self-check on where you stand right now.', icon: 'ti-checklist', path: '/are-you-ready' },
-  { id: 'deposit-sources', title: 'Deposit Sources', blurb: 'Where your deposit can actually come from.', icon: 'ti-piggy-bank', path: '/deposit-sources' },
+  { id: 'deposit-sources', title: 'Deposit Sources', blurb: 'Where your deposit can actually come from.', icon: 'ti-wallet', path: '/deposit-sources' },
   { id: 'costs-of-buying', title: 'Hidden Costs of Buying', blurb: 'What buying a home actually costs, beyond the deposit.', icon: 'ti-receipt', path: '/costs-of-buying' },
   { id: 'kainga-ora', title: 'Kāinga Ora Explained', blurb: 'What the First Home Loan scheme actually means for you.', icon: 'ti-building-bank', path: '/kainga-ora' },
   { id: 'kainga-ora-quiz', title: 'Kāinga Ora Qualifying Quiz', blurb: 'A fast read on whether you might be eligible.', icon: 'ti-clipboard-check', path: '/kainga-ora-quiz' },
