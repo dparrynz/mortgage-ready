@@ -4,26 +4,13 @@ import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer } from './shared.jsx';
 
 const BOOKINGS_URL = 'https://outlook.office.com/bookwithme/user/35910337ef6b47e19c21334740c35b06@mikepero.co.nz/meetingtype/S_Ma3DVzG0q0a21VJQQ2GA2?bookingcode=9cc31a19-0a07-4b23-af84-d8655a9195af&anonymous&ismsaljsauthenabled&ep=mcard';
 
-const SUPABASE_URL = 'https://cpwbixddgcyingntsxci.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwd2JpeGRkZ2N5aW5nbnRzeGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYwNjgzMjksImV4cCI6MjEwMTY0NDMyOX0.-K5k0pyWV_piJCdcwQUiAzUND-PM35VOXSZSaBSbP6g';
-
-// Writes to a new `first_home_enquiries` table (see the SQL in this repo's
-// PR description / summary to create it) — kept separate from the existing
-// `saved_scenarios` table so nothing about Borrow Checker's save flow is
-// touched. This does NOT send Dan an email yet: this static site has no
-// backend capable of sending mail, so an email notification needs a
-// decision — e.g. a Supabase Database Webhook to Zapier/Make/Resend, or a
-// Vercel serverless function with an email API key. Until that's wired up,
-// new rows just land in Supabase for Dan to check manually.
+// Posts to the /api/notify-enquiry serverless function (api/notify-enquiry.js),
+// which emails Dan via Resend. Plain notification only, no automation beyond
+// that — Dan follows up manually, per the build brief.
 async function submitEnquiry(payload) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/first_home_enquiries`, {
+  const res = await fetch('/api/notify-enquiry', {
     method: 'POST',
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   return res.ok;
@@ -44,7 +31,7 @@ export default function BookACall({ onExit, onBackToHub, onNavigate }) {
       name: form.name.trim(),
       phone: form.phone.trim(),
       email: form.email.trim(),
-      best_time: form.bestTime.trim(),
+      bestTime: form.bestTime.trim(),
       comment: form.comment.trim(),
     });
     setStatus(ok ? 'sent' : 'error');
