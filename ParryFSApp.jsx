@@ -1083,7 +1083,6 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const coreDeclared = Math.round(declaredExpenses - additionalExpenses);
     const livingExp = Math.max(coreDeclared, gleeFloor) + Math.round(additionalExpenses);
     const usingGlee = Math.max(coreDeclared, gleeFloor) === gleeFloor;
-    console.log('[calculate] living expense debug', { gleeFloor, additionalExpenses, coreDeclared, declaredExpenses, livingExp });
 
     const ccExp = creditCardLimit * 0.038;
     const bnplExp = bnplLimit * 0.05;
@@ -1198,7 +1197,6 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const gleeFloor = 829 + (applicationType === 'single' ? 430 : 860) + dependents * 161 + Math.round((usableGross / 12) * 0.07);
     const coreDeclared = Math.round(declaredExpenses - additionalExpenses);
     const livingExp = Math.max(coreDeclared, gleeFloor) + Math.round(additionalExpenses);
-    console.log('[calculateMaxBorrowing] living expense debug', { gleeFloor, additionalExpenses, coreDeclared, declaredExpenses, livingExp });
 
     const ccExp = creditCardLimit * 0.038;
     const bnplExp = bnplLimit * 0.05;
