@@ -820,7 +820,6 @@ const TABS = [
   { id: 'comparison', label: 'Mortgage Comparison', icon: 'ti-arrows-exchange' },
   { id: 'breakeven', label: 'Break Even', icon: 'ti-scale' },
   { id: 'costtowait', label: 'Cost to Wait', icon: 'ti-clock' },
-  { id: 'bnpl', label: 'BNPL', icon: 'ti-credit-card' },
   { id: 'first-home-playbook', label: 'First Home Playbook', icon: 'ti-key' },
 ];
 
@@ -2614,54 +2613,6 @@ function CostToWait() {
   );
 }
 
-// ─── 7. BNPL ─────────────────────────────────────────────────────────────────
-function BNPLCalc() {
-  const [provider, setProvider] = useState('');
-  const [limit, setLimit] = useState(0);
-
-  const providerRates = { Afterpay: 1 / 3, Laybuy: 2 / 3, Zip: 1 / 3, Klarna: 1 / 3 };
-  const monthly = provider && limit ? Math.round(limit * providerRates[provider] * 100) / 100 : 0;
-
-  return (
-    <div>
-      <div style={{ ...card, background: C.headerBg }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>BNPL Repayment Estimator</h1>
-        <p style={{ fontSize: '15px', color: '#4a4a68', opacity: 0.9, margin: 0 }}>Estimate how much your Buy Now Pay Later limit costs per month</p>
-      </div>
-
-      <div style={{ ...card, maxWidth: '540px', margin: '0 auto 1.5rem' }}>
-        <div style={{ marginBottom: '2rem' }}>
-          <label style={labelStyle}>BNPL Provider</label>
-          <select value={provider} onChange={e => setProvider(e.target.value)} style={selectStyle}>
-            <option value="">Select your provider</option>
-            <option value="Afterpay">Afterpay</option>
-            <option value="Laybuy">Laybuy</option>
-            <option value="Zip">Zip</option>
-            <option value="Klarna">Klarna</option>
-          </select>
-        </div>
-        <MoneyField label="Credit limit (NZD)" value={limit} onChange={setLimit} placeholder="2,000" />
-
-        {monthly > 0 && (
-          <div style={{ background: C.headerBg, borderRadius: '16px', padding: '2rem', textAlign: 'center', marginTop: '1rem' }}>
-            <p style={{ fontSize: '14px', color: '#4a4a68', margin: '0 0 0.5rem', fontWeight: '500' }}>Estimated monthly repayment</p>
-            <p style={{ fontSize: '40px', fontWeight: '500', margin: 0, color: C.textPrimary }}>${fmtNZD(monthly, 2)}</p>
-            <p style={{ fontSize: '13px', color: '#4a4a68', margin: '0.75rem 0 0' }}>per month</p>
-          </div>
-        )}
-
-        <div style={{ background: '#EEF1F5', borderRadius: '12px', padding: '1rem', marginTop: '1.5rem' }}>
-          <p style={{ fontSize: '13px', color: C.textSecondary, margin: 0, lineHeight: 1.6 }}>
-            <i className="ti ti-info-circle" style={{ marginRight: '6px' }} />
-            This is an estimate based on typical repayment cycles. Multiple active purchases or late fees may increase monthly costs.
-          </p>
-        </div>
-      </div>
-      <Disclaimer />
-    </div>
-  );
-}
-
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [activeTab, setActiveTab] = useState('borrow');
@@ -2714,7 +2665,6 @@ export default function App() {
       case 'comparison': return <MortgageComparison />;
       case 'breakeven': return <BreakEven />;
       case 'costtowait': return <CostToWait />;
-      case 'bnpl': return <BNPLCalc />;
       case 'first-home-playbook': return <FirstHomePlaybookRouter onExit={() => handleSetActiveTab('borrow')} />;
       default: return <BorrowChecker />;
     }
