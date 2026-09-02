@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import FirstHomePlaybookRouter from './src/first-home-playbook/FirstHomePlaybookRouter.jsx';
 
 // ─── SUPABASE CLIENT ─────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://cpwbixddgcyingntsxci.supabase.co';
@@ -820,6 +821,7 @@ const TABS = [
   { id: 'breakeven', label: 'Break Even', icon: 'ti-scale' },
   { id: 'costtowait', label: 'Cost to Wait', icon: 'ti-clock' },
   { id: 'bnpl', label: 'BNPL', icon: 'ti-credit-card' },
+  { id: 'first-home-playbook', label: 'First Home Playbook', icon: 'ti-key' },
 ];
 
 const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios }) => {
@@ -2713,9 +2715,26 @@ export default function App() {
       case 'breakeven': return <BreakEven />;
       case 'costtowait': return <CostToWait />;
       case 'bnpl': return <BNPLCalc />;
+      case 'first-home-playbook': return <FirstHomePlaybookRouter onExit={() => handleSetActiveTab('borrow')} />;
       default: return <BorrowChecker />;
     }
   };
+
+  // Minimal URL sync so /first-home-playbook/* deep links work and the nav
+  // tab switch keeps the address bar in step. Existing tabs are unaffected.
+  const handleSetActiveTab = (id) => {
+    setActiveTab(id);
+    window.history.pushState({}, '', id === 'first-home-playbook' ? '/first-home-playbook' : '/');
+  };
+
+  useEffect(() => {
+    const syncFromPath = () => {
+      setActiveTab(window.location.pathname.startsWith('/first-home-playbook') ? 'first-home-playbook' : 'borrow');
+    };
+    syncFromPath();
+    window.addEventListener('popstate', syncFromPath);
+    return () => window.removeEventListener('popstate', syncFromPath);
+  }, []);
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -2727,7 +2746,7 @@ export default function App() {
     <div style={{ minHeight: '100vh', background: C.bg, width: '100%', boxSizing: 'border-box' }}>
       <TopNav
         active={activeTab}
-        setActive={setActiveTab}
+        setActive={handleSetActiveTab}
         user={user}
         onSignIn={() => setShowAuthModal(true)}
         onSignOut={signOut}
@@ -2807,4 +2826,21 @@ export default function App() {
       )}
     </div>
   );
+}
+
+// ─── FIRST HOME PLAYBOOK EXPORTS ───────────────────────────────────────────
+// Additive only, added for the /first-home-playbook section (src/first-home-playbook/).
+// Nothing above this block is changed. BorrowChecker and the Kāinga Ora
+// income-cap check are exported as-is so that section reuses this file's
+// logic instead of duplicating it.
+export { BorrowChecker, useAuth, AuthModal, supabase, C, card, Disclaimer, primaryBtn, secondaryBtn, inputWrap, inputStyle, fmtNZD, MoneyField };
+
+// Mirrors the income-cap thresholds computed inline in BorrowChecker's
+// calculate() (search "Kainga Ora eligibility" above). Kept as a separate
+// pure export, rather than editing calculate() itself, per instruction not
+// to alter existing Borrow Checker calculation logic. If Kāinga Ora revises
+// these thresholds, both this function and calculate() need updating.
+export function checkKaingaOraIncomeCap({ applicationType, baseSalary, partnerBaseSalary = 0 }) {
+  const totalBase = baseSalary + (applicationType === 'joint' ? partnerBaseSalary : 0);
+  return applicationType === 'single' ? baseSalary <= 95000 : totalBase <= 150000;
 }
