@@ -292,6 +292,32 @@ const RateField = ({ label, value, onChange, placeholder = '0.00', hint }) => (
   </div>
 );
 
+const SegmentedToggle = ({ options, value, onChange }) => (
+  <div style={{ display: 'flex', gap: '4px', background: 'white', borderRadius: '10px', padding: '4px', width: 'fit-content' }}>
+    {options.map(opt => (
+      <button
+        key={opt.value}
+        type="button"
+        onClick={() => onChange(opt.value)}
+        style={{
+          background: value === opt.value ? C.accent : 'transparent',
+          color: value === opt.value ? 'white' : C.textSecondary,
+          border: 'none',
+          padding: '8px 16px',
+          borderRadius: '8px',
+          fontSize: '13px',
+          fontWeight: '500',
+          cursor: 'pointer',
+          transition: 'all 0.15s',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {opt.label}
+      </button>
+    ))}
+  </div>
+);
+
 const Disclaimer = () => (
   <div style={{ background: C.inputBg, borderRadius: '12px', padding: '1rem', border: `1px solid ${C.borderLight}`, marginTop: '1.5rem' }}>
     <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0, lineHeight: 1.6 }}>
@@ -913,6 +939,25 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   const [partnerVariableIncome, setPartnerVariableIncome] = useState(0);
   const [partnerKiwiSaverRate, setPartnerKiwiSaverRate] = useState(3.5);
   const [partnerHasStudentLoan, setPartnerHasStudentLoan] = useState(false);
+  const [salaryMode, setSalaryMode] = useState('gross');
+  const [netIncomeAmount, setNetIncomeAmount] = useState(0);
+  const [netIncomeFreq, setNetIncomeFreq] = useState('weekly');
+  const [partnerSalaryMode, setPartnerSalaryMode] = useState('gross');
+  const [partnerNetIncomeAmount, setPartnerNetIncomeAmount] = useState(0);
+  const [partnerNetIncomeFreq, setPartnerNetIncomeFreq] = useState('weekly');
+  const [hasGovtIncome, setHasGovtIncome] = useState(false);
+  const [wffAmount, setWffAmount] = useState(0);
+  const [wffFreq, setWffFreq] = useState('weekly');
+  const [partnerWffAmount, setPartnerWffAmount] = useState(0);
+  const [partnerWffFreq, setPartnerWffFreq] = useState('weekly');
+  const [childSupportReceivedAmount, setChildSupportReceivedAmount] = useState(0);
+  const [childSupportReceivedFreq, setChildSupportReceivedFreq] = useState('weekly');
+  const [partnerChildSupportReceivedAmount, setPartnerChildSupportReceivedAmount] = useState(0);
+  const [partnerChildSupportReceivedFreq, setPartnerChildSupportReceivedFreq] = useState('weekly');
+  const [nzSuperAmount, setNzSuperAmount] = useState(0);
+  const [nzSuperMode, setNzSuperMode] = useState('gross');
+  const [partnerNzSuperAmount, setPartnerNzSuperAmount] = useState(0);
+  const [partnerNzSuperMode, setPartnerNzSuperMode] = useState('gross');
   const [numBoarders, setNumBoarders] = useState(0);
   const [boarderWeeklyIncome, setBoarderWeeklyIncome] = useState(0);
   const [creditCardLimit, setCreditCardLimit] = useState(0);
@@ -1000,6 +1045,10 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   }, [page, purchasePrice, deposit, applicationType, isFirstHomeBuyer, dependents, applicantAge, partnerAge,
     baseSalary, variableIncome, kiwiSaverRate, hasStudentLoan,
     partnerBaseSalary, partnerVariableIncome, partnerKiwiSaverRate, partnerHasStudentLoan,
+    salaryMode, netIncomeAmount, netIncomeFreq, partnerSalaryMode, partnerNetIncomeAmount, partnerNetIncomeFreq,
+    hasGovtIncome, wffAmount, wffFreq, partnerWffAmount, partnerWffFreq,
+    childSupportReceivedAmount, childSupportReceivedFreq, partnerChildSupportReceivedAmount, partnerChildSupportReceivedFreq,
+    nzSuperAmount, nzSuperMode, partnerNzSuperAmount, partnerNzSuperMode,
     numBoarders, boarderWeeklyIncome, creditCardLimit, bnplLimit, otherMonthlyLoans, declaredExpenses, additionalExpenses, mode]);
 
   useEffect(() => {
@@ -1045,14 +1094,57 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     return gross - tax - acc + ietc - gross * (ksRate / 100);
   }
 
+  // Monthly net salary when that applicant is in Net (take-home) mode. Returns null in Gross mode.
+  function salaryNetMonthly(isPartner) {
+    const smode = isPartner ? partnerSalaryMode : salaryMode;
+    if (smode !== 'net') return null;
+    const amt = isPartner ? partnerNetIncomeAmount : netIncomeAmount;
+    const freq = isPartner ? partnerNetIncomeFreq : netIncomeFreq;
+    return toMonthly(amt, freq);
+  }
+
+  // Annualised gross-equivalent used for KO threshold / DTI / GLEE floor calcs, which need a "gross" figure
+  // regardless of whether the applicant entered gross or net income.
+  function salaryGrossEquivalentAnnual(isPartner, shadedVarForApplicant) {
+    const smode = isPartner ? partnerSalaryMode : salaryMode;
+    if (smode === 'net') return salaryNetMonthly(isPartner) * 12;
+    const base = isPartner ? partnerBaseSalary : baseSalary;
+    return base + shadedVarForApplicant;
+  }
+
+  // Monthly non-taxable/govt income for one applicant: WFF + child support received + NZ Super.
+  function govtIncomeMonthlyFor(isPartner) {
+    if (!hasGovtIncome) return 0;
+    const wffAmt = isPartner ? partnerWffAmount : wffAmount;
+    const wffFq = isPartner ? partnerWffFreq : wffFreq;
+    const csAmt = isPartner ? partnerChildSupportReceivedAmount : childSupportReceivedAmount;
+    const csFq = isPartner ? partnerChildSupportReceivedFreq : childSupportReceivedFreq;
+    const superAmt = isPartner ? partnerNzSuperAmount : nzSuperAmount;
+    const superMode = isPartner ? partnerNzSuperMode : nzSuperMode;
+
+    const wffMonthly = toMonthly(wffAmt, wffFq);
+    const csMonthly = toMonthly(csAmt, csFq);
+    const superMonthly = superMode === 'gross'
+      ? calcNetIncome(superAmt * 26, 0) / 12
+      : toMonthly(superAmt, 'fortnightly');
+
+    return wffMonthly + csMonthly + superMonthly;
+  }
+
   function calculate() {
     const loan = purchasePrice - deposit;
     const lvr = (loan / purchasePrice) * 100;
-    const totalBase = baseSalary + (applicationType === 'joint' ? partnerBaseSalary : 0);
-    
+
+    const shadedVar = salaryMode === 'net' ? 0 : variableIncome * 0.8;
+    const shadedPVar = (applicationType === 'joint' && partnerSalaryMode !== 'net') ? partnerVariableIncome * 0.8 : 0;
+
+    const primaryGross = salaryGrossEquivalentAnnual(false, shadedVar);
+    const partnerGross = applicationType === 'joint' ? salaryGrossEquivalentAnnual(true, shadedPVar) : 0;
+    const totalBase = primaryGross + partnerGross;
+
     // Kainga Ora eligibility - individual threshold $95k, joint threshold $150k
     const isKO = isFirstHomeBuyer && (
-      applicationType === 'single' ? baseSalary <= 95000 : totalBase <= 150000
+      applicationType === 'single' ? primaryGross <= 95000 : totalBase <= 150000
     );
 
     // Minimum deposit:
@@ -1064,20 +1156,21 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const depPass = deposit >= minDep;
     const isFullDeposit = deposit >= purchasePrice * 0.20;
 
-    const shadedVar = variableIncome * 0.8;
-    const shadedPVar = (applicationType === 'joint' ? partnerVariableIncome : 0) * 0.8;
     const cappedBoarder = Math.min(boarderWeeklyIncome, 240);
     const shadedBoarder = cappedBoarder * 52 * numBoarders * 0.8;
-    const usableGross = baseSalary + shadedVar + (applicationType === 'joint' ? partnerBaseSalary : 0) + shadedPVar + shadedBoarder;
+    const usableGross = totalBase + shadedBoarder;
 
-    const primaryNet = calcNetIncome(baseSalary + shadedVar, kiwiSaverRate);
-    const partnerNet = applicationType === 'joint' ? calcNetIncome(partnerBaseSalary + shadedPVar, partnerKiwiSaverRate) : 0;
+    const primaryNet = salaryMode === 'net' ? salaryNetMonthly(false) * 12 : calcNetIncome(baseSalary + shadedVar, kiwiSaverRate);
+    const partnerNet = applicationType === 'joint'
+      ? (partnerSalaryMode === 'net' ? salaryNetMonthly(true) * 12 : calcNetIncome(partnerBaseSalary + shadedPVar, partnerKiwiSaverRate))
+      : 0;
     // Boarder income - 80% shade already applied, no additional tax deduction
     const boarderNet = shadedBoarder / 12;
-    const netMonthly = (primaryNet + partnerNet) / 12 + boarderNet;
+    const govtMonthly = govtIncomeMonthlyFor(false) + (applicationType === 'joint' ? govtIncomeMonthlyFor(true) : 0);
+    const netMonthly = (primaryNet + partnerNet) / 12 + boarderNet + govtMonthly;
 
     const gleeFloor = 829 + (applicationType === 'single' ? 430 : 860) + dependents * 161 + Math.round((usableGross / 12) * 0.07);
-    
+
     // Core declared expenses (compared against GLEE floor)
     // Additional expenses (entertainment, donations, child support) always added on top
     const coreDeclared = Math.round(declaredExpenses - additionalExpenses);
@@ -1087,8 +1180,6 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const ccExp = creditCardLimit * 0.038;
     const bnplExp = bnplLimit * 0.05;
     const slThreshold = 24128;
-    const primaryGross = baseSalary + shadedVar;
-    const partnerGross = applicationType === 'joint' ? partnerBaseSalary + shadedPVar : 0;
     const slMonthly = (hasStudentLoan && primaryGross > slThreshold ? (primaryGross - slThreshold) * 0.12 / 12 : 0)
                     + (partnerHasStudentLoan && partnerGross > slThreshold ? (partnerGross - slThreshold) * 0.12 / 12 : 0);
 
@@ -1186,14 +1277,22 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   }
 
   function calculateMaxBorrowing() {
-    const shadedVar = variableIncome * 0.8;
-    const shadedPVar = partnerVariableIncome * 0.8;
-    const primaryNet = calcNetIncome(baseSalary + shadedVar, kiwiSaverRate);
-    const partnerNet = applicationType === 'joint' ? calcNetIncome(partnerBaseSalary + shadedPVar, partnerKiwiSaverRate) : 0;
-    const boarderNet = (Math.min(boarderWeeklyIncome, 240) * 52 * numBoarders * 0.8) / 12;
-    const netMonthly = (primaryNet + partnerNet) / 12 + boarderNet;
+    const shadedVar = salaryMode === 'net' ? 0 : variableIncome * 0.8;
+    const shadedPVar = (applicationType === 'joint' && partnerSalaryMode !== 'net') ? partnerVariableIncome * 0.8 : 0;
 
-    const usableGross = baseSalary + shadedVar + (applicationType === 'joint' ? partnerBaseSalary : 0) + shadedPVar;
+    const primaryGross = salaryGrossEquivalentAnnual(false, shadedVar);
+    const partnerGross = applicationType === 'joint' ? salaryGrossEquivalentAnnual(true, shadedPVar) : 0;
+    const totalBase = primaryGross + partnerGross;
+
+    const primaryNet = salaryMode === 'net' ? salaryNetMonthly(false) * 12 : calcNetIncome(baseSalary + shadedVar, kiwiSaverRate);
+    const partnerNet = applicationType === 'joint'
+      ? (partnerSalaryMode === 'net' ? salaryNetMonthly(true) * 12 : calcNetIncome(partnerBaseSalary + shadedPVar, partnerKiwiSaverRate))
+      : 0;
+    const boarderNet = (Math.min(boarderWeeklyIncome, 240) * 52 * numBoarders * 0.8) / 12;
+    const govtMonthly = govtIncomeMonthlyFor(false) + (applicationType === 'joint' ? govtIncomeMonthlyFor(true) : 0);
+    const netMonthly = (primaryNet + partnerNet) / 12 + boarderNet + govtMonthly;
+
+    const usableGross = totalBase;
     const gleeFloor = 829 + (applicationType === 'single' ? 430 : 860) + dependents * 161 + Math.round((usableGross / 12) * 0.07);
     const coreDeclared = Math.round(declaredExpenses - additionalExpenses);
     const livingExp = Math.max(coreDeclared, gleeFloor) + Math.round(additionalExpenses);
@@ -1201,12 +1300,11 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const ccExp = creditCardLimit * 0.038;
     const bnplExp = bnplLimit * 0.05;
     const slThreshold = 24128;
-    const primarySL = hasStudentLoan ? Math.max(0, (baseSalary + shadedVar - slThreshold) * 0.12 / 12) : 0;
-    const partnerSL = partnerHasStudentLoan ? Math.max(0, (partnerBaseSalary + shadedPVar - slThreshold) * 0.12 / 12) : 0;
+    const primarySL = hasStudentLoan ? Math.max(0, (primaryGross - slThreshold) * 0.12 / 12) : 0;
+    const partnerSL = partnerHasStudentLoan ? Math.max(0, (partnerGross - slThreshold) * 0.12 / 12) : 0;
     const slMonthly = primarySL + partnerSL;
 
-    const totalBase = baseSalary + (applicationType === 'joint' ? partnerBaseSalary : 0);
-    const isKO = isFirstHomeBuyer && (applicationType === 'single' ? baseSalary <= 95000 : totalBase <= 150000);
+    const isKO = isFirstHomeBuyer && (applicationType === 'single' ? primaryGross <= 95000 : totalBase <= 150000);
     const reqUmi = isKO ? 200 : 500;
 
     const availableForMortgage = netMonthly - livingExp - ccExp - bnplExp - slMonthly - otherMonthlyLoans - reqUmi;
@@ -1423,20 +1521,46 @@ function BorrowChecker({ onSavePrompt, onSave }) {
           <div>
             <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>What's your annual income?</h2>
             <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 2rem' }}>Include all sources of regular income</p>
-            <MoneyField label={applicationType === 'joint' ? 'Your base salary or wages (before tax)' : 'Base salary or wages (before tax)'} value={baseSalary} onChange={setBaseSalary} placeholder="85,000" />
-            <MoneyField label={applicationType === 'joint' ? 'Your additional income from bonuses, overtime or commission (optional)' : 'Additional income from bonuses, overtime or commission (optional)'} value={variableIncome} onChange={setVariableIncome} placeholder="0" />
-            <div style={{ marginBottom: '2rem' }}>
-              <label style={labelStyle}>{applicationType === 'joint' ? 'Your KiwiSaver contribution rate' : 'KiwiSaver contribution rate'}</label>
-              <select value={kiwiSaverRate} onChange={e => setKiwiSaverRate(Number(e.target.value))} style={selectStyle}>
-                <option value={0}>Not contributing</option>
-                <option value={3}>3%</option>
-                <option value={3.5}>3.5% (default)</option>
-                <option value={4}>4%</option>
-                <option value={6}>6%</option>
-                <option value={8}>8%</option>
-                <option value={10}>10%</option>
-              </select>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={labelStyle}>{applicationType === 'joint' ? 'How is your income best described?' : 'How is your income best described?'}</label>
+              <SegmentedToggle
+                options={[{ value: 'gross', label: 'Gross (before tax)' }, { value: 'net', label: 'Net (take-home)' }]}
+                value={salaryMode}
+                onChange={setSalaryMode}
+              />
             </div>
+
+            {salaryMode === 'gross' ? (
+              <>
+                <MoneyField label={applicationType === 'joint' ? 'Your base salary or wages (before tax)' : 'Base salary or wages (before tax)'} value={baseSalary} onChange={setBaseSalary} placeholder="85,000" />
+                <MoneyField label={applicationType === 'joint' ? 'Your additional income from bonuses, overtime or commission (optional)' : 'Additional income from bonuses, overtime or commission (optional)'} value={variableIncome} onChange={setVariableIncome} placeholder="0" />
+                <div style={{ marginBottom: '2rem' }}>
+                  <label style={labelStyle}>{applicationType === 'joint' ? 'Your KiwiSaver contribution rate' : 'KiwiSaver contribution rate'}</label>
+                  <select value={kiwiSaverRate} onChange={e => setKiwiSaverRate(Number(e.target.value))} style={selectStyle}>
+                    <option value={0}>Not contributing</option>
+                    <option value={3}>3%</option>
+                    <option value={3.5}>3.5% (default)</option>
+                    <option value={4}>4%</option>
+                    <option value={6}>6%</option>
+                    <option value={8}>8%</option>
+                    <option value={10}>10%</option>
+                  </select>
+                </div>
+              </>
+            ) : (
+              <>
+                <MoneyField label={applicationType === 'joint' ? 'Your take-home pay' : 'Take-home pay'} value={netIncomeAmount} onChange={setNetIncomeAmount} placeholder="1,200" />
+                <div style={{ marginBottom: '2rem' }}>
+                  <label style={labelStyle}>Frequency</label>
+                  <SegmentedToggle
+                    options={[{ value: 'weekly', label: 'Weekly' }, { value: 'fortnightly', label: 'Fortnightly' }, { value: 'monthly', label: 'Monthly' }]}
+                    value={netIncomeFreq}
+                    onChange={setNetIncomeFreq}
+                  />
+                </div>
+              </>
+            )}
+
             <div style={{ background: C.inputBg, padding: '1.25rem', borderRadius: '12px', marginBottom: '2rem' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
                 <input type="checkbox" checked={hasStudentLoan} onChange={e => setHasStudentLoan(e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
@@ -1450,20 +1574,47 @@ function BorrowChecker({ onSavePrompt, onSave }) {
             {applicationType === 'joint' && (
               <div style={{ background: C.accentLight, borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', border: '1px solid rgba(168,181,229,0.3)' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 1.25rem', color: C.textPrimary }}>Partner's income</h3>
-                <MoneyField label="Partner's base salary or wages (before tax)" value={partnerBaseSalary} onChange={setPartnerBaseSalary} placeholder="0" />
-                <MoneyField label="Partner's additional income (optional)" value={partnerVariableIncome} onChange={setPartnerVariableIncome} placeholder="0" />
+
                 <div style={{ marginBottom: '1.25rem' }}>
-                  <label style={labelStyle}>Partner's KiwiSaver contribution rate</label>
-                  <select value={partnerKiwiSaverRate} onChange={e => setPartnerKiwiSaverRate(Number(e.target.value))} style={{ ...selectStyle, background: 'white' }}>
-                    <option value={0}>Not contributing</option>
-                    <option value={3}>3%</option>
-                    <option value={3.5}>3.5% (default)</option>
-                    <option value={4}>4%</option>
-                    <option value={6}>6%</option>
-                    <option value={8}>8%</option>
-                    <option value={10}>10%</option>
-                  </select>
+                  <label style={labelStyle}>How is your partner's income best described?</label>
+                  <SegmentedToggle
+                    options={[{ value: 'gross', label: 'Gross (before tax)' }, { value: 'net', label: 'Net (take-home)' }]}
+                    value={partnerSalaryMode}
+                    onChange={setPartnerSalaryMode}
+                  />
                 </div>
+
+                {partnerSalaryMode === 'gross' ? (
+                  <>
+                    <MoneyField label="Partner's base salary or wages (before tax)" value={partnerBaseSalary} onChange={setPartnerBaseSalary} placeholder="0" />
+                    <MoneyField label="Partner's additional income (optional)" value={partnerVariableIncome} onChange={setPartnerVariableIncome} placeholder="0" />
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <label style={labelStyle}>Partner's KiwiSaver contribution rate</label>
+                      <select value={partnerKiwiSaverRate} onChange={e => setPartnerKiwiSaverRate(Number(e.target.value))} style={{ ...selectStyle, background: 'white' }}>
+                        <option value={0}>Not contributing</option>
+                        <option value={3}>3%</option>
+                        <option value={3.5}>3.5% (default)</option>
+                        <option value={4}>4%</option>
+                        <option value={6}>6%</option>
+                        <option value={8}>8%</option>
+                        <option value={10}>10%</option>
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <MoneyField label="Partner's take-home pay" value={partnerNetIncomeAmount} onChange={setPartnerNetIncomeAmount} placeholder="1,200" />
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <label style={labelStyle}>Frequency</label>
+                      <SegmentedToggle
+                        options={[{ value: 'weekly', label: 'Weekly' }, { value: 'fortnightly', label: 'Fortnightly' }, { value: 'monthly', label: 'Monthly' }]}
+                        value={partnerNetIncomeFreq}
+                        onChange={setPartnerNetIncomeFreq}
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div style={{ background: 'rgba(168,181,229,0.15)', padding: '1rem', borderRadius: '10px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
                     <input type="checkbox" checked={partnerHasStudentLoan} onChange={e => setPartnerHasStudentLoan(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
@@ -1473,6 +1624,88 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                     </div>
                   </label>
                 </div>
+              </div>
+            )}
+
+            <div style={{ background: C.inputBg, padding: '1.25rem', borderRadius: '12px', marginBottom: hasGovtIncome ? '1.25rem' : '2rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={hasGovtIncome} onChange={e => setHasGovtIncome(e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                <div>
+                  <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>Do you receive any government income?</span>
+                  <span style={{ fontSize: '13px', color: C.textSecondary }}>Working for Families, child support, or NZ Superannuation</span>
+                </div>
+              </label>
+            </div>
+
+            {hasGovtIncome && (
+              <div style={{ background: C.accentLight, borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', border: '1px solid rgba(168,181,229,0.3)' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 1.25rem', color: C.textPrimary }}>{applicationType === 'joint' ? 'Your government income' : 'Government income'}</h3>
+
+                <MoneyField label="Working for Families" value={wffAmount} onChange={setWffAmount} placeholder="0" hint="Banks may accept Working for Families at 100% however acceptance is at the lender's discretion and is age dependent on your children." />
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={labelStyle}>Frequency</label>
+                  <SegmentedToggle
+                    options={[{ value: 'weekly', label: 'Weekly' }, { value: 'fortnightly', label: 'Fortnightly' }]}
+                    value={wffFreq}
+                    onChange={setWffFreq}
+                  />
+                </div>
+
+                <MoneyField label="Child support received" value={childSupportReceivedAmount} onChange={setChildSupportReceivedAmount} placeholder="0" hint="Child support received may be accepted at 100% however acceptance is at the lender's discretion and is age dependent on your children." />
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={labelStyle}>Frequency</label>
+                  <SegmentedToggle
+                    options={[{ value: 'weekly', label: 'Weekly' }, { value: 'fortnightly', label: 'Fortnightly' }, { value: 'monthly', label: 'Monthly' }]}
+                    value={childSupportReceivedFreq}
+                    onChange={setChildSupportReceivedFreq}
+                  />
+                </div>
+
+                <MoneyField label="NZ Superannuation (fortnightly)" value={nzSuperAmount} onChange={setNzSuperAmount} placeholder="0" />
+                <div style={{ marginBottom: applicationType === 'joint' ? '1.25rem' : 0 }}>
+                  <label style={labelStyle}>Is this before or after tax?</label>
+                  <SegmentedToggle
+                    options={[{ value: 'gross', label: 'Gross (before tax)' }, { value: 'net', label: 'Net (take-home)' }]}
+                    value={nzSuperMode}
+                    onChange={setNzSuperMode}
+                  />
+                </div>
+
+                {applicationType === 'joint' && (
+                  <div style={{ background: 'rgba(168,181,229,0.15)', borderRadius: '10px', padding: '1.25rem', marginTop: '1.5rem' }}>
+                    <h4 style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 1.1rem', color: C.textPrimary }}>Partner's government income</h4>
+
+                    <MoneyField label="Partner's Working for Families" value={partnerWffAmount} onChange={setPartnerWffAmount} placeholder="0" hint="Banks may accept Working for Families at 100% however acceptance is at the lender's discretion and is age dependent on your children." />
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <label style={labelStyle}>Frequency</label>
+                      <SegmentedToggle
+                        options={[{ value: 'weekly', label: 'Weekly' }, { value: 'fortnightly', label: 'Fortnightly' }]}
+                        value={partnerWffFreq}
+                        onChange={setPartnerWffFreq}
+                      />
+                    </div>
+
+                    <MoneyField label="Partner's child support received" value={partnerChildSupportReceivedAmount} onChange={setPartnerChildSupportReceivedAmount} placeholder="0" hint="Child support received may be accepted at 100% however acceptance is at the lender's discretion and is age dependent on your children." />
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <label style={labelStyle}>Frequency</label>
+                      <SegmentedToggle
+                        options={[{ value: 'weekly', label: 'Weekly' }, { value: 'fortnightly', label: 'Fortnightly' }, { value: 'monthly', label: 'Monthly' }]}
+                        value={partnerChildSupportReceivedFreq}
+                        onChange={setPartnerChildSupportReceivedFreq}
+                      />
+                    </div>
+
+                    <MoneyField label="Partner's NZ Superannuation (fortnightly)" value={partnerNzSuperAmount} onChange={setPartnerNzSuperAmount} placeholder="0" />
+                    <div>
+                      <label style={labelStyle}>Is this before or after tax?</label>
+                      <SegmentedToggle
+                        options={[{ value: 'gross', label: 'Gross (before tax)' }, { value: 'net', label: 'Net (take-home)' }]}
+                        value={partnerNzSuperMode}
+                        onChange={setPartnerNzSuperMode}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1498,6 +1731,17 @@ function BorrowChecker({ onSavePrompt, onSave }) {
             <MoneyField label="Total credit card limits" value={creditCardLimit} onChange={setCreditCardLimit} placeholder="0" hint="Add up all your credit card limits, even if you don't use them" />
             <MoneyField label="Buy Now Pay Later limits (Afterpay, Zip, etc.)" value={bnplLimit} onChange={setBnplLimit} placeholder="0" />
             <MoneyField label="Other loan repayments per month (car loans, personal loans, etc.)" value={otherMonthlyLoans} onChange={setOtherMonthlyLoans} placeholder="0" hint="For loan repayments only - not child support (add that in the expense calculator above)" />
+
+            {hasGovtIncome && (toMonthly(childSupportReceivedAmount, childSupportReceivedFreq) > 0 || toMonthly(partnerChildSupportReceivedAmount, partnerChildSupportReceivedFreq) > 0) && (
+              <div style={{ background: C.blueBg, border: `1px solid ${C.blueBorder}`, borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+                <label style={{ ...labelStyle, marginBottom: '0.25rem' }}>Child support received</label>
+                <p style={{ fontSize: '18px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.5rem' }}>
+                  ${fmtNZD(toMonthly(childSupportReceivedAmount, childSupportReceivedFreq) + toMonthly(partnerChildSupportReceivedAmount, partnerChildSupportReceivedFreq))} / month
+                </p>
+                <p style={{ fontSize: '13px', color: C.textSecondary, margin: 0 }}>Based on what you entered on the income page. Update it there if this changes.</p>
+              </div>
+            )}
+
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={labelStyle}>Monthly living expenses</label>
               <div style={inputWrap}>
