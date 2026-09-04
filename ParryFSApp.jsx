@@ -1180,8 +1180,8 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const ccExp = creditCardLimit * 0.038;
     const bnplExp = bnplLimit * 0.05;
     const slThreshold = 24128;
-    const slMonthly = (hasStudentLoan && primaryGross > slThreshold ? (primaryGross - slThreshold) * 0.12 / 12 : 0)
-                    + (partnerHasStudentLoan && partnerGross > slThreshold ? (partnerGross - slThreshold) * 0.12 / 12 : 0);
+    const slMonthly = (hasStudentLoan && salaryMode !== 'net' && primaryGross > slThreshold ? (primaryGross - slThreshold) * 0.12 / 12 : 0)
+                    + (partnerHasStudentLoan && partnerSalaryMode !== 'net' && partnerGross > slThreshold ? (partnerGross - slThreshold) * 0.12 / 12 : 0);
 
     const totalDebt = loan + creditCardLimit + bnplLimit;
     const dti = usableGross > 0 ? totalDebt / usableGross : 0;
@@ -1300,8 +1300,8 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const ccExp = creditCardLimit * 0.038;
     const bnplExp = bnplLimit * 0.05;
     const slThreshold = 24128;
-    const primarySL = hasStudentLoan ? Math.max(0, (primaryGross - slThreshold) * 0.12 / 12) : 0;
-    const partnerSL = partnerHasStudentLoan ? Math.max(0, (partnerGross - slThreshold) * 0.12 / 12) : 0;
+    const primarySL = hasStudentLoan && salaryMode !== 'net' ? Math.max(0, (primaryGross - slThreshold) * 0.12 / 12) : 0;
+    const partnerSL = partnerHasStudentLoan && partnerSalaryMode !== 'net' ? Math.max(0, (partnerGross - slThreshold) * 0.12 / 12) : 0;
     const slMonthly = primarySL + partnerSL;
 
     const isKO = isFirstHomeBuyer && (applicationType === 'single' ? primaryGross <= 95000 : totalBase <= 150000);
