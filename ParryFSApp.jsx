@@ -1561,15 +1561,17 @@ function BorrowChecker({ onSavePrompt, onSave }) {
               </>
             )}
 
-            <div style={{ background: C.inputBg, padding: '1.25rem', borderRadius: '12px', marginBottom: '2rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                <input type="checkbox" checked={hasStudentLoan} onChange={e => setHasStudentLoan(e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
-                <div>
-                  <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>I have a student loan</span>
-                  <span style={{ fontSize: '13px', color: C.textSecondary }}>Repayments will be calculated based on your income</span>
-                </div>
-              </label>
-            </div>
+            {salaryMode !== 'net' && (
+              <div style={{ background: C.inputBg, padding: '1.25rem', borderRadius: '12px', marginBottom: '2rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={hasStudentLoan} onChange={e => setHasStudentLoan(e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                  <div>
+                    <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>I have a student loan</span>
+                    <span style={{ fontSize: '13px', color: C.textSecondary }}>Repayments will be calculated based on your income</span>
+                  </div>
+                </label>
+              </div>
+            )}
 
             {applicationType === 'joint' && (
               <div style={{ background: C.accentLight, borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', border: '1px solid rgba(168,181,229,0.3)' }}>
@@ -1615,15 +1617,17 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                   </>
                 )}
 
-                <div style={{ background: 'rgba(168,181,229,0.15)', padding: '1rem', borderRadius: '10px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={partnerHasStudentLoan} onChange={e => setPartnerHasStudentLoan(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
-                    <div>
-                      <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>Partner has a student loan</span>
-                      <span style={{ fontSize: '12px', color: C.textSecondary }}>Repayments calculated on partner's income</span>
-                    </div>
-                  </label>
-                </div>
+                {partnerSalaryMode !== 'net' && (
+                  <div style={{ background: 'rgba(168,181,229,0.15)', padding: '1rem', borderRadius: '10px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={partnerHasStudentLoan} onChange={e => setPartnerHasStudentLoan(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
+                      <div>
+                        <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>Partner has a student loan</span>
+                        <span style={{ fontSize: '12px', color: C.textSecondary }}>Repayments calculated on partner's income</span>
+                      </div>
+                    </label>
+                  </div>
+                )}
               </div>
             )}
 
