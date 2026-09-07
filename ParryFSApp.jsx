@@ -2122,7 +2122,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: showUmiBreakdown ? '1rem' : 0 }}>
                   <div>
                     <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 0.5rem', fontWeight: '500' }}>Left each month</p>
-                    <p style={{ fontSize: '26px', fontWeight: '500', margin: 0, color: results.umiPass ? C.green : C.red }}>${fmtNZD(Math.max(0, results.umi))}</p>
+                    <p style={{ fontSize: '26px', fontWeight: '500', margin: 0, color: results.umiPass ? C.green : C.red }}>{results.umi < 0 ? '-' : ''}${fmtNZD(Math.abs(results.umi))}</p>
                   </div>
                   <i className={`ti ti-chevron-${showUmiBreakdown ? 'up' : 'down'}`} style={{ fontSize: '20px', color: C.textPrimary }} />
                 </div>
@@ -2147,7 +2147,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                       ))}
                       <div style={{ borderTop: `2px solid ${C.borderLight}`, paddingTop: '0.75rem', marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontWeight: '500', color: C.textPrimary, flex: 1 }}>Uncommitted monthly income</span>
-                        <span style={{ fontWeight: '600', fontSize: '16px', color: results.umiPass ? C.green : C.red, flexShrink: 0 }}>${fmtNZD(Math.max(0, results.umi))}</span>
+                        <span style={{ fontWeight: '600', fontSize: '16px', color: results.umiPass ? C.green : C.red, flexShrink: 0 }}>{results.umi < 0 ? '-' : ''}${fmtNZD(Math.abs(results.umi))}</span>
                       </div>
                       <div style={{ marginTop: '1rem', padding: '0.75rem', background: results.umiPass ? '#E8F5E9' : '#FFEBEE', borderRadius: '8px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
