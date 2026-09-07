@@ -1331,7 +1331,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
 
     // Over 55 note for standard lending
     if (isOver55) {
-      feedback.push({ type: 'info', title: 'Age consideration', message: `As you're over 55, your mortgage adviser will need to document a retirement repayment strategy as part of your application. This is standard practice and doesn't prevent you from borrowing.` });
+      feedback.push({ type: 'info', title: 'Age consideration', message: `As you're 55 or over, your mortgage adviser will need to document a retirement repayment strategy as part of your application. This is standard practice and doesn't prevent you from borrowing.` });
     }
 
     // Success feedback
