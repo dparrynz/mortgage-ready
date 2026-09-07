@@ -1149,6 +1149,17 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     return wffMonthly + csMonthly + superMonthly;
   }
 
+  // Annual gross-equivalent NZ Super for one applicant, or 0 if none/not applicable.
+  // NZ Super is taxable income and counts toward Kainga Ora / DTI gross income tests, unlike
+  // WFF and child support received, which are non-taxable and excluded from those tests.
+  function nzSuperGrossAnnualFor(isPartner) {
+    if (!hasGovtIncome) return 0;
+    const amt = isPartner ? partnerNzSuperAmount : nzSuperAmount;
+    const mode = isPartner ? partnerNzSuperMode : nzSuperMode;
+    if (!amt) return 0;
+    return mode === 'gross' ? amt * 26 : grossUpIncome(amt * 26, 0);
+  }
+
   function calculate() {
     const loan = purchasePrice - deposit;
     const lvr = (loan / purchasePrice) * 100;
@@ -1158,11 +1169,13 @@ function BorrowChecker({ onSavePrompt, onSave }) {
 
     const primaryGross = salaryGrossEquivalentAnnual(false, shadedVar);
     const partnerGross = applicationType === 'joint' ? salaryGrossEquivalentAnnual(true, shadedPVar) : 0;
-    const totalBase = primaryGross + partnerGross;
+    const primaryGrossWithSuper = primaryGross + nzSuperGrossAnnualFor(false);
+    const partnerGrossWithSuper = partnerGross + (applicationType === 'joint' ? nzSuperGrossAnnualFor(true) : 0);
+    const totalBase = primaryGrossWithSuper + partnerGrossWithSuper;
 
     // Kainga Ora eligibility - individual threshold $95k, joint threshold $150k
     const isKO = isFirstHomeBuyer && (
-      applicationType === 'single' ? primaryGross <= 95000 : totalBase <= 150000
+      applicationType === 'single' ? primaryGrossWithSuper <= 95000 : totalBase <= 150000
     );
 
     // Minimum deposit:
@@ -1300,7 +1313,9 @@ function BorrowChecker({ onSavePrompt, onSave }) {
 
     const primaryGross = salaryGrossEquivalentAnnual(false, shadedVar);
     const partnerGross = applicationType === 'joint' ? salaryGrossEquivalentAnnual(true, shadedPVar) : 0;
-    const totalBase = primaryGross + partnerGross;
+    const primaryGrossWithSuper = primaryGross + nzSuperGrossAnnualFor(false);
+    const partnerGrossWithSuper = partnerGross + (applicationType === 'joint' ? nzSuperGrossAnnualFor(true) : 0);
+    const totalBase = primaryGrossWithSuper + partnerGrossWithSuper;
 
     const primaryNet = salaryMode === 'net' ? salaryNetMonthly(false) * 12 : calcNetIncome(baseSalary + shadedVar, kiwiSaverRate);
     const partnerNet = applicationType === 'joint'
@@ -1322,7 +1337,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const partnerSL = partnerHasStudentLoan && partnerSalaryMode !== 'net' ? Math.max(0, (partnerGross - slThreshold) * 0.12 / 12) : 0;
     const slMonthly = primarySL + partnerSL;
 
-    const isKO = isFirstHomeBuyer && (applicationType === 'single' ? primaryGross <= 95000 : totalBase <= 150000);
+    const isKO = isFirstHomeBuyer && (applicationType === 'single' ? primaryGrossWithSuper <= 95000 : totalBase <= 150000);
     const reqUmi = isKO ? 200 : 500;
 
     const availableForMortgage = netMonthly - livingExp - ccExp - bnplExp - slMonthly - otherMonthlyLoans - reqUmi;
