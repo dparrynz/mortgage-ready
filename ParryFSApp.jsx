@@ -1321,8 +1321,12 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     }
 
     // Living expenses floor notification
+    // gleeFloor is a bank-minimum for CORE expenses only, so it must be compared against
+    // coreDeclared (not the full declaredExpenses, which also includes entertainment,
+    // donations, child support etc. - additionalExpenses is always added on top of whichever
+    // of the two is used, so it isn't part of this comparison either way).
     if (usingGlee) {
-      feedback.push({ type: 'info', title: 'Living expenses adjusted', message: `Banks use standard minimum living costs of $${fmtNZD(gleeFloor)} per month for your situation, which is higher than what you declared.` });
+      feedback.push({ type: 'info', title: 'Living expenses adjusted', message: `Banks use standard minimum living costs of $${fmtNZD(gleeFloor)} per month for your core expenses, which is higher than the $${fmtNZD(coreDeclared)} you declared. Combined with your other declared expenses, this calculation uses $${fmtNZD(livingExp)} per month in total.` });
     }
 
     // Over 55 note for standard lending
