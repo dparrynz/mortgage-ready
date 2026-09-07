@@ -1029,6 +1029,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     setExpenseItems(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
   };
   const [results, setResults] = useState(null);
+  const [validationError, setValidationError] = useState(null);
   const [showRepayCalc, setShowRepayCalc] = useState(false);
   const [showDepositOptions, setShowDepositOptions] = useState(false);
   const [showUmiBreakdown, setShowUmiBreakdown] = useState(false);
@@ -1036,8 +1037,42 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   const [calcRate, setCalcRate] = useState(6.5);
   const [calcTerm, setCalcTerm] = useState(30);
 
+  // Total household income across every source (salary/wages, government income, boarders) -
+  // used to catch the "nothing entered" case regardless of which income type it came from,
+  // so e.g. a NZ Super-only applicant with $0 salary still passes.
+  function hasAnyIncome() {
+    const primaryIncome = salaryMode === 'net'
+      ? (parseFloat(netIncomeAmount) || 0)
+      : (parseFloat(baseSalary) || 0) + (parseFloat(variableIncome) || 0);
+    const partnerIncome = applicationType === 'joint'
+      ? (partnerSalaryMode === 'net'
+          ? (parseFloat(partnerNetIncomeAmount) || 0)
+          : (parseFloat(partnerBaseSalary) || 0) + (parseFloat(partnerVariableIncome) || 0))
+      : 0;
+    const govtIncome = hasGovtIncome
+      ? (parseFloat(wffAmount) || 0) + (parseFloat(childSupportReceivedAmount) || 0) + (parseFloat(nzSuperAmount) || 0)
+        + (applicationType === 'joint'
+            ? (parseFloat(partnerWffAmount) || 0) + (parseFloat(partnerChildSupportReceivedAmount) || 0) + (parseFloat(partnerNzSuperAmount) || 0)
+            : 0)
+      : 0;
+    const boarderIncome = numBoarders > 0 ? (parseFloat(boarderWeeklyIncome) || 0) : 0;
+    return (primaryIncome + partnerIncome + govtIncome + boarderIncome) > 0;
+  }
+
   useEffect(() => {
     if (page === 5) {
+      if (mode === 'know' && (!purchasePrice || purchasePrice <= 0)) {
+        setValidationError('Enter a purchase price on the first step to see your results.');
+        setResults(null);
+        return;
+      }
+      if (!hasAnyIncome()) {
+        setValidationError('Enter at least one source of income to see your results.');
+        setResults(null);
+        setMaxBorrowing(null);
+        return;
+      }
+      setValidationError(null);
       if (mode === 'discover') {
         calculateMaxBorrowing();
       } else {
@@ -1909,6 +1944,16 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* PAGE 5 - VALIDATION ERROR (missing income or purchase price) */}
+        {page === 5 && validationError && (
+          <div>
+            <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 1rem', color: C.textPrimary }}>We need a bit more information</h2>
+            <div style={{ background: C.orangeBg, border: `1px solid ${C.orangeBorder}`, borderRadius: '12px', padding: '1.25rem 1.5rem' }}>
+              <p style={{ fontSize: '14px', color: C.textPrimary, margin: 0 }}>{validationError}</p>
+            </div>
           </div>
         )}
 
