@@ -1094,6 +1094,21 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     return gross - tax - acc + ietc - gross * (ksRate / 100);
   }
 
+  // Inverts calcNetIncome via bisection - estimates the gross salary that would produce a given
+  // take-home pay at a given KiwiSaver rate. Used only for eligibility/gate checks (KO threshold,
+  // DTI, GLEE floor) that are legislated on gross income; an approximation when income is entered
+  // as net, since real take-home pay may reflect deductions (student loan, secondary tax, etc.)
+  // this formula doesn't model.
+  function grossUpIncome(netAnnual, ksRate) {
+    if (!netAnnual || netAnnual <= 0) return 0;
+    let lo = 0, hi = Math.max(netAnnual * 2, 300000);
+    for (let i = 0; i < 50; i++) {
+      const mid = (lo + hi) / 2;
+      if (calcNetIncome(mid, ksRate) < netAnnual) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
   // Monthly net salary when that applicant is in Net (take-home) mode. Returns null in Gross mode.
   function salaryNetMonthly(isPartner) {
     const smode = isPartner ? partnerSalaryMode : salaryMode;
@@ -1107,7 +1122,10 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   // regardless of whether the applicant entered gross or net income.
   function salaryGrossEquivalentAnnual(isPartner, shadedVarForApplicant) {
     const smode = isPartner ? partnerSalaryMode : salaryMode;
-    if (smode === 'net') return salaryNetMonthly(isPartner) * 12;
+    if (smode === 'net') {
+      const ksRate = isPartner ? partnerKiwiSaverRate : kiwiSaverRate;
+      return grossUpIncome(salaryNetMonthly(isPartner) * 12, ksRate);
+    }
     const base = isPartner ? partnerBaseSalary : baseSalary;
     return base + shadedVarForApplicant;
   }
@@ -1550,13 +1568,26 @@ function BorrowChecker({ onSavePrompt, onSave }) {
             ) : (
               <>
                 <MoneyField label={applicationType === 'joint' ? 'Your take-home pay' : 'Take-home pay'} value={netIncomeAmount} onChange={setNetIncomeAmount} placeholder="1,200" />
-                <div style={{ marginBottom: '2rem' }}>
+                <div style={{ marginBottom: '1.25rem' }}>
                   <label style={labelStyle}>Frequency</label>
                   <SegmentedToggle
                     options={[{ value: 'weekly', label: 'Weekly' }, { value: 'fortnightly', label: 'Fortnightly' }, { value: 'monthly', label: 'Monthly' }]}
                     value={netIncomeFreq}
                     onChange={setNetIncomeFreq}
                   />
+                </div>
+                <div style={{ marginBottom: '2rem' }}>
+                  <label style={labelStyle}>KiwiSaver contribution rate</label>
+                  <select value={kiwiSaverRate} onChange={e => setKiwiSaverRate(Number(e.target.value))} style={selectStyle}>
+                    <option value={0}>Not contributing</option>
+                    <option value={3}>3%</option>
+                    <option value={3.5}>3.5% (default)</option>
+                    <option value={4}>4%</option>
+                    <option value={6}>6%</option>
+                    <option value={8}>8%</option>
+                    <option value={10}>10%</option>
+                  </select>
+                  <p style={{ fontSize: '12px', color: C.textSecondary, margin: '0.5rem 0 0' }}>Used to estimate your gross income for eligibility checks (Kainga Ora, debt-to-income)</p>
                 </div>
               </>
             )}
@@ -1613,6 +1644,18 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                         value={partnerNetIncomeFreq}
                         onChange={setPartnerNetIncomeFreq}
                       />
+                    </div>
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <label style={labelStyle}>Partner's KiwiSaver contribution rate</label>
+                      <select value={partnerKiwiSaverRate} onChange={e => setPartnerKiwiSaverRate(Number(e.target.value))} style={{ ...selectStyle, background: 'white' }}>
+                        <option value={0}>Not contributing</option>
+                        <option value={3}>3%</option>
+                        <option value={3.5}>3.5% (default)</option>
+                        <option value={4}>4%</option>
+                        <option value={6}>6%</option>
+                        <option value={8}>8%</option>
+                        <option value={10}>10%</option>
+                      </select>
                     </div>
                   </>
                 )}
