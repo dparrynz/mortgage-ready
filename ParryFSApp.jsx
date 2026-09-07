@@ -958,6 +958,8 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   const [nzSuperMode, setNzSuperMode] = useState('gross');
   const [partnerNzSuperAmount, setPartnerNzSuperAmount] = useState(0);
   const [partnerNzSuperMode, setPartnerNzSuperMode] = useState('gross');
+  // Boarder income has no gross/net toggle by design - board payments aren't taxable income,
+  // so the gross/net distinction that applies to salary, NZ Super etc. doesn't apply here.
   const [numBoarders, setNumBoarders] = useState(0);
   const [boarderWeeklyIncome, setBoarderWeeklyIncome] = useState(0);
   const [creditCardLimit, setCreditCardLimit] = useState(0);
