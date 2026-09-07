@@ -1379,14 +1379,6 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const slMonthly = primarySL + partnerSL;
 
     const isKO = isFirstHomeBuyer && (applicationType === 'single' ? primaryGrossWithSuper <= 95000 : totalBase <= 150000);
-    const reqUmi = isKO ? 200 : 500;
-
-    const availableForMortgage = netMonthly - livingExp - ccExp - bnplExp - slMonthly - otherMonthlyLoans - reqUmi;
-
-    if (availableForMortgage <= 0) {
-      setMaxBorrowing({ maxLoan: 0, maxPurchase: deposit, canBorrow: false, tips: [] });
-      return;
-    }
 
     const primaryAge = parseInt(applicantAge) || 0;
     const partnerAgeInt = parseInt(partnerAge) || 0;
@@ -1394,10 +1386,35 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const loanTerm = isKO && olderAge > 0 ? Math.min(30, Math.max(1, 72 - olderAge)) : 30;
     const n = loanTerm * 12;
     const r = 0.07 / 12;
-
-    const maxLoanFromServicing = availableForMortgage * (Math.pow(1 + r, n) - 1) / (r * Math.pow(1 + r, n));
     const maxLoanFromDTI = usableGross * 6 - creditCardLimit - bnplLimit;
-    const maxLoan = Math.max(0, Math.min(maxLoanFromServicing, maxLoanFromDTI));
+
+    // The <20%-deposit servicing buffer ($500 vs $200) depends on the resulting purchase
+    // price's LVR, but that price is what we're solving for here (unlike Know-price mode,
+    // where price is a known input) - so resolve it with a small fixed-point loop instead of
+    // assuming the loose (>=20%) buffer applies regardless of the deposit actually entered.
+    function maxLoanFor(reqUmi) {
+      const availableForMortgage = netMonthly - livingExp - ccExp - bnplExp - slMonthly - otherMonthlyLoans - reqUmi;
+      if (availableForMortgage <= 0) return 0;
+      const maxLoanFromServicing = availableForMortgage * (Math.pow(1 + r, n) - 1) / (r * Math.pow(1 + r, n));
+      return Math.max(0, Math.min(maxLoanFromServicing, maxLoanFromDTI));
+    }
+
+    let reqUmi = 200; // optimistic starting guess - refined below if it turns out deposit is <20%
+    let maxLoan = maxLoanFor(reqUmi);
+    for (let i = 0; i < 5; i++) {
+      const maxPurchaseGuess = maxLoan + deposit;
+      const depositPctGuess = maxPurchaseGuess > 0 ? (deposit / maxPurchaseGuess) * 100 : 0;
+      const nextReqUmi = isKO ? 200 : (depositPctGuess >= 20 ? 200 : 500);
+      if (nextReqUmi === reqUmi) break;
+      reqUmi = nextReqUmi;
+      maxLoan = maxLoanFor(reqUmi);
+    }
+
+    if (maxLoan <= 0) {
+      setMaxBorrowing({ maxLoan: 0, maxPurchase: deposit, canBorrow: false, tips: [] });
+      return;
+    }
+
     const maxPurchase = maxLoan + deposit;
 
     const tips = [];
