@@ -294,7 +294,7 @@ const RateField = ({ label, value, onChange, placeholder = '0.00', hint }) => (
 );
 
 const SegmentedToggle = ({ options, value, onChange }) => (
-  <div style={{ display: 'flex', gap: '4px', background: 'white', borderRadius: '10px', padding: '4px', width: 'fit-content' }}>
+  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', background: 'white', borderRadius: '10px', padding: '4px', width: 'fit-content', maxWidth: '100%', boxSizing: 'border-box' }}>
     {options.map(opt => (
       <button
         key={opt.value}
@@ -305,6 +305,10 @@ const SegmentedToggle = ({ options, value, onChange }) => (
           color: value === opt.value ? 'white' : C.textSecondary,
           border: 'none',
           padding: '8px 16px',
+          minHeight: '44px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           borderRadius: '8px',
           fontSize: '13px',
           fontWeight: '500',
@@ -959,6 +963,8 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   const [nzSuperMode, setNzSuperMode] = useState('gross');
   const [partnerNzSuperAmount, setPartnerNzSuperAmount] = useState(0);
   const [partnerNzSuperMode, setPartnerNzSuperMode] = useState('gross');
+  // Boarder income has no gross/net toggle by design - board payments aren't taxable income,
+  // so the gross/net distinction that applies to salary, NZ Super etc. doesn't apply here.
   const [numBoarders, setNumBoarders] = useState(0);
   const [boarderWeeklyIncome, setBoarderWeeklyIncome] = useState(0);
   const [creditCardLimit, setCreditCardLimit] = useState(0);
@@ -1000,7 +1006,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     otherLiving: 'Other living expenses',
   };
 
-  const ADDITIONAL_EXPENSE_KEYS = ['entertainmentRecreation', 'donationsTithing', 'childSupport', 'otherLiving', 'lifeDisabilityIncome'];
+  const ADDITIONAL_EXPENSE_KEYS = ['entertainmentRecreation', 'donationsTithing', 'childSupport', 'otherLiving'];
 
   const toMonthly = (amount, freq) => {
     const num = parseFloat(amount) || 0;
@@ -1028,6 +1034,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     setExpenseItems(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
   };
   const [results, setResults] = useState(null);
+  const [validationError, setValidationError] = useState(null);
   const [showRepayCalc, setShowRepayCalc] = useState(false);
   const [showDepositOptions, setShowDepositOptions] = useState(false);
   const [showUmiBreakdown, setShowUmiBreakdown] = useState(false);
@@ -1035,8 +1042,42 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   const [calcRate, setCalcRate] = useState(6.5);
   const [calcTerm, setCalcTerm] = useState(30);
 
+  // Total household income across every source (salary/wages, government income, boarders) -
+  // used to catch the "nothing entered" case regardless of which income type it came from,
+  // so e.g. a NZ Super-only applicant with $0 salary still passes.
+  function hasAnyIncome() {
+    const primaryIncome = salaryMode === 'net'
+      ? (parseFloat(netIncomeAmount) || 0)
+      : (parseFloat(baseSalary) || 0) + (parseFloat(variableIncome) || 0);
+    const partnerIncome = applicationType === 'joint'
+      ? (partnerSalaryMode === 'net'
+          ? (parseFloat(partnerNetIncomeAmount) || 0)
+          : (parseFloat(partnerBaseSalary) || 0) + (parseFloat(partnerVariableIncome) || 0))
+      : 0;
+    const govtIncome = hasGovtIncome
+      ? (parseFloat(wffAmount) || 0) + (parseFloat(childSupportReceivedAmount) || 0) + (parseFloat(nzSuperAmount) || 0)
+        + (applicationType === 'joint'
+            ? (parseFloat(partnerWffAmount) || 0) + (parseFloat(partnerChildSupportReceivedAmount) || 0) + (parseFloat(partnerNzSuperAmount) || 0)
+            : 0)
+      : 0;
+    const boarderIncome = numBoarders > 0 ? (parseFloat(boarderWeeklyIncome) || 0) : 0;
+    return (primaryIncome + partnerIncome + govtIncome + boarderIncome) > 0;
+  }
+
   useEffect(() => {
     if (page === 5) {
+      if (mode === 'know' && (!purchasePrice || purchasePrice <= 0)) {
+        setValidationError('Enter a purchase price on the first step to see your results.');
+        setResults(null);
+        return;
+      }
+      if (!hasAnyIncome()) {
+        setValidationError('Enter at least one source of income to see your results.');
+        setResults(null);
+        setMaxBorrowing(null);
+        return;
+      }
+      setValidationError(null);
       if (mode === 'discover') {
         calculateMaxBorrowing();
       } else {
@@ -1095,6 +1136,21 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     return gross - tax - acc + ietc - gross * (ksRate / 100);
   }
 
+  // Inverts calcNetIncome via bisection - estimates the gross salary that would produce a given
+  // take-home pay at a given KiwiSaver rate. Used only for eligibility/gate checks (KO threshold,
+  // DTI, GLEE floor) that are legislated on gross income; an approximation when income is entered
+  // as net, since real take-home pay may reflect deductions (student loan, secondary tax, etc.)
+  // this formula doesn't model.
+  function grossUpIncome(netAnnual, ksRate) {
+    if (!netAnnual || netAnnual <= 0) return 0;
+    let lo = 0, hi = Math.max(netAnnual * 2, 300000);
+    for (let i = 0; i < 50; i++) {
+      const mid = (lo + hi) / 2;
+      if (calcNetIncome(mid, ksRate) < netAnnual) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
   // Monthly net salary when that applicant is in Net (take-home) mode. Returns null in Gross mode.
   function salaryNetMonthly(isPartner) {
     const smode = isPartner ? partnerSalaryMode : salaryMode;
@@ -1108,7 +1164,10 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   // regardless of whether the applicant entered gross or net income.
   function salaryGrossEquivalentAnnual(isPartner, shadedVarForApplicant) {
     const smode = isPartner ? partnerSalaryMode : salaryMode;
-    if (smode === 'net') return salaryNetMonthly(isPartner) * 12;
+    if (smode === 'net') {
+      const ksRate = isPartner ? partnerKiwiSaverRate : kiwiSaverRate;
+      return grossUpIncome(salaryNetMonthly(isPartner) * 12, ksRate);
+    }
     const base = isPartner ? partnerBaseSalary : baseSalary;
     return base + shadedVarForApplicant;
   }
@@ -1132,6 +1191,17 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     return wffMonthly + csMonthly + superMonthly;
   }
 
+  // Annual gross-equivalent NZ Super for one applicant, or 0 if none/not applicable.
+  // NZ Super is taxable income and counts toward Kainga Ora / DTI gross income tests, unlike
+  // WFF and child support received, which are non-taxable and excluded from those tests.
+  function nzSuperGrossAnnualFor(isPartner) {
+    if (!hasGovtIncome) return 0;
+    const amt = isPartner ? partnerNzSuperAmount : nzSuperAmount;
+    const mode = isPartner ? partnerNzSuperMode : nzSuperMode;
+    if (!amt) return 0;
+    return mode === 'gross' ? amt * 26 : grossUpIncome(amt * 26, 0);
+  }
+
   function calculate() {
     const loan = purchasePrice - deposit;
     const lvr = (loan / purchasePrice) * 100;
@@ -1141,11 +1211,13 @@ function BorrowChecker({ onSavePrompt, onSave }) {
 
     const primaryGross = salaryGrossEquivalentAnnual(false, shadedVar);
     const partnerGross = applicationType === 'joint' ? salaryGrossEquivalentAnnual(true, shadedPVar) : 0;
-    const totalBase = primaryGross + partnerGross;
+    const primaryGrossWithSuper = primaryGross + nzSuperGrossAnnualFor(false);
+    const partnerGrossWithSuper = partnerGross + (applicationType === 'joint' ? nzSuperGrossAnnualFor(true) : 0);
+    const totalBase = primaryGrossWithSuper + partnerGrossWithSuper;
 
     // Kainga Ora eligibility - individual threshold $95k, joint threshold $150k
     const isKO = isFirstHomeBuyer && (
-      applicationType === 'single' ? primaryGross <= 95000 : totalBase <= 150000
+      applicationType === 'single' ? primaryGrossWithSuper <= 95000 : totalBase <= 150000
     );
 
     // Minimum deposit:
@@ -1181,8 +1253,8 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const ccExp = creditCardLimit * 0.038;
     const bnplExp = bnplLimit * 0.05;
     const slThreshold = 24128;
-    const slMonthly = (hasStudentLoan && primaryGross > slThreshold ? (primaryGross - slThreshold) * 0.12 / 12 : 0)
-                    + (partnerHasStudentLoan && partnerGross > slThreshold ? (partnerGross - slThreshold) * 0.12 / 12 : 0);
+    const slMonthly = (hasStudentLoan && salaryMode !== 'net' && primaryGross > slThreshold ? (primaryGross - slThreshold) * 0.12 / 12 : 0)
+                    + (partnerHasStudentLoan && partnerSalaryMode !== 'net' && partnerGross > slThreshold ? (partnerGross - slThreshold) * 0.12 / 12 : 0);
 
     const totalDebt = loan + creditCardLimit + bnplLimit;
     const dti = usableGross > 0 ? totalDebt / usableGross : 0;
@@ -1254,13 +1326,17 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     }
 
     // Living expenses floor notification
+    // gleeFloor is a bank-minimum for CORE expenses only, so it must be compared against
+    // coreDeclared (not the full declaredExpenses, which also includes entertainment,
+    // donations, child support etc. - additionalExpenses is always added on top of whichever
+    // of the two is used, so it isn't part of this comparison either way).
     if (usingGlee) {
-      feedback.push({ type: 'info', title: 'Living expenses adjusted', message: `Banks use standard minimum living costs of $${fmtNZD(gleeFloor)} per month for your situation, which is higher than what you declared.` });
+      feedback.push({ type: 'info', title: 'Living expenses adjusted', message: `Banks use standard minimum living costs of $${fmtNZD(gleeFloor)} per month for your core expenses, which is higher than the $${fmtNZD(coreDeclared)} you declared. Combined with your other declared expenses, this calculation uses $${fmtNZD(livingExp)} per month in total.` });
     }
 
     // Over 55 note for standard lending
     if (isOver55) {
-      feedback.push({ type: 'info', title: 'Age consideration', message: `As you're over 55, your mortgage adviser will need to document a retirement repayment strategy as part of your application. This is standard practice and doesn't prevent you from borrowing.` });
+      feedback.push({ type: 'info', title: 'Age consideration', message: `As you're 55 or over, your mortgage adviser will need to document a retirement repayment strategy as part of your application. This is standard practice and doesn't prevent you from borrowing.` });
     }
 
     // Success feedback
@@ -1283,7 +1359,9 @@ function BorrowChecker({ onSavePrompt, onSave }) {
 
     const primaryGross = salaryGrossEquivalentAnnual(false, shadedVar);
     const partnerGross = applicationType === 'joint' ? salaryGrossEquivalentAnnual(true, shadedPVar) : 0;
-    const totalBase = primaryGross + partnerGross;
+    const primaryGrossWithSuper = primaryGross + nzSuperGrossAnnualFor(false);
+    const partnerGrossWithSuper = partnerGross + (applicationType === 'joint' ? nzSuperGrossAnnualFor(true) : 0);
+    const totalBase = primaryGrossWithSuper + partnerGrossWithSuper;
 
     const primaryNet = salaryMode === 'net' ? salaryNetMonthly(false) * 12 : calcNetIncome(baseSalary + shadedVar, kiwiSaverRate);
     const partnerNet = applicationType === 'joint'
@@ -1301,19 +1379,11 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const ccExp = creditCardLimit * 0.038;
     const bnplExp = bnplLimit * 0.05;
     const slThreshold = 24128;
-    const primarySL = hasStudentLoan ? Math.max(0, (primaryGross - slThreshold) * 0.12 / 12) : 0;
-    const partnerSL = partnerHasStudentLoan ? Math.max(0, (partnerGross - slThreshold) * 0.12 / 12) : 0;
+    const primarySL = hasStudentLoan && salaryMode !== 'net' ? Math.max(0, (primaryGross - slThreshold) * 0.12 / 12) : 0;
+    const partnerSL = partnerHasStudentLoan && partnerSalaryMode !== 'net' ? Math.max(0, (partnerGross - slThreshold) * 0.12 / 12) : 0;
     const slMonthly = primarySL + partnerSL;
 
-    const isKO = isFirstHomeBuyer && (applicationType === 'single' ? primaryGross <= 95000 : totalBase <= 150000);
-    const reqUmi = isKO ? 200 : 500;
-
-    const availableForMortgage = netMonthly - livingExp - ccExp - bnplExp - slMonthly - otherMonthlyLoans - reqUmi;
-
-    if (availableForMortgage <= 0) {
-      setMaxBorrowing({ maxLoan: 0, maxPurchase: deposit, canBorrow: false, tips: [] });
-      return;
-    }
+    const isKO = isFirstHomeBuyer && (applicationType === 'single' ? primaryGrossWithSuper <= 95000 : totalBase <= 150000);
 
     const primaryAge = parseInt(applicantAge) || 0;
     const partnerAgeInt = parseInt(partnerAge) || 0;
@@ -1321,10 +1391,35 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const loanTerm = isKO && olderAge > 0 ? Math.min(30, Math.max(1, 72 - olderAge)) : 30;
     const n = loanTerm * 12;
     const r = 0.07 / 12;
-
-    const maxLoanFromServicing = availableForMortgage * (Math.pow(1 + r, n) - 1) / (r * Math.pow(1 + r, n));
     const maxLoanFromDTI = usableGross * 6 - creditCardLimit - bnplLimit;
-    const maxLoan = Math.max(0, Math.min(maxLoanFromServicing, maxLoanFromDTI));
+
+    // The <20%-deposit servicing buffer ($500 vs $200) depends on the resulting purchase
+    // price's LVR, but that price is what we're solving for here (unlike Know-price mode,
+    // where price is a known input) - so resolve it with a small fixed-point loop instead of
+    // assuming the loose (>=20%) buffer applies regardless of the deposit actually entered.
+    function maxLoanFor(reqUmi) {
+      const availableForMortgage = netMonthly - livingExp - ccExp - bnplExp - slMonthly - otherMonthlyLoans - reqUmi;
+      if (availableForMortgage <= 0) return 0;
+      const maxLoanFromServicing = availableForMortgage * (Math.pow(1 + r, n) - 1) / (r * Math.pow(1 + r, n));
+      return Math.max(0, Math.min(maxLoanFromServicing, maxLoanFromDTI));
+    }
+
+    let reqUmi = 200; // optimistic starting guess - refined below if it turns out deposit is <20%
+    let maxLoan = maxLoanFor(reqUmi);
+    for (let i = 0; i < 5; i++) {
+      const maxPurchaseGuess = maxLoan + deposit;
+      const depositPctGuess = maxPurchaseGuess > 0 ? (deposit / maxPurchaseGuess) * 100 : 0;
+      const nextReqUmi = isKO ? 200 : (depositPctGuess >= 20 ? 200 : 500);
+      if (nextReqUmi === reqUmi) break;
+      reqUmi = nextReqUmi;
+      maxLoan = maxLoanFor(reqUmi);
+    }
+
+    if (maxLoan <= 0) {
+      setMaxBorrowing({ maxLoan: 0, maxPurchase: deposit, canBorrow: false, tips: [] });
+      return;
+    }
+
     const maxPurchase = maxLoan + deposit;
 
     const tips = [];
@@ -1551,7 +1646,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
             ) : (
               <>
                 <MoneyField label={applicationType === 'joint' ? 'Your take-home pay' : 'Take-home pay'} value={netIncomeAmount} onChange={setNetIncomeAmount} placeholder="1,200" />
-                <div style={{ marginBottom: '2rem' }}>
+                <div style={{ marginBottom: '1.25rem' }}>
                   <label style={labelStyle}>Frequency</label>
                   <SegmentedToggle
                     options={[{ value: 'weekly', label: 'Weekly' }, { value: 'fortnightly', label: 'Fortnightly' }, { value: 'monthly', label: 'Monthly' }]}
@@ -1559,18 +1654,33 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                     onChange={setNetIncomeFreq}
                   />
                 </div>
+                <div style={{ marginBottom: '2rem' }}>
+                  <label style={labelStyle}>KiwiSaver contribution rate</label>
+                  <select value={kiwiSaverRate} onChange={e => setKiwiSaverRate(Number(e.target.value))} style={selectStyle}>
+                    <option value={0}>Not contributing</option>
+                    <option value={3}>3%</option>
+                    <option value={3.5}>3.5% (default)</option>
+                    <option value={4}>4%</option>
+                    <option value={6}>6%</option>
+                    <option value={8}>8%</option>
+                    <option value={10}>10%</option>
+                  </select>
+                  <p style={{ fontSize: '12px', color: C.textSecondary, margin: '0.5rem 0 0' }}>Used to estimate your gross income for eligibility checks (Kainga Ora, debt-to-income)</p>
+                </div>
               </>
             )}
 
-            <div style={{ background: C.inputBg, padding: '1.25rem', borderRadius: '12px', marginBottom: '2rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                <input type="checkbox" checked={hasStudentLoan} onChange={e => setHasStudentLoan(e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
-                <div>
-                  <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>I have a student loan</span>
-                  <span style={{ fontSize: '13px', color: C.textSecondary }}>Repayments will be calculated based on your income</span>
-                </div>
-              </label>
-            </div>
+            {salaryMode !== 'net' && (
+              <div style={{ background: C.inputBg, padding: '1.25rem', borderRadius: '12px', marginBottom: '2rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={hasStudentLoan} onChange={e => setHasStudentLoan(e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
+                  <div>
+                    <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>I have a student loan</span>
+                    <span style={{ fontSize: '13px', color: C.textSecondary }}>Repayments will be calculated based on your income</span>
+                  </div>
+                </label>
+              </div>
+            )}
 
             {applicationType === 'joint' && (
               <div style={{ background: C.accentLight, borderRadius: '12px', padding: '1.5rem', marginBottom: '2rem', border: '1px solid rgba(168,181,229,0.3)' }}>
@@ -1613,18 +1723,32 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                         onChange={setPartnerNetIncomeFreq}
                       />
                     </div>
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <label style={labelStyle}>Partner's KiwiSaver contribution rate</label>
+                      <select value={partnerKiwiSaverRate} onChange={e => setPartnerKiwiSaverRate(Number(e.target.value))} style={{ ...selectStyle, background: 'white' }}>
+                        <option value={0}>Not contributing</option>
+                        <option value={3}>3%</option>
+                        <option value={3.5}>3.5% (default)</option>
+                        <option value={4}>4%</option>
+                        <option value={6}>6%</option>
+                        <option value={8}>8%</option>
+                        <option value={10}>10%</option>
+                      </select>
+                    </div>
                   </>
                 )}
 
-                <div style={{ background: 'rgba(168,181,229,0.15)', padding: '1rem', borderRadius: '10px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={partnerHasStudentLoan} onChange={e => setPartnerHasStudentLoan(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
-                    <div>
-                      <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>Partner has a student loan</span>
-                      <span style={{ fontSize: '12px', color: C.textSecondary }}>Repayments calculated on partner's income</span>
-                    </div>
-                  </label>
-                </div>
+                {partnerSalaryMode !== 'net' && (
+                  <div style={{ background: 'rgba(168,181,229,0.15)', padding: '1rem', borderRadius: '10px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={partnerHasStudentLoan} onChange={e => setPartnerHasStudentLoan(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer' }} />
+                      <div>
+                        <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>Partner has a student loan</span>
+                        <span style={{ fontSize: '12px', color: C.textSecondary }}>Repayments calculated on partner's income</span>
+                      </div>
+                    </label>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1785,8 +1909,8 @@ function BorrowChecker({ onSavePrompt, onSave }) {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', marginBottom: '1.5rem' }}>
                     {Object.keys(expenseItems).map(key => (
-                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: C.inputBg, borderRadius: '12px', padding: '0.75rem 1rem' }}>
-                        <span style={{ flex: 1, fontSize: '14px', color: C.textPrimary, fontWeight: '500' }}>{expenseLabels[key]}</span>
+                      <div key={key} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', background: C.inputBg, borderRadius: '12px', padding: '0.75rem 1rem' }}>
+                        <span style={{ flex: isMobile ? '1 1 100%' : 1, fontSize: '14px', color: C.textPrimary, fontWeight: '500' }}>{expenseLabels[key]}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '4px' }}>
                           {['weekly', 'fortnightly', 'monthly'].map(freq => (
                             <button
@@ -1809,7 +1933,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                             </button>
                           ))}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '6px 10px', width: '100px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '6px 10px', width: isMobile ? 'auto' : '100px', flex: isMobile ? '1 1 auto' : 'none', minWidth: '90px' }}>
                           <span style={{ fontSize: '14px', color: C.textSecondary }}>$</span>
                           <input
                             type="number"
@@ -1817,10 +1941,10 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                             value={expenseItems[key].amount}
                             onChange={e => updateExpenseItem(key, 'amount', e.target.value)}
                             placeholder="0"
-                            style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '14px', color: C.textPrimary, outline: 'none', fontWeight: '500' }}
+                            style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '14px', color: C.textPrimary, outline: 'none', fontWeight: '500', minWidth: 0 }}
                           />
                         </div>
-                        <span style={{ fontSize: '12px', color: C.textSecondary, width: '70px', textAlign: 'right' }}>
+                        <span style={{ fontSize: '12px', color: C.textSecondary, width: isMobile ? 'auto' : '70px', flex: isMobile ? '1 1 100%' : 'none', textAlign: isMobile ? 'right' : 'right' }}>
                           {toMonthly(expenseItems[key].amount, expenseItems[key].freq) > 0
                             ? `$${fmtNZD(toMonthly(expenseItems[key].amount, expenseItems[key].freq))}/mo`
                             : ''}
@@ -1846,6 +1970,16 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* PAGE 5 - VALIDATION ERROR (missing income or purchase price) */}
+        {page === 5 && validationError && (
+          <div>
+            <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 1rem', color: C.textPrimary }}>We need a bit more information</h2>
+            <div style={{ background: C.orangeBg, border: `1px solid ${C.orangeBorder}`, borderRadius: '12px', padding: '1.25rem 1.5rem' }}>
+              <p style={{ fontSize: '14px', color: C.textPrimary, margin: 0 }}>{validationError}</p>
+            </div>
           </div>
         )}
 
@@ -2010,7 +2144,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: showUmiBreakdown ? '1rem' : 0 }}>
                   <div>
                     <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 0.5rem', fontWeight: '500' }}>Left each month</p>
-                    <p style={{ fontSize: '26px', fontWeight: '500', margin: 0, color: results.umiPass ? C.green : C.red }}>${fmtNZD(Math.max(0, results.umi))}</p>
+                    <p style={{ fontSize: '26px', fontWeight: '500', margin: 0, color: results.umiPass ? C.green : C.red }}>{results.umi < 0 ? '-' : ''}${fmtNZD(Math.abs(results.umi))}</p>
                   </div>
                   <i className={`ti ti-chevron-${showUmiBreakdown ? 'up' : 'down'}`} style={{ fontSize: '20px', color: C.textPrimary }} />
                 </div>
@@ -2035,15 +2169,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                       ))}
                       <div style={{ borderTop: `2px solid ${C.borderLight}`, paddingTop: '0.75rem', marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontWeight: '500', color: C.textPrimary, flex: 1 }}>Uncommitted monthly income</span>
-                        <span style={{ fontWeight: '600', fontSize: '16px', color: results.umiPass ? C.green : C.red, flexShrink: 0 }}>${fmtNZD(Math.max(0, results.umi))}</span>
-                      </div>
-                      <div style={{ marginTop: '1rem', padding: '0.75rem', background: results.umiPass ? '#E8F5E9' : '#FFEBEE', borderRadius: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '12px', color: C.textSecondary, flex: 1 }}>
-                            {results.umiStatus === 'kainga_ora' ? 'Kainga Ora requires' : results.isFullDeposit ? 'Banks require (20%+ deposit)' : 'Banks require (<20% deposit)'}
-                          </span>
-                          <span style={{ fontSize: '13px', fontWeight: '500', color: C.textPrimary, flexShrink: 0 }}>${fmtNZD(results.reqUmi)}</span>
-                        </div>
+                        <span style={{ fontWeight: '600', fontSize: '16px', color: results.umiPass ? C.green : C.red, flexShrink: 0 }}>{results.umi < 0 ? '-' : ''}${fmtNZD(Math.abs(results.umi))}</span>
                       </div>
                     </div>
                   </div>
@@ -3030,11 +3156,14 @@ export default function App() {
 export { BorrowChecker, useAuth, AuthModal, supabase, C, card, Disclaimer, primaryBtn, secondaryBtn, inputWrap, inputStyle, fmtNZD, MoneyField };
 
 // Mirrors the income-cap thresholds computed inline in BorrowChecker's
-// calculate() (search "Kainga Ora eligibility" above). Kept as a separate
-// pure export, rather than editing calculate() itself, per instruction not
-// to alter existing Borrow Checker calculation logic. If Kāinga Ora revises
-// these thresholds, both this function and calculate() need updating.
-export function checkKaingaOraIncomeCap({ applicationType, baseSalary, partnerBaseSalary = 0 }) {
-  const totalBase = baseSalary + (applicationType === 'joint' ? partnerBaseSalary : 0);
-  return applicationType === 'single' ? baseSalary <= 95000 : totalBase <= 150000;
+// calculate() (search "Kainga Ora eligibility" above), including NZ Super
+// counting toward gross income as of the gross/net toggle update. Kept as a
+// separate pure export, rather than editing calculate() itself, per
+// instruction not to alter existing Borrow Checker calculation logic. If
+// Kāinga Ora revises these thresholds, or calculate()'s formula changes
+// again, this needs updating to match.
+export function checkKaingaOraIncomeCap({ applicationType, baseSalary, partnerBaseSalary = 0, nzSuper = 0, partnerNzSuper = 0 }) {
+  const primaryGrossWithSuper = baseSalary + nzSuper;
+  const totalBase = primaryGrossWithSuper + (applicationType === 'joint' ? partnerBaseSalary + partnerNzSuper : 0);
+  return applicationType === 'single' ? primaryGrossWithSuper <= 95000 : totalBase <= 150000;
 }
