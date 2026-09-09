@@ -2166,14 +2166,6 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                         <span style={{ fontWeight: '500', color: C.textPrimary, flex: 1 }}>Uncommitted monthly income</span>
                         <span style={{ fontWeight: '600', fontSize: '16px', color: results.umiPass ? C.green : C.red, flexShrink: 0 }}>{results.umi < 0 ? '-' : ''}${fmtNZD(Math.abs(results.umi))}</span>
                       </div>
-                      <div style={{ marginTop: '1rem', padding: '0.75rem', background: results.umiPass ? '#E8F5E9' : '#FFEBEE', borderRadius: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '12px', color: C.textSecondary, flex: 1 }}>
-                            {results.umiStatus === 'kainga_ora' ? 'Kainga Ora requires' : results.isFullDeposit ? 'Banks require (20%+ deposit)' : 'Banks require (<20% deposit)'}
-                          </span>
-                          <span style={{ fontSize: '13px', fontWeight: '500', color: C.textPrimary, flexShrink: 0 }}>${fmtNZD(results.reqUmi)}</span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 )}

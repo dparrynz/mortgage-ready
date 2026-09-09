@@ -1541,24 +1541,6 @@ export default function MortgageReadySandbox() {
                         </span>
                       </div>
 
-                      <div style={{
-                        marginTop: '1rem',
-                        padding: '0.75rem',
-                        background: results.umiPass ? '#E8F5E9' : '#FFEBEE',
-                        borderRadius: '8px',
-                        border: `1px solid ${results.umiPass ? '#C8E6C9' : '#FFCDD2'}`
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '12px', color: '#6b6b85' }}>
-                            {results.umiStatus === 'kainga_ora' ? 'Kainga Ora requires' : 
-                             results.lvr <= 80 ? 'Banks require (20%+ deposit)' : 
-                             'Banks require (<20% deposit)'}
-                          </span>
-                          <span style={{ fontSize: '13px', fontWeight: '500', color: '#1a1a2e' }}>
-                            ${results.requiredUmi.toLocaleString('en-NZ')}
-                          </span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 )}
