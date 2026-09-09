@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { C, primaryBtn, inputWrap, inputStyle } from '../../ParryFSApp.jsx';
 import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer } from './shared.jsx';
 
-const BOOKINGS_URL = 'https://outlook.office.com/bookwithme/user/35910337ef6b47e19c21334740c35b06@mikepero.co.nz/meetingtype/S_Ma3DVzG0q0a21VJQQ2GA2?bookingcode=9cc31a19-0a07-4b23-af84-d8655a9195af&anonymous&ismsaljsauthenabled&ep=mcard';
+const BOOKINGS_URL = 'https://outlook.office.com/bookwithme/user/35910337ef6b47e19c21334740c35b06@mikepero.co.nz/meetingtype/S_Ma3DVzG0q0a21VJQQ2GA2?bookingcode=5864afb8-c9dc-4233-bb2a-85d8ad303c85&anonymous&ismsaljsauthenabled&ep=mLinkFromTile';
 
 // Posts to the /api/notify-enquiry serverless function (api/notify-enquiry.js),
 // which emails Dan via Resend. Plain notification only, no automation beyond

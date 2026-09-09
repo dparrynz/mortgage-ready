@@ -326,7 +326,7 @@ const SegmentedToggle = ({ options, value, onChange }) => (
 const Disclaimer = () => (
   <div style={{ background: C.inputBg, borderRadius: '12px', padding: '1rem', border: `1px solid ${C.borderLight}`, marginTop: '1.5rem' }}>
     <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0, lineHeight: 1.6 }}>
-      <strong>Disclaimer:</strong> This calculator is a guide only. It does not provide financial advice and does not consider your full financial situation. Results are based on the assumptions provided and may differ from actual outcomes. Please consult a mortgage adviser before making any decisions.
+      <strong>Disclaimer:</strong> This calculator is a guide only. It does not provide financial advice and does not consider your full financial situation. Results are based on the assumptions provided and may differ from actual outcomes. Please consult a professional before making any decisions.
     </p>
   </div>
 );
@@ -869,14 +869,18 @@ const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios
     }}>
       <div style={{
         display: 'flex',
-        overflowX: 'auto',
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none',
         maxWidth: '1100px',
         margin: '0 auto',
-        WebkitOverflowScrolling: 'touch',
       }}>
-        <div style={{ display: 'flex', flex: 1 }}>
+        <div style={{
+          display: 'flex',
+          flex: 1,
+          minWidth: 0,
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          WebkitOverflowScrolling: 'touch',
+        }}>
           {TABS.map(tab => (
             <button
               key={tab.id}
