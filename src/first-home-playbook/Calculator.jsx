@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BorrowChecker, useAuth, AuthModal, supabase, C, primaryBtn, secondaryBtn } from '../../ParryFSApp.jsx';
-import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer } from './shared.jsx';
+import { PlaybookHeader } from './shared.jsx';
 
 // Mirrors the save/auth wiring in ParryFSApp.jsx's <App> exactly (running a
 // calculation needs no login; saving a scenario does) so BorrowChecker
@@ -47,9 +47,6 @@ export default function Calculator({ onExit, onBackToHub, onNavigate }) {
         onSavePrompt={!user ? () => setShowAuthModal(true) : null}
         onSave={user ? handleSavePrompt : null}
       />
-      <PlaybookCard>
-        <PlaybookDisclaimer />
-      </PlaybookCard>
 
       {showAuthModal && (
         <AuthModal onClose={() => { setShowAuthModal(false); setPendingSave(null); }} onSuccess={handleAuthSuccess} />

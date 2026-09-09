@@ -869,7 +869,7 @@ const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios
     }}>
       <div style={{
         display: 'flex',
-        maxWidth: '1100px',
+        maxWidth: '1300px',
         margin: '0 auto',
       }}>
         <div style={{
