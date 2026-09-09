@@ -293,7 +293,7 @@ const RateField = ({ label, value, onChange, placeholder = '0.00', hint }) => (
 );
 
 const SegmentedToggle = ({ options, value, onChange }) => (
-  <div style={{ display: 'flex', gap: '4px', background: 'white', borderRadius: '10px', padding: '4px', width: 'fit-content' }}>
+  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', background: 'white', borderRadius: '10px', padding: '4px', width: 'fit-content', maxWidth: '100%', boxSizing: 'border-box' }}>
     {options.map(opt => (
       <button
         key={opt.value}
@@ -304,6 +304,10 @@ const SegmentedToggle = ({ options, value, onChange }) => (
           color: value === opt.value ? 'white' : C.textSecondary,
           border: 'none',
           padding: '8px 16px',
+          minHeight: '44px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           borderRadius: '8px',
           fontSize: '13px',
           fontWeight: '500',
@@ -1904,8 +1908,8 @@ function BorrowChecker({ onSavePrompt, onSave }) {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', marginBottom: '1.5rem' }}>
                     {Object.keys(expenseItems).map(key => (
-                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: C.inputBg, borderRadius: '12px', padding: '0.75rem 1rem' }}>
-                        <span style={{ flex: 1, fontSize: '14px', color: C.textPrimary, fontWeight: '500' }}>{expenseLabels[key]}</span>
+                      <div key={key} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', background: C.inputBg, borderRadius: '12px', padding: '0.75rem 1rem' }}>
+                        <span style={{ flex: isMobile ? '1 1 100%' : 1, fontSize: '14px', color: C.textPrimary, fontWeight: '500' }}>{expenseLabels[key]}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '4px' }}>
                           {['weekly', 'fortnightly', 'monthly'].map(freq => (
                             <button
@@ -1928,7 +1932,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                             </button>
                           ))}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '6px 10px', width: '100px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'white', borderRadius: '8px', padding: '6px 10px', width: isMobile ? 'auto' : '100px', flex: isMobile ? '1 1 auto' : 'none', minWidth: '90px' }}>
                           <span style={{ fontSize: '14px', color: C.textSecondary }}>$</span>
                           <input
                             type="number"
@@ -1936,10 +1940,10 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                             value={expenseItems[key].amount}
                             onChange={e => updateExpenseItem(key, 'amount', e.target.value)}
                             placeholder="0"
-                            style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '14px', color: C.textPrimary, outline: 'none', fontWeight: '500' }}
+                            style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '14px', color: C.textPrimary, outline: 'none', fontWeight: '500', minWidth: 0 }}
                           />
                         </div>
-                        <span style={{ fontSize: '12px', color: C.textSecondary, width: '70px', textAlign: 'right' }}>
+                        <span style={{ fontSize: '12px', color: C.textSecondary, width: isMobile ? 'auto' : '70px', flex: isMobile ? '1 1 100%' : 'none', textAlign: isMobile ? 'right' : 'right' }}>
                           {toMonthly(expenseItems[key].amount, expenseItems[key].freq) > 0
                             ? `$${fmtNZD(toMonthly(expenseItems[key].amount, expenseItems[key].freq))}/mo`
                             : ''}
