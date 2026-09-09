@@ -2066,7 +2066,6 @@ function BorrowChecker({ onSavePrompt, onSave }) {
               </div>
             )}
 
-            <Disclaimer />
             {onSavePrompt && (
               <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem', marginTop: '1rem', textAlign: 'center' }}>
                 <h4 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Save your results</h4>
@@ -2180,7 +2179,6 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                 )}
               </div>
             </div>
-            <Disclaimer />
             {onSavePrompt && (
               <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem', marginTop: '1rem', border: `1px solid rgba(168,181,229,0.3)`, textAlign: 'center' }}>
                 <i className="ti ti-bookmark" style={{ fontSize: '28px', color: C.textSecondary, marginBottom: '0.5rem', display: 'block' }} />
@@ -2258,6 +2256,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
           </div>
         </div>
       )}
+      <Disclaimer />
     </div>
   );
 }
