@@ -43,7 +43,7 @@ export default function Hub({ onExit, onNavigate }) {
         ))}
       </div>
 
-      <PlaybookDisclaimer onNavigate={onNavigate} />
+      <PlaybookDisclaimer />
     </div>
   );
 }

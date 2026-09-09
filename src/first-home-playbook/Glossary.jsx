@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { C } from '../../ParryFSApp.jsx';
-import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, BookCallCTA } from './shared.jsx';
+import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer } from './shared.jsx';
 import { GLOSSARY_TERMS } from './content.js';
 
-export default function Glossary({ onExit, onBackToHub, onNavigate }) {
+export default function Glossary({ onExit, onBackToHub }) {
   const [query, setQuery] = useState('');
   const filtered = GLOSSARY_TERMS.filter((t) => t.term.toLowerCase().includes(query.toLowerCase()));
 
@@ -30,8 +30,7 @@ export default function Glossary({ onExit, onBackToHub, onNavigate }) {
         ))}
         {filtered.length === 0 && <p style={{ fontSize: '14px', color: C.textMuted }}>No terms match "{query}".</p>}
 
-        <BookCallCTA onNavigate={onNavigate} />
-        <PlaybookDisclaimer onNavigate={onNavigate} />
+        <PlaybookDisclaimer />
       </PlaybookCard>
     </div>
   );

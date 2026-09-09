@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { C, primaryBtn, secondaryBtn } from '../../ParryFSApp.jsx';
-import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, BookCallCTA } from './shared.jsx';
+import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer } from './shared.jsx';
 import { ARE_YOU_READY_QUESTIONS, ARE_YOU_READY_OUTCOMES } from './content.js';
 
 // Each answer index (0/1/2) maps to "starting/getting there/ready". The band
@@ -79,7 +79,6 @@ export default function AreYouReadyQuiz({ onExit, onBackToHub, onNavigate }) {
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button style={secondaryBtn} onClick={() => onNavigate('/calculator')}>Run the calculator</button>
-              <button style={primaryBtn} onClick={() => onNavigate('/book-a-call')}>Book a call with Dan</button>
             </div>
             <button
               onClick={() => { setSubmitted(false); setAnswers(Array(ARE_YOU_READY_QUESTIONS.length).fill(null)); }}
@@ -90,7 +89,7 @@ export default function AreYouReadyQuiz({ onExit, onBackToHub, onNavigate }) {
           </div>
         )}
 
-        <PlaybookDisclaimer onNavigate={onNavigate} />
+        <PlaybookDisclaimer />
       </PlaybookCard>
     </div>
   );

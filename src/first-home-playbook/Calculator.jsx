@@ -48,7 +48,7 @@ export default function Calculator({ onExit, onBackToHub, onNavigate }) {
         onSave={user ? handleSavePrompt : null}
       />
       <PlaybookCard>
-        <PlaybookDisclaimer onNavigate={onNavigate} />
+        <PlaybookDisclaimer />
       </PlaybookCard>
 
       {showAuthModal && (

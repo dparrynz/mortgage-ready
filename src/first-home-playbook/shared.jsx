@@ -18,18 +18,11 @@ export const TILES = [
   { id: 'book-a-call', title: 'Get Your Plan', blurb: 'Tell us a bit about you, or book straight in with Dan.', icon: 'ti-calendar-event', path: '/book-a-call' },
 ];
 
-export function PlaybookDisclaimer({ onNavigate }) {
+export function PlaybookDisclaimer() {
   return (
     <div style={{ background: C.inputBg, borderRadius: '12px', padding: '1rem', border: `1px solid ${C.borderLight}`, marginTop: '1.5rem' }}>
       <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0, lineHeight: 1.6 }}>
-        This is general information only and doesn't take your personal situation into account.{' '}
-        <button
-          onClick={() => onNavigate('/book-a-call')}
-          style={{ background: 'none', border: 'none', padding: 0, color: C.textPrimary, fontWeight: '600', textDecoration: 'underline', cursor: 'pointer', fontSize: '12px' }}
-        >
-          Book a call with Dan
-        </button>{' '}
-        to see how this applies to you.
+        This is general information only and doesn't take your personal situation into account.
       </p>
     </div>
   );
@@ -61,13 +54,5 @@ export function PlaybookButton({ children, onClick, variant = 'primary', style }
     <button onClick={onClick} style={{ ...(variant === 'primary' ? primaryBtn : secondaryBtn), ...style }}>
       {children}
     </button>
-  );
-}
-
-export function BookCallCTA({ onNavigate, label = 'Book a call with Dan' }) {
-  return (
-    <PlaybookButton onClick={() => onNavigate('/book-a-call')} style={{ marginTop: '1rem' }}>
-      {label}
-    </PlaybookButton>
   );
 }

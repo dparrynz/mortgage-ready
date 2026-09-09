@@ -64,6 +64,23 @@ export const GLOSSARY_TERMS = [
   { term: 'Settlement day', body: "The day ownership of the property officially transfers to you and you get the keys." },
   { term: 'Body corporate', body: "Applies to properties like apartments or townhouses that share common areas. Body corporate fees cover the maintenance and insurance of those shared spaces." },
   { term: 'Equity', body: "The difference between what your property is worth and what you still owe on it." },
+  { term: 'Sale and purchase agreement', body: "The legal contract between you and the seller setting out the price, settlement date, and any conditions. Once signed by both sides it's binding, subject to any conditions being met." },
+  { term: 'Vendor', body: "The person or people selling the property. You'll see this term used throughout the sale and purchase agreement and any correspondence from agents or lawyers." },
+  { term: 'Registered valuation', body: "A formal valuation of a property carried out by a registered valuer, distinct from a real estate agent's appraisal. Lenders sometimes require one, particularly for unusual properties or low-deposit lending." },
+  { term: 'LIM report', body: "Land Information Memorandum, a report from the local council showing consents, code compliance, rates, and any known issues with the land or property. Usually ordered by your lawyer during due diligence." },
+  { term: 'Building report', body: "An independent inspection of a property's structure, moisture levels, and general condition, carried out by a qualified building inspector before you commit to buying." },
+  { term: 'Code Compliance Certificate (CCC)', body: "Confirms that building work was completed in line with the consent that was issued for it. Missing CCCs on renovations or additions are a common reason finance gets declined." },
+  { term: 'Freehold (fee simple)', body: "The most common form of property ownership in New Zealand. You own the land and buildings outright, with no ongoing lease or ground rent to a separate landowner." },
+  { term: 'Leasehold', body: "You own the buildings but not the land, and pay ground rent to whoever owns the land instead. Lending on leasehold property is more restricted, and rent reviews can significantly change your costs over time." },
+  { term: 'Cross lease', body: "A form of ownership where two or more owners jointly own the underlying land freehold, and each has a leasehold interest in their own unit. Renovations usually require the other owners' consent and updated legal documents." },
+  { term: 'Guarantor', body: "Someone, often a parent, who agrees to be legally responsible for a loan if the borrower can't meet repayments, sometimes by offering equity in their own property as security. A serious commitment worth understanding fully before agreeing to it." },
+  { term: 'Low equity margin', body: "An extra charge some lenders add to your interest rate when your deposit is less than 20%, to offset their additional risk. This is separate from, and in addition to, any low equity or low deposit premium some lenders also charge." },
+  { term: 'Offset account', body: "A everyday transaction account linked to your mortgage. The balance in it reduces the loan balance interest is calculated on, without actually paying the loan down, so your savings stay accessible." },
+  { term: 'Break fee', body: "A charge for paying off or restructuring a fixed rate loan before the fixed term ends. Calculated based on the difference between your fixed rate and current wholesale rates, so it can vary significantly." },
+  { term: 'Auction, tender, and deadline sale', body: "Three common ways a property can be sold without a listed asking price. All three usually mean an unconditional offer with no finance or building report clause, so your finance and due diligence need to be sorted before you bid or submit." },
+  { term: 'Chattels', body: "Items included in the sale that aren't part of the building itself, like curtains, the stove, or a heat pump. Worth checking the chattels list in the sale and purchase agreement carefully, since it's what's legally included." },
+  { term: 'Rateable value (RV) / capital value (CV)', body: "The local council's valuation of a property, used to calculate rates. It's a point-in-time estimate, not a current market valuation, and can differ significantly from what a property actually sells for." },
+  { term: 'Serviceability', body: "A lender's assessment of whether your income comfortably covers loan repayments plus living costs and other debts, usually tested at a higher stressed interest rate than what you'll actually pay." },
 ];
 
 export const ARE_YOU_READY_QUESTIONS = [

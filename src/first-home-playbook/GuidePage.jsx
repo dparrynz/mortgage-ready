@@ -1,8 +1,8 @@
 import React from 'react';
 import { C } from '../../ParryFSApp.jsx';
-import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, BookCallCTA } from './shared.jsx';
+import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer } from './shared.jsx';
 
-export default function GuidePage({ content, onExit, onBackToHub, onNavigate }) {
+export default function GuidePage({ content, onExit, onBackToHub }) {
   return (
     <div>
       <PlaybookHeader title={content.title} onExit={onExit} onBackToHub={onBackToHub} />
@@ -29,8 +29,7 @@ export default function GuidePage({ content, onExit, onBackToHub, onNavigate }) 
           <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: 0 }}>{content.bottomLine}</p>
         </div>
 
-        <BookCallCTA onNavigate={onNavigate} />
-        <PlaybookDisclaimer onNavigate={onNavigate} />
+        <PlaybookDisclaimer />
       </PlaybookCard>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { C, primaryBtn, MoneyField, checkKaingaOraIncomeCap } from '../../ParryFSApp.jsx';
-import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, BookCallCTA } from './shared.jsx';
+import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer } from './shared.jsx';
 
 // Citizenship/residency, owner-occupier intent, and deposit readiness aren't
 // computed anywhere in Borrow Checker today (it assumes an NZ-resident
@@ -100,7 +100,6 @@ export default function KaingaOraQuiz({ onExit, onBackToHub, onNavigate }) {
               <p style={{ fontSize: '17px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>{result.title}</p>
               <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: 0 }}>{result.body}</p>
             </div>
-            <BookCallCTA onNavigate={onNavigate} />
             <button
               onClick={() => { setSubmitted(false); setAnswers(initial); setIncomeA(0); setIncomeB(0); }}
               style={{ display: 'block', background: 'none', border: 'none', color: C.textMuted, fontSize: '13px', textDecoration: 'underline', cursor: 'pointer', marginTop: '1rem', padding: 0 }}
@@ -110,7 +109,7 @@ export default function KaingaOraQuiz({ onExit, onBackToHub, onNavigate }) {
           </div>
         )}
 
-        <PlaybookDisclaimer onNavigate={onNavigate} />
+        <PlaybookDisclaimer />
       </PlaybookCard>
     </div>
   );

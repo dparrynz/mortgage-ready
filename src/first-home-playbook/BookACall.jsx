@@ -91,7 +91,7 @@ export default function BookACall({ onExit, onBackToHub, onNavigate }) {
           Book with Dan
         </a>
 
-        <PlaybookDisclaimer onNavigate={onNavigate} />
+        <PlaybookDisclaimer />
       </PlaybookCard>
     </div>
   );
