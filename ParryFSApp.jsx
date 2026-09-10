@@ -921,11 +921,11 @@ const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios
 };
 
 // ─── 1. BORROW CHECKER ───────────────────────────────────────────────────────
-function BorrowChecker({ onSavePrompt, onSave, hideCover }) {
+function BorrowChecker({ onSavePrompt, onSave }) {
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
   const [page, setPage] = useState(1);
-  const [showCover, setShowCover] = useState(!hideCover);
+  const [showCover, setShowCover] = useState(true);
   const totalPages = 5;
 
   const [purchasePrice, setPurchasePrice] = useState(650000);
