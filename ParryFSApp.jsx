@@ -131,17 +131,17 @@ function useWindowWidth() {
 
 // ─── SHARED STYLES ───────────────────────────────────────────────────────────
 const C = {
-  bg: 'linear-gradient(135deg, #EEF0FB 0%, #F5F6FD 100%)',
-  headerBg: 'linear-gradient(135deg, #C7C1F5 0%, #DCD7FA 100%)',
+  bg: 'linear-gradient(180deg, #DCEAFF 0%, #EAF2FF 30%, #F3F6FC 60%, #F5F7FA 100%)',
+  headerBg: 'linear-gradient(135deg, #DCEAFF 0%, #EAF2FF 100%)',
   cardBg: 'white',
-  accent: '#5B4EE8',
-  accentLight: 'linear-gradient(135deg, #EEF0FF 0%, #F6F3FF 100%)',
-  inputBg: '#F5F5FC',
-  textPrimary: '#1A1A2E',
-  textSecondary: '#6B6B85',
-  textMuted: '#8A8AA8',
-  borderLight: '#E7E6FA',
-  purple: '#5B4EE8',
+  accent: '#2F6FED',
+  accentLight: 'linear-gradient(135deg, #EAF1FE 0%, #F3F7FF 100%)',
+  inputBg: '#F2F6FD',
+  textPrimary: '#152238',
+  textSecondary: '#5C6B85',
+  textMuted: '#8494AC',
+  borderLight: '#E2EAF7',
+  purple: '#2F6FED',
   green: '#2E7D60',
   greenBg: 'linear-gradient(135deg, #C5EEDD 0%, #D5F2E6 100%)',
   greenBorder: '#7CC9A9',
@@ -1452,10 +1452,10 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     <div>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '0.75rem' }}>
         {[1,2,3,4,5].map(p => (
-          <div key={p} style={{ flex: 1, height: '6px', borderRadius: '3px', background: p <= page ? '#1a1a2e' : 'rgba(255,255,255,0.4)', transition: 'background 0.3s' }} />
+          <div key={p} style={{ flex: 1, height: '6px', borderRadius: '3px', background: p <= page ? C.accent : 'rgba(21,34,56,0.12)', transition: 'background 0.3s' }} />
         ))}
       </div>
-      <p style={{ fontSize: '13px', color: '#4a4a68', margin: 0, textAlign: 'center', opacity: 0.8 }}>Step {page} of {totalPages}</p>
+      <p style={{ fontSize: '13px', color: C.textSecondary, margin: 0, textAlign: 'center' }}>Step {page} of {totalPages}</p>
     </div>
   );
 
@@ -1487,9 +1487,9 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   if (showCover) {
     return (
       <div>
-        <div style={{ background: C.headerBg, borderRadius: '24px', padding: '2rem 2.5rem', marginBottom: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Mortgage Ready Checker</h1>
-          <p style={{ fontSize: '15px', color: '#4a4a68', margin: 0, opacity: 0.9 }}>Find out if you're ready to buy, or how much you could borrow.</p>
+        <div style={{ padding: '1.5rem 0.5rem 2rem' }}>
+          <h1 style={{ fontSize: '30px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Mortgage Ready Checker</h1>
+          <p style={{ fontSize: '15px', color: C.textSecondary, margin: 0 }}>Find out if you're ready to buy, or how much you could borrow.</p>
         </div>
 
         <div style={{ ...card, padding: '2.5rem' }}>
@@ -1522,9 +1522,9 @@ function BorrowChecker({ onSavePrompt, onSave }) {
 
   return (
     <div>
-      <div style={{ background: C.headerBg, borderRadius: '24px', padding: '2rem 2.5rem', marginBottom: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Borrow Checker</h1>
-        <p style={{ fontSize: '15px', color: '#4a4a68', margin: '0 0 2rem', opacity: 0.9 }}>Find out if you're ready to buy a home in New Zealand</p>
+      <div style={{ padding: '1.5rem 0.5rem 2rem' }}>
+        <h1 style={{ fontSize: '30px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Borrow Checker</h1>
+        <p style={{ fontSize: '15px', color: C.textSecondary, margin: '0 0 2rem' }}>Find out if you're ready to buy a home in New Zealand</p>
         <ProgressBar />
       </div>
 
