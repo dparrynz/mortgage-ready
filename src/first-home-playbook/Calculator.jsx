@@ -46,6 +46,7 @@ export default function Calculator({ onExit, onBackToHub, onNavigate }) {
       <BorrowChecker
         onSavePrompt={!user ? () => setShowAuthModal(true) : null}
         onSave={user ? handleSavePrompt : null}
+        hideCover
       />
 
       {showAuthModal && (

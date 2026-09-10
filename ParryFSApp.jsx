@@ -921,10 +921,11 @@ const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios
 };
 
 // ─── 1. BORROW CHECKER ───────────────────────────────────────────────────────
-function BorrowChecker({ onSavePrompt, onSave }) {
+function BorrowChecker({ onSavePrompt, onSave, hideCover }) {
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
   const [page, setPage] = useState(1);
+  const [showCover, setShowCover] = useState(!hideCover);
   const totalPages = 5;
 
   const [purchasePrice, setPurchasePrice] = useState(650000);
@@ -974,7 +975,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   const [creditCardLimit, setCreditCardLimit] = useState(0);
   const [bnplLimit, setBnplLimit] = useState(0);
   const [otherMonthlyLoans, setOtherMonthlyLoans] = useState(0);
-  const [declaredExpenses, setDeclaredExpenses] = useState(2000);
+  const [declaredExpenses, setDeclaredExpenses] = useState(0);
   const [showExpenseCalc, setShowExpenseCalc] = useState(false);
   const [expenseItems, setExpenseItems] = useState({
     homeContentsInsurance: { amount: '', freq: 'monthly' },
@@ -1482,6 +1483,42 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   const fmtBorder = (t) => ({ success: C.greenBorder, danger: C.redBorder, warning: C.orangeBorder, info: C.blueBorder }[t]);
   const fmtIcon = (t) => ({ success: '#4CAF50', danger: '#F44336', warning: '#FF9800', info: '#2196F3' }[t]);
   const fmtIconName = (t) => ({ success: 'check', danger: 'alert-circle', warning: 'alert-triangle', info: 'info-circle' }[t]);
+
+  if (showCover) {
+    return (
+      <div>
+        <div style={{ background: C.headerBg, borderRadius: '24px', padding: '2rem 2.5rem', marginBottom: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Mortgage Ready Checker</h1>
+          <p style={{ fontSize: '15px', color: '#4a4a68', margin: 0, opacity: 0.9 }}>Find out if you're ready to buy, or how much you could borrow.</p>
+        </div>
+
+        <div style={{ ...card, padding: '2.5rem' }}>
+          <div style={{ background: C.inputBg, borderRadius: '12px', padding: '1rem', border: `1px solid ${C.borderLight}`, marginBottom: '1.5rem' }}>
+            <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0, lineHeight: 1.6 }}>
+              This calculator is a guide only. Results are based on the information you provide and typical bank lending criteria. They do not constitute financial advice and may differ from actual bank decisions. For personalised advice, speak with a mortgage adviser.
+            </p>
+          </div>
+
+          <h3 style={{ fontSize: '16px', fontWeight: '500', color: C.textPrimary, margin: '0 0 1rem' }}>Tips for best results:</h3>
+          <ul style={{ margin: '0 0 2rem', paddingLeft: '1.25rem' }}>
+            {[
+              'Have your payslips handy so you can enter accurate income figures',
+              "Include all credit card limits, not just your balance",
+              "Be honest with your expenses - banks will apply a minimum floor regardless",
+              "If you're unsure about expenses, use the expense calculator for a more accurate result",
+              'The more accurate your information, the more accurate your result will be',
+            ].map((tip, i) => (
+              <li key={i} style={{ fontSize: '14px', color: '#4a4a68', lineHeight: '1.8' }}>{tip}</li>
+            ))}
+          </ul>
+
+          <button onClick={() => setShowCover(false)} style={{ ...primaryBtn, width: '100%' }}>
+            Get started <i className="ti ti-arrow-right" style={{ marginLeft: '6px' }} />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -2066,6 +2103,14 @@ function BorrowChecker({ onSavePrompt, onSave }) {
               </div>
             )}
 
+            {declaredExpenses === 0 && (
+              <div style={{ background: '#FFF8E7', borderRadius: '12px', padding: '1rem 1.25rem', border: '1px solid #FFE082', marginTop: '1rem' }}>
+                <p style={{ fontSize: '13px', color: C.textPrimary, margin: 0, lineHeight: '1.6' }}>
+                  💡 Your result is based on bank minimum living costs. For a more accurate picture, go back and use the expense calculator.
+                </p>
+              </div>
+            )}
+
             {onSavePrompt && (
               <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem', marginTop: '1rem', textAlign: 'center' }}>
                 <h4 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Save your results</h4>
@@ -2179,6 +2224,15 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                 )}
               </div>
             </div>
+
+            {declaredExpenses === 0 && (
+              <div style={{ background: '#FFF8E7', borderRadius: '12px', padding: '1rem 1.25rem', border: '1px solid #FFE082', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '13px', color: C.textPrimary, margin: 0, lineHeight: '1.6' }}>
+                  💡 Your result is based on bank minimum living costs. For a more accurate picture, go back and use the expense calculator.
+                </p>
+              </div>
+            )}
+
             {onSavePrompt && (
               <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem', marginTop: '1rem', border: `1px solid rgba(168,181,229,0.3)`, textAlign: 'center' }}>
                 <i className="ti ti-bookmark" style={{ fontSize: '28px', color: C.textSecondary, marginBottom: '0.5rem', display: 'block' }} />
