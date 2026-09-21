@@ -614,10 +614,10 @@ function AuthModal({ onClose, onSuccess }) {
 
 const PRIVACY_POLICY_CONTENT = () => (
   <div style={{ fontSize: '13px', color: '#4a4a68', lineHeight: '1.7' }}>
-    <p><strong>Parry Financial Services</strong><br />Last updated: August 2026</p>
+    <p><strong>Parry Financial Services</strong><br />Last updated: September 2026</p>
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>1. Introduction</h4>
-    <p>Parry Financial Services ("we", "us", "our") operates the mortgage calculator tools available at parryfs.com. We are committed to protecting your personal information in accordance with the New Zealand Privacy Act 2020.</p>
+    <p>Parry Financial Services ("we", "us", "our") operates the mortgage calculator tools and First Home Playbook available at parryfs.com, and runs lead forms on Facebook and Instagram. We are committed to protecting your personal information in accordance with the New Zealand Privacy Act 2020.</p>
     <p>This policy explains what information we collect, why we collect it, how we use it, and your rights regarding that information.</p>
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>2. Who We Are</h4>
@@ -629,7 +629,7 @@ const PRIVACY_POLICY_CONTENT = () => (
     </p>
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>3. What Information We Collect</h4>
-    <p><strong>If you use the calculators without an account:</strong><br />We do not collect any personal information. All calculations happen in your browser and no data is stored.</p>
+    <p><strong>If you use the calculators without an account:</strong><br />We don't collect any personal details. All calculations happen in your browser and no data is stored. We do collect anonymised usage data through Cloudflare Web Analytics and Microsoft Clarity, including session recordings, to understand how people use the site. Financial input fields (like income, debts and property price) are masked in these recordings so the values you enter aren't visible to us.</p>
     <p><strong>If you create an account:</strong></p>
     <ul style={{ paddingLeft: '1.25rem' }}>
       <li>First and last name</li>
@@ -640,6 +640,7 @@ const PRIVACY_POLICY_CONTENT = () => (
       <li>Date and time of account creation and last sign in</li>
     </ul>
     <p><strong>If you sign in with Google:</strong><br />Your name and email address as provided by Google. We do not receive your Google password.</p>
+    <p><strong>If you fill in a lead form or sign up to the First Home Playbook:</strong><br />Your name and email address, plus any other answers you give us on the form (for example, your timeframe for buying, deposit situation, or how we can help).</p>
     <p><strong>Automatically collected:</strong><br />Basic usage data, IP address (for security only), browser type and device type.</p>
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>4. What We Do Not Collect</h4>
@@ -655,9 +656,13 @@ const PRIVACY_POLICY_CONTENT = () => (
       <li>To create and manage your account</li>
       <li>To save and retrieve your calculator scenarios</li>
       <li>To send account confirmation and password reset emails</li>
+      <li>To give access to the First Home Playbook</li>
+      <li>To contact people about their home buying plans and mortgage advice</li>
+      <li>To send occasional emails with tips and updates, where people have opted in</li>
       <li>To improve the calculator tools over time</li>
       <li>To protect against fraud and abuse</li>
     </ul>
+    <p>Where people have opted in to marketing, we may use email addresses, in a secure, hashed form, to show relevant ads on Facebook and Instagram.</p>
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>6. Who We Share Your Information With</h4>
     <p><strong>We do not sell your personal information to anyone, ever.</strong></p>
@@ -667,13 +672,18 @@ const PRIVACY_POLICY_CONTENT = () => (
       <li><strong>Google</strong> - Authentication only (if you use Google sign-in)</li>
       <li><strong>Resend</strong> - Sending confirmation and password reset emails</li>
       <li><strong>Vercel</strong> - Website hosting</li>
+      <li><strong>Meta (Facebook and Instagram)</strong> - Running our lead forms, and advertising where people have opted in to marketing</li>
+      <li><strong>Microsoft Clarity</strong> - Website analytics, including masked session recordings</li>
+      <li><strong>Cloudflare</strong> - Website analytics</li>
+      <li><strong>Mike Pero Mortgages</strong> - The franchise we operate under</li>
     </ul>
-    <p>We do not share your information with mortgage lenders, banks, real estate agents, marketing companies, or data brokers.</p>
+    <p>We only share your information with lenders, insurers or other finance providers when we're arranging finance for you, and only with your consent.</p>
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>7. How Long We Keep Your Information</h4>
     <ul style={{ paddingLeft: '1.25rem' }}>
       <li>Account information: Until you delete your account</li>
       <li>Saved scenarios: Until you delete them or close your account</li>
+      <li>Lead form and Playbook sign up details: Up to two years, unless you become a client (in which case standard client record requirements apply) or ask us to delete them</li>
       <li>Usage logs: 90 days</li>
       <li>Email logs: 30 days</li>
     </ul>
@@ -697,14 +707,15 @@ const PRIVACY_POLICY_CONTENT = () => (
       <li><strong>Delete</strong> - Request deletion of your account and all associated data</li>
       <li><strong>Withdraw consent</strong> - Delete your account at any time through the app</li>
     </ul>
+    <p>You can unsubscribe from marketing emails at any time using the link in the email, or by contacting <strong>dan@parryfs.com</strong>.</p>
     <p>Contact us at <strong>dan@parryfs.com</strong>. We will respond within 20 working days as required by the Privacy Act 2020.</p>
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>11. Cookies</h4>
     <ul style={{ paddingLeft: '1.25rem' }}>
       <li>Authentication token - Keeps you signed in (Session / 7 days)</li>
       <li>Session data - Security and fraud prevention (Session)</li>
+      <li>Microsoft Clarity - Cookies used to understand how people use the site</li>
     </ul>
-    <p>We do not use advertising cookies or tracking cookies.</p>
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>12. Disclaimer</h4>
     <p>The calculators on parryfs.com are provided for general information purposes only. They do not constitute financial advice and do not create an adviser/client relationship. Results are estimates based on information you provide and typical bank lending criteria, which may differ from actual bank decisions. For personalised financial advice, please contact a licensed mortgage adviser.</p>
@@ -725,6 +736,20 @@ const PRIVACY_POLICY_CONTENT = () => (
     </p>
   </div>
 );
+
+function PrivacyPage({ onBack }) {
+  return (
+    <div>
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontSize: '14px', fontWeight: '500', padding: 0, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <i className="ti ti-arrow-left" /> Back to parryfs.com
+      </button>
+      <div style={card}>
+        <h1 style={{ fontSize: '24px', fontWeight: '600', margin: '0 0 1.5rem', color: C.textPrimary }}>Privacy Policy</h1>
+        <PRIVACY_POLICY_CONTENT />
+      </div>
+    </div>
+  );
+}
 function SavedScenarios({ onClose, onLoad }) {
   const [scenarios, setScenarios] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3051,7 +3076,6 @@ export default function App() {
   const [scenarioName, setScenarioName] = useState('');
   const [pendingSave, setPendingSave] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
   const handleSavePrompt = (inputs, results) => {
     if (!user) {
@@ -3094,20 +3118,25 @@ export default function App() {
       case 'breakeven': return <BreakEven />;
       case 'costtowait': return <CostToWait />;
       case 'first-home-playbook': return <FirstHomePlaybookRouter onExit={() => handleSetActiveTab('borrow')} />;
+      case 'privacy': return <PrivacyPage onBack={() => handleSetActiveTab('borrow')} />;
       default: return <BorrowChecker />;
     }
   };
 
-  // Minimal URL sync so /first-home-playbook/* deep links work and the nav
-  // tab switch keeps the address bar in step. Existing tabs are unaffected.
+  // Minimal URL sync so /first-home-playbook/* and /privacy deep links work
+  // and the nav tab switch keeps the address bar in step. Existing tabs are
+  // unaffected.
   const handleSetActiveTab = (id) => {
     setActiveTab(id);
-    window.history.pushState({}, '', id === 'first-home-playbook' ? '/first-home-playbook' : '/');
+    window.history.pushState({}, '', id === 'first-home-playbook' ? '/first-home-playbook' : id === 'privacy' ? '/privacy' : '/');
   };
 
   useEffect(() => {
     const syncFromPath = () => {
-      setActiveTab(window.location.pathname.startsWith('/first-home-playbook') ? 'first-home-playbook' : 'borrow');
+      const path = window.location.pathname;
+      if (path.startsWith('/first-home-playbook')) setActiveTab('first-home-playbook');
+      else if (path.startsWith('/privacy')) setActiveTab('privacy');
+      else setActiveTab('borrow');
     };
     syncFromPath();
     window.addEventListener('popstate', syncFromPath);
@@ -3133,7 +3162,7 @@ export default function App() {
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '1.5rem 1rem', boxSizing: 'border-box' }}>
         {renderTab()}
         <p style={{ textAlign: 'center', fontSize: '13px', color: C.textMuted, marginTop: '2rem' }}>
-          parryfs.com - NZ mortgage calculators · <button onClick={() => setShowPrivacyPolicy(true)} style={{ background: 'none', border: 'none', color: C.textMuted, cursor: 'pointer', fontSize: '13px', textDecoration: 'underline', padding: 0 }}>Privacy Policy</button>
+          parryfs.com - NZ mortgage calculators · <a href="/privacy" onClick={e => { e.preventDefault(); handleSetActiveTab('privacy'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Privacy Policy</a>
         </p>
       </div>
 
@@ -3176,21 +3205,6 @@ export default function App() {
               <button onClick={() => setShowSaveName(false)} style={{ ...secondaryBtn, flex: 1 }}>Cancel</button>
               <button onClick={handleSaveConfirm} style={{ ...primaryBtn, flex: 1 }}>Save</button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Privacy Policy Modal */}
-      {showPrivacyPolicy && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }} onClick={() => setShowPrivacyPolicy(false)}>
-          <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '520px', width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: '500', margin: 0, color: C.textPrimary }}>Privacy Policy</h3>
-              <button onClick={() => setShowPrivacyPolicy(false)} style={{ background: C.inputBg, border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <i className="ti ti-x" style={{ fontSize: '18px', color: C.textPrimary }} />
-              </button>
-            </div>
-            <PRIVACY_POLICY_CONTENT />
           </div>
         </div>
       )}
