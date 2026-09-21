@@ -268,6 +268,7 @@ const MoneyField = ({ label, value, onChange, placeholder = '0', hint }) => (
         onChange={(e) => onChange(parseMoney(e.target.value))}
         placeholder={placeholder}
         style={inputStyle}
+        data-clarity-mask="true"
       />
     </div>
     {hint && <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0.5rem 0 0' }}>{hint}</p>}
