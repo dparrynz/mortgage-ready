@@ -623,7 +623,6 @@ const PRIVACY_POLICY_CONTENT = () => (
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>2. Who We Are</h4>
     <p>
       <strong>Business name:</strong> Parry Financial Services<br />
-      <strong>Trading as:</strong> Parry Financial Services (a Mike Pero Mortgages franchise)<br />
       <strong>Contact:</strong> dan@parryfs.com<br />
       <strong>Location:</strong> Auckland, New Zealand
     </p>
@@ -675,7 +674,6 @@ const PRIVACY_POLICY_CONTENT = () => (
       <li><strong>Meta (Facebook and Instagram)</strong> - Running our lead forms, and advertising where people have opted in to marketing</li>
       <li><strong>Microsoft Clarity</strong> - Website analytics, including masked session recordings</li>
       <li><strong>Cloudflare</strong> - Website analytics</li>
-      <li><strong>Mike Pero Mortgages</strong> - The franchise we operate under</li>
     </ul>
     <p>We only share your information with lenders, insurers or other finance providers when we're arranging finance for you, and only with your consent.</p>
 
