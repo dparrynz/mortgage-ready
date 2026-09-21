@@ -1282,10 +1282,10 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const umi = netMonthly - stressedPmt - livingExp - ccExp - bnplExp - slMonthly - otherMonthlyLoans;
 
     const isKO2 = isKO;
-    let reqUmi = 200, umiStatus = 'standard';
-    if (!isFullDeposit) { 
-      reqUmi = isKO ? 200 : 500; 
-      umiStatus = isKO ? 'kainga_ora' : 'challenging'; 
+    let reqUmi = 450, umiStatus = 'standard';
+    if (!isFullDeposit) {
+      reqUmi = isKO ? 450 : 750;
+      umiStatus = isKO ? 'kainga_ora' : 'challenging';
     }
     const umiPass = umi >= reqUmi;
 
@@ -1399,7 +1399,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const r = 0.07 / 12;
     const maxLoanFromDTI = usableGross * 6 - creditCardLimit - bnplLimit;
 
-    // The <20%-deposit servicing buffer ($500 vs $200) depends on the resulting purchase
+    // The <20%-deposit servicing buffer ($750 vs $450) depends on the resulting purchase
     // price's LVR, but that price is what we're solving for here (unlike Know-price mode,
     // where price is a known input) - so resolve it with a small fixed-point loop instead of
     // assuming the loose (>=20%) buffer applies regardless of the deposit actually entered.
@@ -1410,12 +1410,12 @@ function BorrowChecker({ onSavePrompt, onSave }) {
       return Math.max(0, Math.min(maxLoanFromServicing, maxLoanFromDTI));
     }
 
-    let reqUmi = 200; // optimistic starting guess - refined below if it turns out deposit is <20%
+    let reqUmi = 450; // optimistic starting guess - refined below if it turns out deposit is <20%
     let maxLoan = maxLoanFor(reqUmi);
     for (let i = 0; i < 5; i++) {
       const maxPurchaseGuess = maxLoan + deposit;
       const depositPctGuess = maxPurchaseGuess > 0 ? (deposit / maxPurchaseGuess) * 100 : 0;
-      const nextReqUmi = isKO ? 200 : (depositPctGuess >= 20 ? 200 : 500);
+      const nextReqUmi = isKO ? 450 : (depositPctGuess >= 20 ? 450 : 750);
       if (nextReqUmi === reqUmi) break;
       reqUmi = nextReqUmi;
       maxLoan = maxLoanFor(reqUmi);
