@@ -42,11 +42,9 @@ const supabase = (() => {
       body: JSON.stringify(body)
     });
     const data = await res.json();
-    if (data.access_token) {
-      localStorage.setItem('sb_session', JSON.stringify(data));
-      return { data, error: null };
-    }
-    return { data: null, error: data };
+    if (!res.ok) return { data: null, error: data };
+    if (data.access_token) localStorage.setItem('sb_session', JSON.stringify(data));
+    return { data, error: null };
   };
 
   const signOut = async () => {
