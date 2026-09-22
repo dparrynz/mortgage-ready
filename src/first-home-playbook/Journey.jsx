@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { C, primaryBtn, secondaryBtn, useAuth, AuthModal, supabase, useWindowWidth, SegmentedToggle } from '../../ParryFSApp.jsx';
-import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, GlossaryLink, linkifyGlossaryTerms, BOOKINGS_URL, PLAYBOOK_ROOT, JOURNEY_PROGRESS_LS_KEY } from './shared.jsx';
+import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, GlossaryLink, linkifyGlossaryTerms, PLAYBOOK_ROOT, JOURNEY_PROGRESS_LS_KEY } from './shared.jsx';
 import {
   JOURNEY_INTRO_PARAGRAPHS,
   JOURNEY_RELATED_ROUTES,
@@ -361,19 +361,6 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
             </button>
           </p>
         )}
-
-        <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>Ready for your next step?</h3>
-          <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>
-            The best time to talk to us is before you start house hunting, so you know your numbers and can move quickly when the right place comes up. Book a free call and we'll map out your plan together.
-          </p>
-          <p style={{ fontSize: '13px', color: C.textMuted, lineHeight: 1.6, margin: '0 0 1rem' }}>
-            Not sure who to call? Start with us. We deal with everyone involved and can point you in the right direction.
-          </p>
-          <a href={BOOKINGS_URL} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, display: 'inline-block', textDecoration: 'none' }}>
-            Book a call with Dan
-          </a>
-        </div>
 
         <PlaybookDisclaimer />
       </PlaybookCard>
