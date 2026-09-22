@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { C, primaryBtn, secondaryBtn, useAuth, AuthModal, supabase, useWindowWidth, SegmentedToggle } from '../../ParryFSApp.jsx';
-import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, GlossaryLink, linkifyGlossaryTerms, BOOKINGS_URL, PLAYBOOK_ROOT } from './shared.jsx';
+import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, GlossaryLink, linkifyGlossaryTerms, BOOKINGS_URL, PLAYBOOK_ROOT, JOURNEY_PROGRESS_LS_KEY } from './shared.jsx';
 import {
   JOURNEY_INTRO_PARAGRAPHS,
   JOURNEY_RELATED_ROUTES,
@@ -11,7 +11,7 @@ import {
   FLOOD_VIEWER_URL,
 } from './content.js';
 
-const LS_KEY = 'fhp_journey_progress_v1';
+const LS_KEY = JOURNEY_PROGRESS_LS_KEY;
 
 const PATH_OPTIONS = [
   { value: 'negotiation', label: 'Negotiation or deadline' },

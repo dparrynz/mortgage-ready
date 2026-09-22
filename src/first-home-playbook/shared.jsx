@@ -1,11 +1,43 @@
-import React from 'react';
-import { C, card, primaryBtn, secondaryBtn } from '../../ParryFSApp.jsx';
+import React, { useState, useEffect } from 'react';
+import { C, card, primaryBtn, secondaryBtn, useAuth, supabase } from '../../ParryFSApp.jsx';
 
 // Shared page chrome for every First Home Playbook page: a back-to-hub
 // breadcrumb, title/intro, and the general-information disclaimer the brief
 // asks for on every content page.
 
 export const PLAYBOOK_ROOT = '/first-home-playbook';
+
+// Same key Journey.jsx reads/writes, kept here so anything that just needs
+// to *read* progress (e.g. the Hub tile) doesn't need its own copy.
+export const JOURNEY_PROGRESS_LS_KEY = 'fhp_journey_progress_v1';
+
+// Loads saved journey checklist state: localStorage first (instant, works
+// logged out), then Supabase if signed in (overrides, since that's the
+// source of truth for a logged in user across devices). Returns null while
+// loading, then the checklist object (possibly {}).
+export function useJourneyProgress() {
+  const { user } = useAuth();
+  const [checklist, setChecklist] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let merged = {};
+      try {
+        const raw = localStorage.getItem(JOURNEY_PROGRESS_LS_KEY);
+        if (raw) merged = JSON.parse(raw) || {};
+      } catch {}
+      if (user) {
+        const { data } = await supabase.getJourneyProgress();
+        if (data) merged = data;
+      }
+      if (!cancelled) setChecklist(merged);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  return checklist;
+}
 
 // Single place to update the First Home Playbook Enquiry Bookings link
 // (current link expires 1 December 2026, per the build brief). BookACall.jsx
