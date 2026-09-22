@@ -13,6 +13,31 @@ import {
 
 const LS_KEY = JOURNEY_PROGRESS_LS_KEY;
 
+// Links the phrase "flood viewer" (wherever it shows up in a to-do's text)
+// to the Auckland Flood Viewer, the same link used in the House hunting
+// stage's "Read more" text.
+function linkifyFloodViewer(text) {
+  const idx = text.toLowerCase().indexOf('flood viewer');
+  if (idx === -1) return text;
+  const before = text.slice(0, idx);
+  const match = text.slice(idx, idx + 'flood viewer'.length);
+  const after = text.slice(idx + 'flood viewer'.length);
+  return [
+    before,
+    <a
+      key="flood-viewer-link"
+      href={FLOOD_VIEWER_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      style={{ color: C.accent, textDecoration: 'underline' }}
+    >
+      {match}
+    </a>,
+    after,
+  ];
+}
+
 const PATH_OPTIONS = [
   { value: 'negotiation', label: 'Negotiation or deadline' },
   { value: 'auction', label: 'Auction' },
@@ -250,7 +275,7 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
                     onChange={() => toggleTodo(selectedStage, ti)}
                     style={{ marginTop: '3px', width: '16px', height: '16px', flexShrink: 0, cursor: 'pointer' }}
                   />
-                  <span style={{ fontSize: '14px', color: done ? C.textMuted : C.textPrimary, textDecoration: done ? 'line-through' : 'none', lineHeight: 1.5 }}>{todo}</span>
+                  <span style={{ fontSize: '14px', color: done ? C.textMuted : C.textPrimary, textDecoration: done ? 'line-through' : 'none', lineHeight: 1.5 }}>{linkifyFloodViewer(todo)}</span>
                 </label>
               );
             })}
