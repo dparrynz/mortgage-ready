@@ -1,8 +1,33 @@
 import React from 'react';
 import { C } from '../../ParryFSApp.jsx';
-import { PlaybookHeader, PlaybookDisclaimer, TILES } from './shared.jsx';
+import { PlaybookHeader, PlaybookDisclaimer, TILES, useJourneyProgress } from './shared.jsx';
+import { journeyStagesForPath } from './content.js';
+
+// Of the two journey paths (todos differ on the stages auction overrides),
+// picks whichever the visitor has actually put ticks against. If they've
+// dabbled in both, shows whichever has more done so the tile reflects real
+// progress rather than double-counting across paths.
+function bestJourneyProgress(checklist) {
+  if (!checklist) return null;
+  let best = null;
+  for (const path of ['negotiation', 'auction']) {
+    const stages = journeyStagesForPath(path);
+    const totalTodos = stages.reduce((sum, s) => sum + s.todos.length, 0);
+    const doneTodos = stages.reduce(
+      (sum, s, i) => sum + s.todos.filter((_, ti) => !!checklist[path]?.[i]?.[ti]).length,
+      0
+    );
+    if (doneTodos > 0 && (!best || doneTodos > best.doneTodos)) {
+      best = { doneTodos, totalTodos, pct: Math.round((doneTodos / totalTodos) * 100) };
+    }
+  }
+  return best;
+}
 
 export default function Hub({ onExit, onNavigate }) {
+  const checklist = useJourneyProgress();
+  const journeyProgress = bestJourneyProgress(checklist);
+
   return (
     <div>
       <PlaybookHeader onExit={onExit} onBackToHub={() => {}} />
@@ -39,6 +64,16 @@ export default function Hub({ onExit, onNavigate }) {
             </div>
             <p style={{ fontSize: '16px', fontWeight: '600', color: C.textPrimary, margin: 0 }}>{tile.title}</p>
             <p style={{ fontSize: '13px', color: C.textSecondary, margin: 0, lineHeight: 1.5 }}>{tile.blurb}</p>
+            {tile.id === 'journey' && journeyProgress && (
+              <div style={{ marginTop: '0.25rem' }}>
+                <div style={{ height: '6px', borderRadius: '3px', background: C.inputBg, overflow: 'hidden' }}>
+                  <div style={{ width: `${journeyProgress.pct}%`, height: '100%', background: C.accent, borderRadius: '3px' }} />
+                </div>
+                <p style={{ fontSize: '12px', color: C.textMuted, margin: '0.4rem 0 0' }}>
+                  {journeyProgress.doneTodos} of {journeyProgress.totalTodos} to-dos done{journeyProgress.pct === 100 ? ' · complete' : ' · continue'}
+                </p>
+              </div>
+            )}
           </button>
         ))}
       </div>

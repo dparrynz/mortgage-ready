@@ -1,8 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { C } from '../../ParryFSApp.jsx';
 import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer } from './shared.jsx';
 
-export default function GuidePage({ content, onExit, onBackToHub }) {
+export default function GuidePage({ content, onExit, onBackToHub, hash }) {
+  useEffect(() => {
+    if (!hash) return;
+    const raf = requestAnimationFrame(() => {
+      const el = document.getElementById(hash);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [hash]);
+
   return (
     <div>
       <PlaybookHeader title={content.title} onExit={onExit} onBackToHub={onBackToHub} />
@@ -11,7 +20,7 @@ export default function GuidePage({ content, onExit, onBackToHub }) {
         <p style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1.5rem' }}>{content.intro}</p>
 
         {content.sections.map((s) => (
-          <div key={s.heading} style={{ marginBottom: '1.5rem' }}>
+          <div key={s.heading} id={s.anchor} style={{ marginBottom: '1.5rem', scrollMarginTop: '1.5rem' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>{s.heading}</h3>
             {s.body && <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: 0 }}>{s.body}</p>}
             {s.list && (
@@ -21,6 +30,12 @@ export default function GuidePage({ content, onExit, onBackToHub }) {
                 ))}
               </ul>
             )}
+            {s.blocks && s.blocks.map((b, i) => (
+              <p key={i} style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0.75rem 0 0' }}>
+                {b.label && <strong style={{ color: C.textPrimary }}>{b.label}<br /></strong>}
+                {b.body}
+              </p>
+            ))}
           </div>
         ))}
 
