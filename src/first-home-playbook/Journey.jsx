@@ -6,10 +6,7 @@ import {
   JOURNEY_RELATED_ROUTES,
   journeyStagesForPath,
   JOURNEY_FULL_TEXT,
-  JOURNEY_WHO_DOES_WHAT_LEAD,
   JOURNEY_WHO_DOES_WHAT,
-  JOURNEY_WHO_TO_ASK_LEAD,
-  JOURNEY_WHO_TO_ASK,
   JOURNEY_GLOSSARY_LINKS,
   FLOOD_VIEWER_URL,
 } from './content.js';
@@ -20,6 +17,20 @@ const PATH_OPTIONS = [
   { value: 'negotiation', label: 'Negotiation or deadline' },
   { value: 'auction', label: 'Auction' },
 ];
+
+// Short chip labels (as used in JOURNEY_STAGES_*) don't always match the
+// "Who" column wording in JOURNEY_WHO_DOES_WHAT (section 3.3) exactly.
+const WHO_CHIP_ALIASES = {
+  Bank: 'Bank (lender)',
+  Agent: 'Real estate agent',
+  Solicitor: 'Solicitor or conveyancer',
+  Valuer: 'Registered valuer',
+};
+
+function findWhoInfo(chipLabel) {
+  const lookupName = WHO_CHIP_ALIASES[chipLabel] || chipLabel;
+  return JOURNEY_WHO_DOES_WHAT.find((row) => row.who === lookupName);
+}
 
 export default function Journey({ onExit, onBackToHub, onNavigate }) {
   const { user } = useAuth();
@@ -32,6 +43,26 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
   const [checklist, setChecklist] = useState({});
   const [loaded, setLoaded] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [openWhoChip, setOpenWhoChip] = useState(null);
+  const whoChipsRef = React.useRef(null);
+
+  useEffect(() => {
+    if (!openWhoChip) return;
+    const closeIfOutside = (e) => {
+      if (whoChipsRef.current && !whoChipsRef.current.contains(e.target)) setOpenWhoChip(null);
+    };
+    const closeOnEscape = (e) => { if (e.key === 'Escape') setOpenWhoChip(null); };
+    document.addEventListener('mousedown', closeIfOutside);
+    document.addEventListener('touchstart', closeIfOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeIfOutside);
+      document.removeEventListener('touchstart', closeIfOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [openWhoChip]);
+
+  useEffect(() => { setOpenWhoChip(null); }, [selectedStage, path]);
 
   const stages = useMemo(() => journeyStagesForPath(path), [path]);
   const usedAnchors = useMemo(() => new Set(), [path, selectedStage, expandedFullText]);
@@ -91,9 +122,9 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
 
   return (
     <div>
-      <PlaybookHeader title="Your Journey" onExit={onExit} onBackToHub={onBackToHub} />
+      <PlaybookHeader title="Your journey" onExit={onExit} onBackToHub={onBackToHub} />
       <PlaybookCard>
-        <h1 style={{ fontSize: '24px', fontWeight: '500', color: C.textPrimary, margin: '0 0 1rem' }}>The First Home Journey, Start to Finish</h1>
+        <h1 style={{ fontSize: '24px', fontWeight: '500', color: C.textPrimary, margin: '0 0 1rem' }}>The first home journey, start to finish</h1>
 
         {JOURNEY_INTRO_PARAGRAPHS.map((p, i) => (
           <p key={i} style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>{p}</p>
@@ -160,10 +191,49 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
           </p>
 
           <p style={{ fontSize: '12px', fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0 0 0.5rem' }}>Who's involved</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.25rem' }}>
-            {stage.who.map((w) => (
-              <span key={w} style={{ fontSize: '12px', fontWeight: '500', color: C.accent, background: 'white', borderRadius: '999px', padding: '0.3rem 0.75rem' }}>{w}</span>
-            ))}
+          <div ref={whoChipsRef} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.25rem' }}>
+            {stage.who.map((w) => {
+              const chipKey = `${selectedStage}-${w}`;
+              const info = findWhoInfo(w);
+              const isOpen = openWhoChip === chipKey;
+              return (
+                <div key={w} style={{ position: 'relative' }}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenWhoChip(isOpen ? null : chipKey)}
+                    aria-expanded={isOpen}
+                    style={{ fontSize: '12px', fontWeight: '500', color: C.accent, background: isOpen ? C.accentLight : 'white', border: 'none', borderRadius: '999px', padding: '0.3rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                  >
+                    {w}
+                    {info && <i className={`ti ${isOpen ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: '11px' }} />}
+                  </button>
+                  {isOpen && info && (
+                    <div
+                      role="dialog"
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 6px)',
+                        left: 0,
+                        zIndex: 20,
+                        width: '260px',
+                        maxWidth: '80vw',
+                        background: 'white',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        boxShadow: '0 8px 28px rgba(0,0,0,0.18)',
+                        border: `1px solid ${C.borderLight}`,
+                      }}
+                    >
+                      <p style={{ fontSize: '14px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>{info.who}</p>
+                      <p style={{ fontSize: '12px', color: C.textMuted, margin: '0 0 0.5rem' }}><strong>Works for:</strong> {info.worksFor}</p>
+                      <p style={{ fontSize: '13px', color: C.textSecondary, lineHeight: 1.6, margin: '0 0 0.5rem' }}>{info.does}</p>
+                      <p style={{ fontSize: '12px', color: C.textMuted, margin: '0 0 0.5rem' }}><strong>Rough cost to you:</strong> {info.cost}</p>
+                      <p style={{ fontSize: '11px', color: C.textMuted, fontStyle: 'italic', margin: 0 }}>Costs are a rough guide only.</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <p style={{ fontSize: '12px', fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0 0 0.5rem' }}>Your to-dos</p>
@@ -292,13 +362,13 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
           </p>
         )}
 
-        <WhoDoesWhat isMobile={isMobile} />
-        <WhoToAsk isMobile={isMobile} />
-
         <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
           <h3 style={{ fontSize: '18px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>Ready for your next step?</h3>
           <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>
             The best time to talk to us is before you start house hunting, so you know your numbers and can move quickly when the right place comes up. Book a free call and we'll map out your plan together.
+          </p>
+          <p style={{ fontSize: '13px', color: C.textMuted, lineHeight: 1.6, margin: '0 0 1rem' }}>
+            Not sure who to call? Start with us. We deal with everyone involved and can point you in the right direction.
           </p>
           <a href={BOOKINGS_URL} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, display: 'inline-block', textDecoration: 'none' }}>
             Book a call with Dan
@@ -315,90 +385,3 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
   );
 }
 
-function WhoDoesWhat({ isMobile }) {
-  return (
-    <div style={{ marginBottom: '2rem' }}>
-      <h3 style={{ fontSize: '18px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>Who Does What</h3>
-      <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>{JOURNEY_WHO_DOES_WHAT_LEAD}</p>
-
-      {isMobile ? (
-        <div>
-          {JOURNEY_WHO_DOES_WHAT.map((row) => (
-            <div key={row.who} style={{ background: C.inputBg, borderRadius: '12px', padding: '1rem', marginBottom: '0.75rem' }}>
-              <p style={{ fontSize: '14px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.25rem' }}>{row.who}</p>
-              <p style={{ fontSize: '12px', color: C.textMuted, margin: '0 0 0.5rem' }}>Works for: {row.worksFor}</p>
-              <p style={{ fontSize: '13px', color: C.textSecondary, lineHeight: 1.6, margin: '0 0 0.4rem' }}>{row.does}</p>
-              <p style={{ fontSize: '12px', color: C.textMuted, margin: '0 0 0.2rem' }}><strong>When:</strong> {row.when}</p>
-              <p style={{ fontSize: '12px', color: C.textMuted, margin: 0 }}><strong>Rough cost:</strong> {row.cost}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
-              <tr>
-                {['Who', 'Works for', 'What they do for you', 'When they come in', 'Rough cost to you'].map((h) => (
-                  <th key={h} style={{ textAlign: 'left', padding: '0.6rem 0.75rem', color: C.textMuted, fontWeight: '600', borderBottom: `1px solid ${C.borderLight}` }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {JOURNEY_WHO_DOES_WHAT.map((row) => (
-                <tr key={row.who}>
-                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, fontWeight: '600', color: C.textPrimary }}>{row.who}</td>
-                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, color: C.textSecondary }}>{row.worksFor}</td>
-                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, color: C.textSecondary }}>{row.does}</td>
-                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, color: C.textSecondary }}>{row.when}</td>
-                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, color: C.textSecondary }}>{row.cost}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <p style={{ fontSize: '12px', color: C.textMuted, margin: '0.75rem 0 0' }}>Costs are a rough guide only and vary by provider and property.</p>
-    </div>
-  );
-}
-
-function WhoToAsk({ isMobile }) {
-  return (
-    <div style={{ marginBottom: '1.5rem' }}>
-      <h3 style={{ fontSize: '18px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>Who to Ask About What</h3>
-      <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>{JOURNEY_WHO_TO_ASK_LEAD}</p>
-
-      {isMobile ? (
-        <div>
-          {JOURNEY_WHO_TO_ASK.map((row, i) => (
-            <div key={i} style={{ background: C.inputBg, borderRadius: '12px', padding: '1rem', marginBottom: '0.75rem' }}>
-              <p style={{ fontSize: '13px', color: C.textPrimary, lineHeight: 1.6, margin: '0 0 0.4rem' }}>{row.q}</p>
-              <p style={{ fontSize: '13px', fontWeight: '600', color: C.accent, margin: 0 }}>{row.ask}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
-              <tr>
-                {['Your question', 'Ask'].map((h) => (
-                  <th key={h} style={{ textAlign: 'left', padding: '0.6rem 0.75rem', color: C.textMuted, fontWeight: '600', borderBottom: `1px solid ${C.borderLight}` }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {JOURNEY_WHO_TO_ASK.map((row, i) => (
-                <tr key={i}>
-                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, color: C.textSecondary }}>{row.q}</td>
-                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, fontWeight: '600', color: C.accent }}>{row.ask}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <p style={{ fontSize: '12px', color: C.textMuted, margin: '0.75rem 0 0' }}>If in doubt, call us first. We deal with every person on this list and can point you in the right direction.</p>
-    </div>
-  );
-}

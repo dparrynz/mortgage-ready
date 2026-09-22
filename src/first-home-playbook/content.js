@@ -312,8 +312,8 @@ export const JOURNEY_FULL_TEXT = [
   },
 ];
 
-export const JOURNEY_WHO_DOES_WHAT_LEAD = 'Eight people or organisations are usually involved, and only two of them (your mortgage adviser and your solicitor) work for you on the purchase itself.';
-
+// Backs the "Who's involved" chip popovers on the journey page's stage
+// cards (tap a chip to see that person's works-for/does/cost).
 export const JOURNEY_WHO_DOES_WHAT = [
   { who: 'Mortgage adviser', worksFor: 'You', does: 'Finds the right bank and loan, gets pre-approval and final approval, helps structure the loan', when: 'Stage 1, then again at offer and unconditional', cost: 'Usually nothing, as advisers are generally paid by the lender (see our disclosure statement)' },
   { who: 'Solicitor or conveyancer', worksFor: 'You', does: 'Reviews the agreement and documents, handles conditions, KiwiSaver withdrawal, loan documents and settlement', when: 'Before your first offer, through to settlement', cost: 'Often around $1,500 to $2,500 for a standard purchase, including disbursements' },
@@ -323,25 +323,6 @@ export const JOURNEY_WHO_DOES_WHAT = [
   { who: 'Registered valuer', worksFor: 'Usually the bank', does: 'Gives an independent value of the property, if the bank requires one', when: 'Stage 5', cost: 'Often around $700 to $1,200, paid by you' },
   { who: 'Insurer', worksFor: 'You', does: 'Confirms the property can be insured and issues your house policy', when: 'Stage 3 to check, stage 7 to confirm', cost: 'Your annual premium' },
   { who: 'Council', worksFor: 'Nobody in particular', does: 'Provides the LIM report and holds building consent records', when: 'Stage 3 or 5', cost: 'LIM fees vary by council, typically a few hundred dollars' },
-];
-
-export const JOURNEY_WHO_TO_ASK_LEAD = "When you're not sure who to call, start here.";
-
-export const JOURNEY_WHO_TO_ASK = [
-  { q: 'How much can we borrow?', ask: 'Mortgage adviser' },
-  { q: 'Can we use KiwiSaver, and how does it work?', ask: 'Mortgage adviser, then solicitor to apply' },
-  { q: 'Is this property within our approval?', ask: 'Mortgage adviser' },
-  { q: 'Will the bank need a valuation?', ask: 'Mortgage adviser' },
-  { q: 'Can we see the LIM, title and building report?', ask: 'Agent' },
-  { q: "What's the seller looking for (price, settlement date, deposit)?", ask: 'Agent' },
-  { q: 'What does this clause in the agreement mean?', ask: 'Solicitor' },
-  { q: 'Is there anything worrying in the title or LIM?', ask: 'Solicitor' },
-  { q: 'Should we add or change a condition?', ask: 'Solicitor' },
-  { q: 'Is the house in good condition?', ask: 'Building inspector' },
-  { q: 'Can this property be insured?', ask: 'Insurer or insurance adviser' },
-  { q: 'When do we need insurance in place?', ask: 'Mortgage adviser or insurer' },
-  { q: "When does the seller's deposit get paid?", ask: 'Solicitor' },
-  { q: 'What happens on settlement day?', ask: 'Solicitor' },
 ];
 
 export const FLOOD_VIEWER_URL = 'https://experience.arcgis.com/experience/cbde7f2134404f4d90adce5396a0a630';
