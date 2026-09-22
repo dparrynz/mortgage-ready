@@ -194,10 +194,12 @@ export const JOURNEY_RELATED_ROUTES = {
   'Hidden costs': '/costs-of-buying',
   'Glossary': '/glossary',
   'Book a call': '/book-a-call',
+  'Are You Ready?': '/are-you-ready',
+  'Kāinga Ora Qualifying Quiz': '/kainga-ora-quiz',
 };
 
 export const JOURNEY_STAGES_NEGOTIATION = [
-  { title: 'Pre-approval', time: '1 to 3 weeks', desc: "Work out what you can borrow and get the bank's approval in principle before you fall in love with a house.", who: ['Mortgage adviser', 'Bank'], todos: ['Book a call with your adviser', 'Gather payslips and bank statements', 'Know where your deposit is coming from'], related: ['Borrow Checker', 'Deposit Sources', 'Kāinga Ora explained'] },
+  { title: 'Pre-approval', time: '1 to 3 weeks', desc: "Work out what you can borrow and get the bank's approval in principle before you fall in love with a house.", who: ['Mortgage adviser', 'Bank'], todos: ['Book a call with your adviser', 'Gather payslips and bank statements', 'Know where your deposit is coming from'], related: ['Are You Ready?', 'Borrow Checker', 'Deposit Sources', 'Kāinga Ora explained', 'Kāinga Ora Qualifying Quiz'] },
   { title: 'House hunting', time: 'Weeks to months', desc: 'Open homes and viewings. Remember the agent works for the seller.', who: ['Agent'], todos: ['Ask the agent for the property documents', 'Ask about the method of sale', 'Check the flood viewer for any address you like'], related: ['Hidden costs', 'Glossary'] },
   { title: 'Homework', time: '1 to 2 weeks', desc: 'Hand the documents to the experts and check the property is insurable.', who: ['Solicitor', 'Insurer', 'Mortgage adviser'], todos: ['Send documents to your solicitor', 'Check insurability', 'Talk to your adviser about the property'], related: ['Glossary'] },
   { title: 'Making an offer', time: 'A few days', desc: 'Your solicitor reviews the agreement. Make your conditions subject to 10 working days.', who: ['Solicitor', 'Agent', 'Mortgage adviser'], todos: ['Solicitor reviews the agreement', 'Add finance, building and LIM conditions', 'Sign and negotiate'], related: ['Glossary'] },
