@@ -485,7 +485,7 @@ function AuthModal({ onClose, onSuccess }) {
       const { data, error: err } = await supabase.signUpWithEmail(email, password, turnstileToken);
       setLoading(false);
       if (err) {
-        const msg = err.message || err.error_description || '';
+        const msg = err.msg || err.message || err.error_description || '';
         if (msg.includes('already registered')) setError('An account with this email already exists. Please sign in.');
         else setError(msg || 'Something went wrong. Please try again.');
         resetTurnstile();
@@ -500,7 +500,7 @@ function AuthModal({ onClose, onSuccess }) {
     const { data, error: err } = await supabase.signInWithEmail(email, password, turnstileToken);
     setLoading(false);
     if (err) {
-      const msg = err.message || err.error_description || '';
+      const msg = err.msg || err.message || err.error_description || '';
       if (msg.includes('Invalid login')) setError('Incorrect email or password. Please try again.');
       else if (msg.includes('Email not confirmed')) setError('Please confirm your email first. Check your inbox.');
       else setError(msg || 'Something went wrong. Please try again.');
