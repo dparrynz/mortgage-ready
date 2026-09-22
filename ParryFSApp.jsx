@@ -519,7 +519,7 @@ function AuthModal({ onClose, onSuccess }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }} onClick={onClose}>
-      <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '420px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '420px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxHeight: '90dvh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
         
         {/* Privacy Policy sub-view */}
         {showPrivacy ? (
@@ -839,7 +839,7 @@ function SavedScenarios({ onClose, onLoad }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }} onClick={onClose}>
-      <div style={{ background: 'white', borderRadius: '24px', padding: '2rem', maxWidth: '560px', width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: 'white', borderRadius: '24px', padding: '2rem', maxWidth: '560px', width: '100%', maxHeight: '80dvh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h3 style={{ fontSize: '20px', fontWeight: '500', margin: 0, color: C.textPrimary }}>Saved scenarios</h3>
           <button onClick={onClose} style={{ background: C.inputBg, border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -2037,7 +2037,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                 onClick={() => setShowExpenseCalc(false)}
               >
                 <div
-                  style={{ background: 'white', borderRadius: '24px', padding: '2rem', maxWidth: '560px', width: '100%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+                  style={{ background: 'white', borderRadius: '24px', padding: '2rem', maxWidth: '560px', width: '100%', maxHeight: '85dvh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
                   onClick={e => e.stopPropagation()}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -2357,7 +2357,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
       {/* Repayment Modal */}
       {showRepayCalc && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={() => setShowRepayCalc(false)}>
-          <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '500px', width: '100%', maxHeight: '90dvh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <h3 style={{ fontSize: '22px', fontWeight: '500', margin: 0, color: C.textPrimary }}>Repayment calculator</h3>
               <button onClick={() => setShowRepayCalc(false)} style={{ background: C.inputBg, border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer' }}>
