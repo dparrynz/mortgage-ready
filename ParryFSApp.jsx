@@ -98,6 +98,33 @@ const supabase = (() => {
     return res.ok ? { error: null } : { error: 'Failed to delete' };
   };
 
+  // First Home Playbook journey checklist progress, one row per user
+  // (upserted on user_id) in a `journey_progress` table: columns user_id
+  // (uuid, unique), completed (jsonb), updated_at (timestamptz).
+  const saveJourneyProgress = async (completed) => {
+    const session = await getSession();
+    if (!session?.access_token) return { error: 'Not logged in' };
+    const userId = session.user?.id || JSON.parse(atob(session.access_token.split('.')[1])).sub;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/journey_progress?on_conflict=user_id`, {
+      method: 'POST',
+      headers: { ...headers, 'Authorization': `Bearer ${session.access_token}`, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify({ user_id: userId, completed, updated_at: new Date().toISOString() })
+    });
+    const data = await res.json();
+    return res.ok ? { data, error: null } : { data: null, error: data };
+  };
+
+  const getJourneyProgress = async () => {
+    const session = await getSession();
+    if (!session?.access_token) return { data: null, error: null };
+    const userId = session.user?.id || JSON.parse(atob(session.access_token.split('.')[1])).sub;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/journey_progress?user_id=eq.${userId}&select=completed`, {
+      headers: { ...headers, 'Authorization': `Bearer ${session.access_token}` }
+    });
+    const data = await res.json();
+    return res.ok ? { data: data?.[0]?.completed ?? null, error: null } : { data: null, error: data };
+  };
+
   // Handle OAuth callback
   const handleOAuthCallback = async () => {
     const hash = window.location.hash;
@@ -115,7 +142,7 @@ const supabase = (() => {
     return false;
   };
 
-  return { signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, getUser, saveScenario, getScenarios, deleteScenario, handleOAuthCallback };
+  return { signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, getUser, saveScenario, getScenarios, deleteScenario, saveJourneyProgress, getJourneyProgress, handleOAuthCallback };
 })();
 
 // ─── WINDOW WIDTH HOOK ───────────────────────────────────────────────────────
@@ -3223,7 +3250,7 @@ export default function App() {
 // Nothing above this block is changed. BorrowChecker and the Kāinga Ora
 // income-cap check are exported as-is so that section reuses this file's
 // logic instead of duplicating it.
-export { BorrowChecker, useAuth, AuthModal, supabase, C, card, Disclaimer, primaryBtn, secondaryBtn, inputWrap, inputStyle, fmtNZD, MoneyField };
+export { BorrowChecker, useAuth, AuthModal, supabase, C, card, Disclaimer, primaryBtn, secondaryBtn, inputWrap, inputStyle, fmtNZD, MoneyField, useWindowWidth, SegmentedToggle, StatCard };
 
 // Mirrors the income-cap thresholds computed inline in BorrowChecker's
 // calculate() (search "Kainga Ora eligibility" above), including NZ Super

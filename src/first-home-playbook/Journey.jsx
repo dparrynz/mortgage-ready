@@ -1,0 +1,404 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { C, primaryBtn, secondaryBtn, useAuth, AuthModal, supabase, useWindowWidth, SegmentedToggle } from '../../ParryFSApp.jsx';
+import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, GlossaryLink, linkifyGlossaryTerms, BOOKINGS_URL, PLAYBOOK_ROOT } from './shared.jsx';
+import {
+  JOURNEY_INTRO_PARAGRAPHS,
+  JOURNEY_RELATED_ROUTES,
+  journeyStagesForPath,
+  JOURNEY_FULL_TEXT,
+  JOURNEY_WHO_DOES_WHAT_LEAD,
+  JOURNEY_WHO_DOES_WHAT,
+  JOURNEY_WHO_TO_ASK_LEAD,
+  JOURNEY_WHO_TO_ASK,
+  JOURNEY_GLOSSARY_LINKS,
+  FLOOD_VIEWER_URL,
+} from './content.js';
+
+const LS_KEY = 'fhp_journey_progress_v1';
+
+const PATH_OPTIONS = [
+  { value: 'negotiation', label: 'Negotiation or deadline' },
+  { value: 'auction', label: 'Auction' },
+];
+
+export default function Journey({ onExit, onBackToHub, onNavigate }) {
+  const { user } = useAuth();
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
+
+  const [path, setPath] = useState('negotiation');
+  const [selectedStage, setSelectedStage] = useState(0);
+  const [expandedFullText, setExpandedFullText] = useState(false);
+  const [checklist, setChecklist] = useState({});
+  const [loaded, setLoaded] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const stages = useMemo(() => journeyStagesForPath(path), [path]);
+  const usedAnchors = useMemo(() => new Set(), [path, selectedStage, expandedFullText]);
+
+  // Load saved progress: localStorage first (instant, works logged out),
+  // then Supabase if signed in (overrides, since that's the source of truth
+  // for a logged in user across devices).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let merged = {};
+      try {
+        const raw = localStorage.getItem(LS_KEY);
+        if (raw) merged = JSON.parse(raw) || {};
+      } catch {}
+      if (user) {
+        const { data } = await supabase.getJourneyProgress();
+        if (data) merged = data;
+      }
+      if (!cancelled) { setChecklist(merged); setLoaded(true); }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    try { localStorage.setItem(LS_KEY, JSON.stringify(checklist)); } catch {}
+    if (user) supabase.saveJourneyProgress(checklist);
+  }, [checklist, loaded, user]);
+
+  useEffect(() => { setExpandedFullText(false); }, [selectedStage, path]);
+
+  const toggleTodo = (stageIdx, todoIdx) => {
+    setChecklist((prev) => {
+      const pathData = { ...(prev[path] || {}) };
+      const stageData = { ...(pathData[stageIdx] || {}) };
+      stageData[todoIdx] = !stageData[todoIdx];
+      pathData[stageIdx] = stageData;
+      return { ...prev, [path]: pathData };
+    });
+  };
+
+  const isTodoDone = (stageIdx, todoIdx) => !!checklist[path]?.[stageIdx]?.[todoIdx];
+  const isStageComplete = (stageIdx) => stages[stageIdx].todos.every((_, ti) => isTodoDone(stageIdx, ti));
+
+  const totalTodos = stages.reduce((sum, s) => sum + s.todos.length, 0);
+  const doneTodos = stages.reduce((sum, s, i) => sum + s.todos.filter((_, ti) => isTodoDone(i, ti)).length, 0);
+  const progressPct = totalTodos ? Math.round((doneTodos / totalTodos) * 100) : 0;
+
+  const stage = stages[selectedStage];
+  const fullText = path === 'negotiation' ? JOURNEY_FULL_TEXT[selectedStage] : null;
+
+  const goRelated = (label) => {
+    const route = JOURNEY_RELATED_ROUTES[label];
+    if (route) onNavigate(route);
+  };
+
+  return (
+    <div>
+      <PlaybookHeader title="Your Journey" onExit={onExit} onBackToHub={onBackToHub} />
+      <PlaybookCard>
+        <h1 style={{ fontSize: '24px', fontWeight: '500', color: C.textPrimary, margin: '0 0 1rem' }}>The First Home Journey, Start to Finish</h1>
+
+        {JOURNEY_INTRO_PARAGRAPHS.map((p, i) => (
+          <p key={i} style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>{p}</p>
+        ))}
+        <p style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1.5rem' }}>
+          New to terms like <GlossaryLink anchor="lim" onNavigate={onNavigate}>LIM</GlossaryLink>, <GlossaryLink anchor="cross-lease" onNavigate={onNavigate}>cross lease</GlossaryLink> or <GlossaryLink anchor="unconditional" onNavigate={onNavigate}>unconditional</GlossaryLink>? Each one is explained in the{' '}
+          <a
+            href={`${PLAYBOOK_ROOT}/glossary`}
+            onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); onNavigate('/glossary'); }}
+            style={{ color: C.accent, textDecoration: 'underline' }}
+          >
+            Glossary
+          </a>.
+        </p>
+
+        <div style={{ marginBottom: '1.5rem' }}>
+          <SegmentedToggle options={PATH_OPTIONS} value={path} onChange={(v) => { setPath(v); setSelectedStage((s) => Math.min(s, stages.length - 1)); }} />
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ height: '8px', borderRadius: '4px', background: C.inputBg, overflow: 'hidden' }}>
+            <div style={{ width: `${progressPct}%`, height: '100%', background: C.accent, borderRadius: '4px', transition: 'width 0.2s' }} />
+          </div>
+          <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0.5rem 0 0' }}>{doneTodos} of {totalTodos} to-dos done</p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '1.5rem' }}>
+          {stages.map((s, i) => {
+            const selected = i === selectedStage;
+            const complete = isStageComplete(i);
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setSelectedStage(i)}
+                style={{
+                  textAlign: 'left',
+                  padding: '0.75rem 0.85rem',
+                  borderRadius: '12px',
+                  border: selected ? `2px solid ${C.accent}` : `2px solid ${C.borderLight}`,
+                  background: selected ? C.accentLight : 'white',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                  minHeight: '44px',
+                }}
+              >
+                <span style={{ fontSize: '12px', fontWeight: '600', color: C.textPrimary, lineHeight: 1.3 }}>{i + 1}. {s.title}</span>
+                {complete && <i className="ti ti-circle-check-filled" style={{ fontSize: '16px', color: C.green, flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ background: C.inputBg, borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <h2 style={{ fontSize: '19px', fontWeight: '600', color: C.textPrimary, margin: 0 }}>{selectedStage + 1}. {stage.title}</h2>
+            <span style={{ fontSize: '13px', color: C.textMuted }}>{stage.time}</span>
+          </div>
+          <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>
+            {linkifyGlossaryTerms(stage.desc, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
+          </p>
+
+          <p style={{ fontSize: '12px', fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0 0 0.5rem' }}>Who's involved</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.25rem' }}>
+            {stage.who.map((w) => (
+              <span key={w} style={{ fontSize: '12px', fontWeight: '500', color: C.accent, background: 'white', borderRadius: '999px', padding: '0.3rem 0.75rem' }}>{w}</span>
+            ))}
+          </div>
+
+          <p style={{ fontSize: '12px', fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0 0 0.5rem' }}>Your to-dos</p>
+          <div style={{ marginBottom: '1.25rem' }}>
+            {stage.todos.map((todo, ti) => {
+              const checkboxId = `journey-todo-${path}-${selectedStage}-${ti}`;
+              const done = isTodoDone(selectedStage, ti);
+              return (
+                <label key={ti} htmlFor={checkboxId} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.5rem 0', cursor: 'pointer' }}>
+                  <input
+                    id={checkboxId}
+                    type="checkbox"
+                    checked={done}
+                    onChange={() => toggleTodo(selectedStage, ti)}
+                    style={{ marginTop: '3px', width: '16px', height: '16px', flexShrink: 0, cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: '14px', color: done ? C.textMuted : C.textPrimary, textDecoration: done ? 'line-through' : 'none', lineHeight: 1.5 }}>{todo}</span>
+                </label>
+              );
+            })}
+          </div>
+
+          {stage.related && stage.related.length > 0 && (
+            <>
+              <p style={{ fontSize: '12px', fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0 0 0.5rem' }}>Related</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: fullText ? '1.25rem' : 0 }}>
+                {stage.related.map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => goRelated(label)}
+                    style={{ fontSize: '13px', color: C.accent, background: 'white', border: `1px solid ${C.borderLight}`, borderRadius: '10px', padding: '0.4rem 0.85rem', cursor: 'pointer' }}
+                  >
+                    {label} →
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {fullText && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setExpandedFullText((e) => !e)}
+                style={{ background: 'none', border: 'none', color: C.accent, fontSize: '13px', fontWeight: '500', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+              >
+                {expandedFullText ? 'Show less' : 'Read more'}
+                <i className={`ti ${expandedFullText ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: '14px' }} />
+              </button>
+
+              {expandedFullText && (
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: `1px solid ${C.borderLight}` }}>
+                  {fullText.paragraphs.map((p, i) => (
+                    <p key={`p-${i}`} style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 0.75rem' }}>
+                      {linkifyGlossaryTerms(p, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
+                    </p>
+                  ))}
+                  {fullText.list && (
+                    <ul style={{ margin: '0 0 0.75rem', paddingLeft: '1.25rem' }}>
+                      {fullText.list.map((item, i) => (
+                        <li key={i} style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, marginBottom: '0.35rem' }}>
+                          {linkifyGlossaryTerms(item, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {fullText.floodViewerLink && (
+                    <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 0.75rem' }}>
+                      In Auckland, the{' '}
+                      <a href={FLOOD_VIEWER_URL} target="_blank" rel="noopener noreferrer" style={{ color: C.accent, textDecoration: 'underline' }}>
+                        Auckland Flood Viewer
+                      </a>{' '}
+                      shows flood plains and overland flow paths for any address.
+                    </p>
+                  )}
+                  {fullText.depositSourcesLink && (
+                    <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 0.75rem' }}>
+                      See the{' '}
+                      <a
+                        href={`${PLAYBOOK_ROOT}/deposit-sources#bank-vs-seller-deposit`}
+                        onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); onNavigate('/deposit-sources#bank-vs-seller-deposit'); }}
+                        style={{ color: C.accent, textDecoration: 'underline' }}
+                      >
+                        Deposit Sources guide
+                      </a>{' '}
+                      for how the two deposits differ.
+                    </p>
+                  )}
+                  {fullText.trailing && fullText.trailing.map((p, i) => (
+                    <p key={`t-${i}`} style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: 0 }}>
+                      {linkifyGlossaryTerms(p, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={() => setSelectedStage((s) => Math.max(0, s - 1))}
+            disabled={selectedStage === 0}
+            style={{ ...secondaryBtn, opacity: selectedStage === 0 ? 0.4 : 1, cursor: selectedStage === 0 ? 'not-allowed' : 'pointer' }}
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedStage((s) => Math.min(stages.length - 1, s + 1))}
+            disabled={selectedStage === stages.length - 1}
+            style={{ ...primaryBtn, opacity: selectedStage === stages.length - 1 ? 0.4 : 1, cursor: selectedStage === stages.length - 1 ? 'not-allowed' : 'pointer' }}
+          >
+            Next
+          </button>
+        </div>
+
+        {!user && (
+          <p style={{ fontSize: '13px', color: C.textMuted, margin: '0 0 1.5rem' }}>
+            Your progress is saved on this device.{' '}
+            <button type="button" onClick={() => setShowAuthModal(true)} style={{ background: 'none', border: 'none', padding: 0, color: C.accent, textDecoration: 'underline', fontSize: '13px', cursor: 'pointer' }}>
+              Log in to save your progress
+            </button>
+          </p>
+        )}
+
+        <WhoDoesWhat isMobile={isMobile} />
+        <WhoToAsk isMobile={isMobile} />
+
+        <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>Ready for your next step?</h3>
+          <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>
+            The best time to talk to us is before you start house hunting, so you know your numbers and can move quickly when the right place comes up. Book a free call and we'll map out your plan together.
+          </p>
+          <a href={BOOKINGS_URL} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, display: 'inline-block', textDecoration: 'none' }}>
+            Book a call with Dan
+          </a>
+        </div>
+
+        <PlaybookDisclaimer />
+      </PlaybookCard>
+
+      {showAuthModal && (
+        <AuthModal onClose={() => setShowAuthModal(false)} onSuccess={() => setShowAuthModal(false)} />
+      )}
+    </div>
+  );
+}
+
+function WhoDoesWhat({ isMobile }) {
+  return (
+    <div style={{ marginBottom: '2rem' }}>
+      <h3 style={{ fontSize: '18px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>Who Does What</h3>
+      <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>{JOURNEY_WHO_DOES_WHAT_LEAD}</p>
+
+      {isMobile ? (
+        <div>
+          {JOURNEY_WHO_DOES_WHAT.map((row) => (
+            <div key={row.who} style={{ background: C.inputBg, borderRadius: '12px', padding: '1rem', marginBottom: '0.75rem' }}>
+              <p style={{ fontSize: '14px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.25rem' }}>{row.who}</p>
+              <p style={{ fontSize: '12px', color: C.textMuted, margin: '0 0 0.5rem' }}>Works for: {row.worksFor}</p>
+              <p style={{ fontSize: '13px', color: C.textSecondary, lineHeight: 1.6, margin: '0 0 0.4rem' }}>{row.does}</p>
+              <p style={{ fontSize: '12px', color: C.textMuted, margin: '0 0 0.2rem' }}><strong>When:</strong> {row.when}</p>
+              <p style={{ fontSize: '12px', color: C.textMuted, margin: 0 }}><strong>Rough cost:</strong> {row.cost}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr>
+                {['Who', 'Works for', 'What they do for you', 'When they come in', 'Rough cost to you'].map((h) => (
+                  <th key={h} style={{ textAlign: 'left', padding: '0.6rem 0.75rem', color: C.textMuted, fontWeight: '600', borderBottom: `1px solid ${C.borderLight}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {JOURNEY_WHO_DOES_WHAT.map((row) => (
+                <tr key={row.who}>
+                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, fontWeight: '600', color: C.textPrimary }}>{row.who}</td>
+                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, color: C.textSecondary }}>{row.worksFor}</td>
+                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, color: C.textSecondary }}>{row.does}</td>
+                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, color: C.textSecondary }}>{row.when}</td>
+                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, color: C.textSecondary }}>{row.cost}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p style={{ fontSize: '12px', color: C.textMuted, margin: '0.75rem 0 0' }}>Costs are a rough guide only and vary by provider and property.</p>
+    </div>
+  );
+}
+
+function WhoToAsk({ isMobile }) {
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      <h3 style={{ fontSize: '18px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>Who to Ask About What</h3>
+      <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>{JOURNEY_WHO_TO_ASK_LEAD}</p>
+
+      {isMobile ? (
+        <div>
+          {JOURNEY_WHO_TO_ASK.map((row, i) => (
+            <div key={i} style={{ background: C.inputBg, borderRadius: '12px', padding: '1rem', marginBottom: '0.75rem' }}>
+              <p style={{ fontSize: '13px', color: C.textPrimary, lineHeight: 1.6, margin: '0 0 0.4rem' }}>{row.q}</p>
+              <p style={{ fontSize: '13px', fontWeight: '600', color: C.accent, margin: 0 }}>{row.ask}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr>
+                {['Your question', 'Ask'].map((h) => (
+                  <th key={h} style={{ textAlign: 'left', padding: '0.6rem 0.75rem', color: C.textMuted, fontWeight: '600', borderBottom: `1px solid ${C.borderLight}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {JOURNEY_WHO_TO_ASK.map((row, i) => (
+                <tr key={i}>
+                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, color: C.textSecondary }}>{row.q}</td>
+                  <td style={{ padding: '0.6rem 0.75rem', borderBottom: `1px solid ${C.borderLight}`, fontWeight: '600', color: C.accent }}>{row.ask}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p style={{ fontSize: '12px', color: C.textMuted, margin: '0.75rem 0 0' }}>If in doubt, call us first. We deal with every person on this list and can point you in the right direction.</p>
+    </div>
+  );
+}
