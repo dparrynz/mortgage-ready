@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { C, primaryBtn, secondaryBtn, useAuth, AuthModal, supabase, useWindowWidth, SegmentedToggle } from '../../ParryFSApp.jsx';
-import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, GlossaryLink, linkifyGlossaryTerms, PLAYBOOK_ROOT, JOURNEY_PROGRESS_LS_KEY } from './shared.jsx';
+import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, linkifyGlossaryTerms, PLAYBOOK_ROOT, JOURNEY_PROGRESS_LS_KEY } from './shared.jsx';
 import {
   JOURNEY_INTRO_PARAGRAPHS,
   JOURNEY_RELATED_ROUTES,
@@ -154,16 +154,6 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
         {JOURNEY_INTRO_PARAGRAPHS.map((p, i) => (
           <p key={i} style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>{p}</p>
         ))}
-        <p style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1.5rem' }}>
-          New to terms like <GlossaryLink anchor="lim" onNavigate={onNavigate}>LIM</GlossaryLink>, <GlossaryLink anchor="cross-lease" onNavigate={onNavigate}>cross lease</GlossaryLink> or <GlossaryLink anchor="unconditional" onNavigate={onNavigate}>unconditional</GlossaryLink>? Each one is explained in the{' '}
-          <a
-            href={`${PLAYBOOK_ROOT}/glossary`}
-            onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); onNavigate('/glossary'); }}
-            style={{ color: C.accent, textDecoration: 'underline' }}
-          >
-            Glossary
-          </a>.
-        </p>
 
         <div style={{ marginBottom: '1.5rem' }}>
           <SegmentedToggle options={PATH_OPTIONS} value={path} onChange={(v) => { setPath(v); setSelectedStage((s) => Math.min(s, stages.length - 1)); }} />
