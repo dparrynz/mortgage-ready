@@ -413,7 +413,7 @@ function AuthModal({ onClose, onSuccess }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirmEmail, setConfirmEmail] = useState('');
-  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [legalView, setLegalView] = useState(null); // null | 'privacy' | 'terms'
   const [turnstileToken, setTurnstileToken] = useState('');
   const turnstileRef = useRef(null);
   const turnstileWidgetId = useRef(null);
@@ -521,19 +521,21 @@ function AuthModal({ onClose, onSuccess }) {
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }} onClick={onClose}>
       <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '420px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxHeight: '90dvh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
         
-        {/* Privacy Policy sub-view */}
-        {showPrivacy ? (
+        {/* Privacy Policy / Terms of Use sub-view */}
+        {legalView ? (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <button onClick={() => setShowPrivacy(false)} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontSize: '14px', fontWeight: '500', padding: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button onClick={() => setLegalView(null)} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontSize: '14px', fontWeight: '500', padding: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <i className="ti ti-arrow-left" /> Back
               </button>
               <button onClick={onClose} style={{ background: C.inputBg, border: 'none', width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <i className="ti ti-x" style={{ fontSize: '18px', color: C.textPrimary }} />
               </button>
             </div>
-            <h3 style={{ fontSize: '20px', fontWeight: '500', margin: '0 0 1rem', color: C.textPrimary }}>Privacy Policy</h3>
-            <PRIVACY_POLICY_CONTENT />
+            <h3 style={{ fontSize: '20px', fontWeight: '500', margin: '0 0 1rem', color: C.textPrimary }}>{legalView === 'terms' ? 'Terms of Use' : 'Privacy Policy'}</h3>
+            {legalView === 'terms'
+              ? <TERMS_OF_USE_CONTENT onNavigate={setLegalView} />
+              : <PRIVACY_POLICY_CONTENT onNavigate={setLegalView} />}
           </>
         ) : mode === 'confirm' ? (
           /* Email confirmation / forgot password sent state */
@@ -677,9 +679,14 @@ function AuthModal({ onClose, onSuccess }) {
 
             <p style={{ textAlign: 'center', fontSize: '12px', color: C.textSecondary, marginTop: '1.25rem', marginBottom: 0 }}>
               By continuing, you agree to our{' '}
-              <button onClick={() => setShowPrivacy(true)} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontSize: '12px', padding: 0, textDecoration: 'underline' }}>
+              <button onClick={() => setLegalView('terms')} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontSize: '12px', padding: 0, textDecoration: 'underline' }}>
+                Terms of Use
+              </button>
+              {' '}and{' '}
+              <button onClick={() => setLegalView('privacy')} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontSize: '12px', padding: 0, textDecoration: 'underline' }}>
                 Privacy Policy
               </button>
+              .
             </p>
           </>
         )}
@@ -688,9 +695,9 @@ function AuthModal({ onClose, onSuccess }) {
   );
 }
 
-const PRIVACY_POLICY_CONTENT = () => (
+const PRIVACY_POLICY_CONTENT = ({ onNavigate }) => (
   <div style={{ fontSize: '13px', color: '#4a4a68', lineHeight: '1.7' }}>
-    <p><strong>Parry Financial Services</strong><br />Last updated: September 2026</p>
+    <p><strong>Parry Financial Services</strong><br />Last updated: October 2026</p>
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>1. Introduction</h4>
     <p>Parry Financial Services ("we", "us", "our") operates the mortgage calculator tools and First Home Playbook available at parryfs.com, and runs lead forms on Facebook and Instagram. We are committed to protecting your personal information in accordance with the New Zealand Privacy Act 2020.</p>
@@ -738,6 +745,7 @@ const PRIVACY_POLICY_CONTENT = () => (
       <li>To protect against fraud and abuse</li>
     </ul>
     <p>Where people have opted in to marketing, we may use email addresses, in a secure, hashed form, to show relevant ads on Facebook and Instagram.</p>
+    <p>Email addresses and names received from Google when you sign in with Google are used only to create and run your account. They are not used to build advertising audiences.</p>
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>6. Who We Share Your Information With</h4>
     <p><strong>We do not sell your personal information to anyone, ever.</strong></p>
@@ -752,6 +760,7 @@ const PRIVACY_POLICY_CONTENT = () => (
       <li><strong>Cloudflare</strong> - Website analytics</li>
     </ul>
     <p>We only share your information with lenders, insurers or other finance providers when we're arranging finance for you, and only with your consent.</p>
+    <p>Our use of information received from Google APIs follows the Google API Services User Data Policy, including the Limited Use requirements.</p>
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>7. How Long We Keep Your Information</h4>
     <ul style={{ paddingLeft: '1.25rem' }}>
@@ -806,12 +815,64 @@ const PRIVACY_POLICY_CONTENT = () => (
     </ul>
 
     <p style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: `1px solid ${C.borderLight}`, fontSize: '12px' }}>
-      Parry Financial Services | parryfs.com | dan@parryfs.com
+      Parry Financial Services | parryfs.com | dan@parryfs.com | <LegalLink to="terms" onNavigate={onNavigate}>Terms of Use</LegalLink>
     </p>
   </div>
 );
 
-function PrivacyPage({ onBack }) {
+// Cross links between the two legal pages. With onNavigate (the /privacy and
+// /terms pages, or the AuthModal sub-views) the switch happens in-app;
+// without it the plain href does a normal page load.
+const LegalLink = ({ to, onNavigate, children }) => (
+  <a
+    href={`/${to}`}
+    onClick={onNavigate ? e => { e.preventDefault(); onNavigate(to); } : undefined}
+    style={{ color: C.blue, textDecoration: 'underline' }}
+  >
+    {children}
+  </a>
+);
+
+const TERMS_OF_USE_CONTENT = ({ onNavigate }) => (
+  <div style={{ fontSize: '13px', color: '#4a4a68', lineHeight: '1.7' }}>
+    <p><strong>Parry Financial Services</strong><br />Last updated: October 2026</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>1. About the Tool</h4>
+    <p>The mortgage calculator tools and First Home Playbook at parryfs.com (the "Tool") are provided by Parry Financial Services ("we", "us", "our") in New Zealand. By signing in or using the Tool, you agree to these terms. If you do not agree, please do not use the Tool.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>2. General information only</h4>
+    <p>The Tool provides general estimates and information only. It is not financial advice, a credit assessment, a loan offer or a pre-approval. Results are based on the information you enter and on assumptions that may differ from any lender's actual policies, which change often. Your real borrowing capacity will depend on a lender's full assessment of your circumstances. If you would like personalised advice, please contact us to arrange a conversation. Personalised advice is only provided after we have assessed your situation directly.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>3. Your account and Google sign in</h4>
+    <p>You can create an account with an email and password, or sign in using your Google account. You are responsible for keeping your account secure and for the accuracy of the information you enter. You must be at least 18 years old to use the Tool.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>4. Acceptable use</h4>
+    <p>You agree not to misuse the Tool, including by attempting to disrupt it, accessing it by unauthorised means, copying or reselling it, or using it for unlawful purposes.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>5. Privacy</h4>
+    <p>We collect and use your personal information as described in our <LegalLink to="privacy" onNavigate={onNavigate}>Privacy Policy</LegalLink>, which forms part of these terms.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>6. Intellectual property</h4>
+    <p>The Tool, its design and its content belong to us. You may use it for your own personal, non commercial purposes only.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>7. No guarantees and limits on liability</h4>
+    <p>We work to keep the Tool accurate and available, but we do not guarantee that it will be error free, uninterrupted, or that estimates will match what a lender offers. To the extent the law allows, we are not liable for any loss arising from your reliance on the Tool's results or from its unavailability. Nothing in these terms limits any rights you have under the Consumer Guarantees Act 1993 or the Fair Trading Act 1986 that cannot be excluded by law.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>8. Changes and ending access</h4>
+    <p>We may update the Tool or these terms from time to time, and the latest version will be published on this page. We may suspend or end access to the Tool at any time. You can stop using it, or delete your account, at any time.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>9. Governing law</h4>
+    <p>These terms are governed by the laws of New Zealand, and the New Zealand courts have jurisdiction over any dispute.</p>
+
+    <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>10. Contact</h4>
+    <p>
+      Parry Financial Services<br />
+      Email: <strong>dan@parryfs.com</strong>
+    </p>
+  </div>
+);
+
+function PrivacyPage({ onBack, onNavigate }) {
   return (
     <div>
       <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontSize: '14px', fontWeight: '500', padding: 0, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -819,7 +880,21 @@ function PrivacyPage({ onBack }) {
       </button>
       <div style={card}>
         <h1 style={{ fontSize: '24px', fontWeight: '600', margin: '0 0 1.5rem', color: C.textPrimary }}>Privacy Policy</h1>
-        <PRIVACY_POLICY_CONTENT />
+        <PRIVACY_POLICY_CONTENT onNavigate={onNavigate} />
+      </div>
+    </div>
+  );
+}
+
+function TermsPage({ onBack, onNavigate }) {
+  return (
+    <div>
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.blue, cursor: 'pointer', fontSize: '14px', fontWeight: '500', padding: 0, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <i className="ti ti-arrow-left" /> Back to parryfs.com
+      </button>
+      <div style={card}>
+        <h1 style={{ fontSize: '24px', fontWeight: '600', margin: '0 0 1.5rem', color: C.textPrimary }}>Terms of Use</h1>
+        <TERMS_OF_USE_CONTENT onNavigate={onNavigate} />
       </div>
     </div>
   );
@@ -3141,6 +3216,15 @@ function CostToWait() {
 }
 
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
+// Keep DEFAULT_HEAD in step with the <title> and description in index.html.
+// The prerendered /privacy and /terms files load with their own title, so the
+// app can't read the default back from the document.
+const DEFAULT_HEAD = { title: 'Mortgage Ready Checker', description: "Find out if you're ready to buy a home in New Zealand" };
+const LEGAL_PAGES = {
+  privacy: { title: 'Privacy Policy | Parry Financial Services', description: 'How Parry Financial Services collects, uses and protects your personal information when you use the parryfs.com mortgage calculators and First Home Playbook.' },
+  terms: { title: 'Terms of Use | Parry Financial Services', description: 'The terms that apply when you use the parryfs.com mortgage calculators and First Home Playbook, provided by Parry Financial Services in New Zealand.' },
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('borrow');
   const { user, loading, signOut, refreshUser } = useAuth();
@@ -3192,17 +3276,19 @@ export default function App() {
       case 'breakeven': return <BreakEven />;
       case 'costtowait': return <CostToWait />;
       case 'first-home-playbook': return <FirstHomePlaybookRouter onExit={() => handleSetActiveTab('borrow')} />;
-      case 'privacy': return <PrivacyPage onBack={() => handleSetActiveTab('borrow')} />;
+      case 'privacy': return <PrivacyPage onBack={() => handleSetActiveTab('borrow')} onNavigate={handleSetActiveTab} />;
+      case 'terms': return <TermsPage onBack={() => handleSetActiveTab('borrow')} onNavigate={handleSetActiveTab} />;
       default: return <BorrowChecker />;
     }
   };
 
-  // Minimal URL sync so /first-home-playbook/* and /privacy deep links work
-  // and the nav tab switch keeps the address bar in step. Existing tabs are
-  // unaffected.
+  // Minimal URL sync so /first-home-playbook/*, /privacy and /terms deep links
+  // work and the nav tab switch keeps the address bar in step. Existing tabs
+  // are unaffected.
   const handleSetActiveTab = (id) => {
     setActiveTab(id);
-    window.history.pushState({}, '', id === 'first-home-playbook' ? '/first-home-playbook' : id === 'privacy' ? '/privacy' : '/');
+    window.history.pushState({}, '', id === 'first-home-playbook' ? '/first-home-playbook' : LEGAL_PAGES[id] ? `/${id}` : '/');
+    if (LEGAL_PAGES[id]) window.scrollTo(0, 0);
   };
 
   useEffect(() => {
@@ -3210,12 +3296,21 @@ export default function App() {
       const path = window.location.pathname;
       if (path.startsWith('/first-home-playbook')) setActiveTab('first-home-playbook');
       else if (path.startsWith('/privacy')) setActiveTab('privacy');
+      else if (path.startsWith('/terms')) setActiveTab('terms');
       else setActiveTab('borrow');
     };
     syncFromPath();
     window.addEventListener('popstate', syncFromPath);
     return () => window.removeEventListener('popstate', syncFromPath);
   }, []);
+
+  // Page title and meta description for /privacy and /terms, and the site
+  // defaults on every other tab.
+  useEffect(() => {
+    const head = LEGAL_PAGES[activeTab] || DEFAULT_HEAD;
+    document.title = head.title;
+    document.querySelector('meta[name="description"]')?.setAttribute('content', head.description);
+  }, [activeTab]);
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -3236,7 +3331,7 @@ export default function App() {
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '1.5rem 1rem', boxSizing: 'border-box' }}>
         {renderTab()}
         <p style={{ textAlign: 'center', fontSize: '13px', color: C.textMuted, marginTop: '2rem' }}>
-          parryfs.com - NZ mortgage calculators · <a href="/privacy" onClick={e => { e.preventDefault(); handleSetActiveTab('privacy'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Privacy Policy</a>
+          parryfs.com - NZ mortgage calculators · <a href="/privacy" onClick={e => { e.preventDefault(); handleSetActiveTab('privacy'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Privacy Policy</a> · <a href="/terms" onClick={e => { e.preventDefault(); handleSetActiveTab('terms'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Terms of Use</a>
         </p>
       </div>
 
@@ -3300,6 +3395,10 @@ export default function App() {
 // income-cap check are exported as-is so that section reuses this file's
 // logic instead of duplicating it.
 export { BorrowChecker, useAuth, AuthModal, supabase, C, card, Disclaimer, primaryBtn, secondaryBtn, inputWrap, inputStyle, fmtNZD, MoneyField, useWindowWidth, SegmentedToggle, StatCard };
+
+// Rendered to static HTML at build time (see vite.config.js) so /privacy and
+// /terms return the full text without JavaScript. Removing these breaks the build.
+export { PrivacyPage, TermsPage, LEGAL_PAGES };
 
 // Mirrors the income-cap thresholds computed inline in BorrowChecker's
 // calculate() (search "Kainga Ora eligibility" above), including NZ Super
