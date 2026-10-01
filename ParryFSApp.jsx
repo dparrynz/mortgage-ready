@@ -1033,7 +1033,7 @@ const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios
   const activeTab = TABS.find(t => t.id === active);
   const isMobile = useWindowWidth() < 768;
 
-  // Business name as real text (Google OAuth branding checks the home page for it).
+  // App name as real text (Google OAuth branding checks the home page for it).
   // Sits beside the tabs on desktop and in its own row above them on mobile.
   const brand = (
     <a
@@ -1041,7 +1041,7 @@ const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios
       onClick={e => { e.preventDefault(); setActive('borrow'); }}
       style={{ color: 'white', textDecoration: 'none', fontSize: isMobile ? '14px' : '15px', fontWeight: '600', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', padding: isMobile ? '0.75rem 1rem 0' : '0 1.25rem', flexShrink: 0 }}
     >
-      Parry Financial Services
+      Borrow Checker
     </a>
   );
 
@@ -3234,7 +3234,7 @@ function CostToWait() {
 // Keep DEFAULT_HEAD in step with the <title> and description in index.html.
 // The prerendered /privacy and /terms files load with their own title, so the
 // app can't read the default back from the document.
-const DEFAULT_HEAD = { title: 'Mortgage Ready Checker | Parry Financial Services', description: "Find out if you're ready to buy a home in New Zealand" };
+const DEFAULT_HEAD = { title: 'Borrow Checker | Mortgage Ready Checker', description: "Find out if you're ready to buy a home in New Zealand" };
 const LEGAL_PAGES = {
   privacy: { title: 'Privacy Policy | Parry Financial Services', description: 'How Parry Financial Services collects, uses and protects your personal information when you use the parryfs.com mortgage calculators and First Home Playbook.' },
   terms: { title: 'Terms of Use | Parry Financial Services', description: 'The terms that apply when you use the parryfs.com mortgage calculators and First Home Playbook, provided by Parry Financial Services in New Zealand.' },
@@ -3346,7 +3346,7 @@ export default function App() {
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '1.5rem 1rem', boxSizing: 'border-box' }}>
         {renderTab()}
         <p style={{ textAlign: 'center', fontSize: '13px', color: C.textMuted, marginTop: '2rem' }}>
-          Parry Financial Services · NZ mortgage calculators · <a href="/privacy" onClick={e => { e.preventDefault(); handleSetActiveTab('privacy'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Privacy Policy</a> · <a href="/terms" onClick={e => { e.preventDefault(); handleSetActiveTab('terms'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Terms of Use</a>
+          Borrow Checker · parryfs.com · NZ mortgage calculators · <a href="/privacy" onClick={e => { e.preventDefault(); handleSetActiveTab('privacy'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Privacy Policy</a> · <a href="/terms" onClick={e => { e.preventDefault(); handleSetActiveTab('terms'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Terms of Use</a>
         </p>
       </div>
 
