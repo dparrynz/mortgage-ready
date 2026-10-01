@@ -5,7 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Find out if you're ready to buy a home in New Zealand" />
-    <title>Mortgage Ready Checker</title>
+    <title>Mortgage Ready Checker | Parry Financial Services</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
     <script type="text/javascript">
         (function(c,l,a,r,i,t,y){
@@ -20,7 +20,23 @@
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><!--static-shell-->
+      <!-- Plain HTML stand-in so the raw page carries the business name and
+           legal links (Google OAuth branding check). React replaces it on load.
+           The build swaps this block for the prerendered /privacy and /terms. -->
+      <div style="min-height:100vh;background:#F5F7FA">
+        <header style="background:#2F6FED;padding:1rem 1.25rem">
+          <a href="/" style="color:white;text-decoration:none;font-size:15px;font-weight:600">Parry Financial Services</a>
+        </header>
+        <main style="max-width:1100px;margin:0 auto;padding:1.5rem 1rem;color:#152238">
+          <h1 style="font-size:24px;font-weight:600;margin:0 0 0.5rem">Mortgage Ready Checker</h1>
+          <p style="color:#5C6B85;margin:0">Find out if you're ready to buy a home in New Zealand.</p>
+        </main>
+        <footer style="text-align:center;font-size:13px;color:#8494AC;padding:2rem 1rem">
+          Parry Financial Services · NZ mortgage calculators · <a href="/privacy" style="color:#8494AC">Privacy Policy</a> · <a href="/terms" style="color:#8494AC">Terms of Use</a>
+        </footer>
+      </div>
+    <!--/static-shell--></div>
     <script type="module" src="/src/main.jsx"></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <!-- Cloudflare Web Analytics -->
