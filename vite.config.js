@@ -54,7 +54,7 @@ function prerenderLegalPages() {
         const html = template
           .replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(title)}</title>`)
           .replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${escapeHtml(description)}" />`)
-          .replace('<div id="root"></div>', `<div id="root">${body}</div>`)
+          .replace(/<!--static-shell-->[\s\S]*?<!--\/static-shell-->/, () => body)
         if (!html.includes(`<title>${escapeHtml(title)}</title>`) || !html.includes(body)) throw new Error(`could not fill dist/${id}.html from index.html`)
         await writeFile(resolve(outDir, `${id}.html`), html)
       }
