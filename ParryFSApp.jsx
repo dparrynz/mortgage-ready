@@ -1485,17 +1485,16 @@ function BorrowChecker({ onSavePrompt, onSave }) {
       ? 'Consider reducing existing debts or looking at a lower purchase price to improve your position.'
       : 'Consider increasing your deposit or looking at a lower purchase price to improve your position.';
 
-    // Deposit feedback
+    // Status banner - exactly one, chosen by priority:
+    // 1. deposit below minimum, 2. servicing (DTI or UMI) fails,
+    // 3. under 20% deposit with servicing passing, 4. fully mortgage ready
     if (!depPass) {
       const shortfall = minDep - deposit;
       feedback.push(isKO
         ? { type: 'info', title: 'You qualify for Kainga Ora First Home Loan', message: `Great news! You're eligible for a Kainga Ora First Home Loan with just a 5% deposit. You'll need to save an additional $${fmtNZD(shortfall)} to meet this requirement.` }
         : { type: 'danger', title: 'Deposit too low', message: `You'll need a minimum 10% deposit ($${fmtNZD(minDep)}) to be considered for a mortgage on this property. You're $${fmtNZD(shortfall)} short.` }
       );
-    }
-
-    // DTI feedback
-    if (!dtiPass) {
+    } else if (!dtiPass) {
       if (isKO && !umiPass) {
         // Merge DTI and KO UMI fail into single message
         feedback.push({ type: 'warning', title: 'Loan amount too high', message: `The mortgage is too large relative to your income. Even with Kainga Ora eligibility, the repayments can't be serviced at this price. ${debtAdvice}` });
@@ -1505,10 +1504,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
           : { type: 'warning', title: 'Loan amount too high', message: 'The mortgage loan is too large relative to your income. Consider increasing your deposit or looking at a lower-priced property.' }
         );
       }
-    }
-
-    // Servicing feedback - only show if DTI hasn't already failed
-    if (!umiPass && dtiPass) {
+    } else if (!umiPass) {
       if (isKO) {
         feedback.push({ type: 'warning', title: 'Almost there', message: `You qualify for a Kainga Ora First Home Loan based on your deposit and income, but your monthly budget is a little tight. ${debtAdvice}` });
       } else if (!isFullDeposit) {
@@ -1516,8 +1512,12 @@ function BorrowChecker({ onSavePrompt, onSave }) {
       } else {
         feedback.push({ type: 'warning', title: 'Strong deposit, servicing needs work', message: `Your deposit is solid but your monthly budget is too tight for banks to lend comfortably. ${debtAdvice}` });
       }
-    } else if (umiPass && !isFullDeposit && !isKO) {
-      feedback.push({ type: 'warning', title: 'Limited lending options', message: 'Your servicing is strong, but with less than 20% deposit your options are limited to select lenders and you may pay a low equity margin on your rate. Consider exploring ways to increase your deposit.', expandable: true });
+    } else if (isKO) {
+      feedback.push({ type: 'success', title: 'Kainga Ora ready!', message: "Excellent! You meet all the criteria for a Kainga Ora First Home Loan. You're ready to start house hunting with confidence." });
+    } else if (!isFullDeposit) {
+      feedback.push({ type: 'success', title: "You're mortgage ready, with fewer lenders", message: "Your servicing is strong. With less than 20% deposit you'll have a smaller choice of lenders and may pay a low equity margin, but you can start house hunting.", expandable: true });
+    } else {
+      feedback.push({ type: 'success', title: "You're mortgage ready!", message: "Great news! With a strong 20%+ deposit and solid servicing, you'll have excellent lending options across all major banks." });
     }
 
     // Living expenses floor notification
@@ -1532,17 +1532,6 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     // Over 55 note for standard lending
     if (isOver55) {
       feedback.push({ type: 'info', title: 'Age consideration', message: `As you're 55 or over, your mortgage adviser will need to document a retirement repayment strategy as part of your application. This is standard practice and doesn't prevent you from borrowing.` });
-    }
-
-    // Success feedback
-    if (depPass && dtiPass && umiPass) {
-      if (isKO) {
-        feedback.push({ type: 'success', title: 'Kainga Ora ready!', message: "Excellent! You meet all the criteria for a Kainga Ora First Home Loan. You're ready to start house hunting with confidence." });
-      } else if (isFullDeposit) {
-        feedback.push({ type: 'success', title: "You're mortgage ready!", message: "Great news! With a strong 20%+ deposit and solid servicing, you'll have excellent lending options across all major banks." });
-      } else {
-        feedback.push({ type: 'success', title: "You're mortgage ready!", message: "Good news! You meet the lending criteria. With less than 20% deposit you'll have a smaller selection of lenders and may pay a slightly higher rate, but you can proceed with house hunting." });
-      }
     }
 
     setResults({ loan, lvr, depPass, minDep, minDepPct, isFullDeposit, netMonthly, dti, dtiPass, stressedPmt, loanTerm, isOver55, livingExp, ccExp, bnplExp, slMonthly, umi, reqUmi, umiPass, umiStatus, isKO, feedback, usingGlee });
