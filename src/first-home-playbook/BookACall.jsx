@@ -118,7 +118,7 @@ export default function BookACall({ onExit, onBackToHub, onNavigate }) {
             {status === 'error' && (
               <p style={{ fontSize: '13px', color: C.red, marginBottom: '1rem' }}>Something went wrong sending that — please try again, or use the booking link below.</p>
             )}
-            <button type="submit" disabled={!canSubmit || status === 'sending'} style={{ ...primaryBtn, background: C.red, boxShadow: 'none', opacity: canSubmit ? 1 : 0.4, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
+            <button type="submit" disabled={!canSubmit || status === 'sending'} style={{ ...primaryBtn, opacity: canSubmit ? 1 : 0.4, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>
               {status === 'sending' ? 'Sending...' : 'Send my details'}
             </button>
           </form>
@@ -128,7 +128,7 @@ export default function BookACall({ onExit, onBackToHub, onNavigate }) {
 
         <h3 style={{ fontSize: '16px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>Or book a time directly</h3>
         <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1rem' }}>Pick a slot that works for you, no need to wait for a reply.</p>
-        <a href={BOOKINGS_URL} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, background: C.red, boxShadow: 'none', display: 'inline-block', textDecoration: 'none' }}>
+        <a href={BOOKINGS_URL} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, display: 'inline-block', textDecoration: 'none' }}>
           Book a time
         </a>
 

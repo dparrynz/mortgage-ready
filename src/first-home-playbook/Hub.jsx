@@ -59,8 +59,8 @@ export default function Hub({ onExit, onNavigate }) {
             onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
             onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
           >
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: C.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className={`ti ${tile.icon}`} style={{ fontSize: '20px', color: C.accent }} />
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: tile.id === 'book-a-call' ? '#FDECE9' : C.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className={`ti ${tile.icon}`} style={{ fontSize: '20px', color: tile.id === 'book-a-call' ? C.red : C.accent }} />
             </div>
             <p style={{ fontSize: '16px', fontWeight: '600', color: C.textPrimary, margin: 0 }}>{tile.title}</p>
             <p style={{ fontSize: '13px', color: C.textSecondary, margin: 0, lineHeight: 1.5 }}>{tile.blurb}</p>

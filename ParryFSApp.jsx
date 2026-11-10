@@ -279,8 +279,10 @@ const labelStyle = {
   color: C.textPrimary,
 };
 
+// The main action on each page. Red is the site's one "loud" colour, kept for
+// the thing we want people to click; everything else stays blue and white.
 const primaryBtn = {
-  background: C.accent,
+  background: C.red,
   border: 'none',
   color: 'white',
   padding: '0.875rem 2rem',
@@ -289,7 +291,7 @@ const primaryBtn = {
   fontWeight: '500',
   cursor: 'pointer',
   transition: 'all 0.2s',
-  boxShadow: '0 4px 12px rgba(26,26,46,0.25)',
+  boxShadow: '0 4px 12px rgba(217,58,37,0.25)',
 };
 
 const secondaryBtn = {
