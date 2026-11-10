@@ -31,8 +31,6 @@ export default function AreYouReadyQuiz({ onExit, onBackToHub, onNavigate }) {
     <div>
       <PlaybookHeader title="Are You Ready?" onExit={onExit} onBackToHub={onBackToHub} />
       <PlaybookCard>
-        <h1 style={{ fontSize: '24px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.25rem' }}>Are You Ready?</h1>
-        <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1.5rem' }}>A quick, no-pressure self-check on where you stand.</p>
 
         {!submitted && (
           <>

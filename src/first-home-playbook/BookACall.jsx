@@ -75,7 +75,6 @@ export default function BookACall({ onExit, onBackToHub, onNavigate }) {
     <div>
       <PlaybookHeader title="Get Your Plan" onExit={onExit} onBackToHub={onBackToHub} />
       <PlaybookCard>
-        <h1 style={{ fontSize: '24px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.5rem' }}>Get Your Plan</h1>
         <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1.5rem' }}>
           A no pressure first conversation about buying your first home, covering your numbers and what's possible for you. Send a few details and we'll follow up, or book straight into a time below.
         </p>

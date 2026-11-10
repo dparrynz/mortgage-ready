@@ -28,8 +28,6 @@ export default function Glossary({ onExit, onBackToHub, onNavigate, hash }) {
     <div>
       <PlaybookHeader title="Jargon Glossary" onExit={onExit} onBackToHub={onBackToHub} />
       <PlaybookCard>
-        <h1 style={{ fontSize: '24px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.25rem' }}>First Home Buyer Terms, In Plain English</h1>
-        <p style={{ fontSize: '13px', color: C.textMuted, margin: '0 0 1.25rem' }}>This list keeps growing over time.</p>
 
         <input
           type="text"

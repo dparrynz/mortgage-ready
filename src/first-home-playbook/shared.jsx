@@ -112,18 +112,7 @@ export function PlaybookHeader({ title, onExit, onBackToHub }) {
   const videoKey = currentVideoKey();
   return (
     <>
-    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '13px', color: C.textSecondary }}>
-        <button onClick={onExit} style={{ background: 'none', border: 'none', padding: 0, color: C.textSecondary, cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
-          Home
-        </button>
-        <span>/</span>
-        <button onClick={onBackToHub} style={{ background: 'none', border: 'none', padding: 0, color: C.textSecondary, cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
-          First Home Playbook
-        </button>
-        {title && <><span>/</span><span style={{ color: C.textPrimary, fontWeight: '500' }}>{title}</span></>}
-      </div>
-    </div>
+    {/* Breadcrumb and page title now live in the page hero (src/PageHero.jsx) */}
     <PlaybookVideo videoId={PLAYBOOK_VIDEOS[videoKey]} caption={PLAYBOOK_VIDEO_CAPTIONS[videoKey]} />
     </>
   );

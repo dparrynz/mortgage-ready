@@ -60,8 +60,6 @@ export default function KaingaOraQuiz({ onExit, onBackToHub, onNavigate }) {
     <div>
       <PlaybookHeader title="Kāinga Ora Qualifying Quiz" onExit={onExit} onBackToHub={onBackToHub} />
       <PlaybookCard>
-        <h1 style={{ fontSize: '24px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.25rem' }}>Kāinga Ora Qualifying Quiz</h1>
-        <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1.5rem' }}>A fast read on eligibility, using the same criteria as our Borrow Checker.</p>
 
         {!submitted && (
           <>

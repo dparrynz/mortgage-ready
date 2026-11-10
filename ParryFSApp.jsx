@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import FirstHomePlaybookRouter from './src/first-home-playbook/FirstHomePlaybookRouter.jsx';
 import Home from './src/Home.jsx';
+import PageHero, { heroFor } from './src/PageHero.jsx';
 
 // ─── SUPABASE CLIENT ─────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://cpwbixddgcyingntsxci.supabase.co';
@@ -1759,11 +1760,6 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   if (showCover) {
     return (
       <div>
-        <div style={{ padding: '1.5rem 0.5rem 2rem' }}>
-          <h1 style={{ fontSize: '30px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Mortgage Ready Checker</h1>
-          <p style={{ fontSize: '15px', color: C.textSecondary, margin: 0 }}>Find out if you're ready to buy, or how much you could borrow.</p>
-        </div>
-
         <div style={{ ...card, padding: '2.5rem' }}>
           <div style={{ background: C.inputBg, borderRadius: '12px', padding: '1rem', border: `1px solid ${C.borderLight}`, marginBottom: '1.5rem' }}>
             <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0, lineHeight: 1.6 }}>
@@ -1794,9 +1790,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
 
   return (
     <div>
-      <div style={{ padding: '1.5rem 0.5rem 2rem' }}>
-        <h1 style={{ fontSize: '30px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Borrow Checker</h1>
-        <p style={{ fontSize: '15px', color: C.textSecondary, margin: '0 0 2rem' }}>Find out if you're ready to buy a home in New Zealand</p>
+      <div style={{ ...card, padding: '1.25rem 1.5rem', marginBottom: '1rem' }}>
         <ProgressBar />
       </div>
 
@@ -2635,12 +2629,8 @@ function LoanRepayment() {
 
   return (
     <div>
-      <div style={{ ...card, background: C.headerBg }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h1 style={{ fontSize: '28px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Loan Repayment Calculator</h1>
-            <p style={{ fontSize: '15px', color: '#4a4a68', opacity: 0.9, margin: 0 }}>Calculate your repayments and compare multiple loans</p>
-          </div>
+      <div style={{ ...card, padding: '1.25rem 1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <label style={{ fontSize: '14px', fontWeight: '500', color: C.textPrimary, whiteSpace: 'nowrap' }}>Repayment frequency</label>
             <select value={freq} onChange={e => setFreq(e.target.value)} style={{ background: 'rgba(255,255,255,0.8)', border: 'none', padding: '0.625rem 1rem', borderRadius: '10px', fontSize: '15px', fontWeight: '500', color: C.textPrimary, cursor: 'pointer', outline: 'none' }}>
@@ -2894,11 +2884,6 @@ function QuickRepay() {
 
   return (
     <div>
-      <div style={{ ...card, background: C.headerBg }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Quick Repay Calculator</h1>
-        <p style={{ fontSize: '15px', color: '#4a4a68', opacity: 0.9, margin: 0 }}>See how extra repayments can save you interest and time</p>
-      </div>
-
       <div style={card}>
         <h3 style={sectionTitle}>Your loan</h3>
         <div style={grid}>
@@ -3104,11 +3089,6 @@ function MortgageComparison() {
 
   return (
     <div>
-      <div style={{ ...card, background: C.headerBg }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Mortgage Comparison</h1>
-        <p style={{ fontSize: '15px', color: '#4a4a68', opacity: 0.9, margin: 0 }}>Compare current vs new rates and repayments across multiple loans</p>
-      </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {loans.map((l, i) => (
           <div key={i} style={{ ...card, marginBottom: 0, padding: '1.25rem' }}>
@@ -3225,11 +3205,6 @@ function BreakEven() {
 
   return (
     <div>
-      <div style={{ ...card, background: C.headerBg }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Break Even Calculator</h1>
-        <p style={{ fontSize: '15px', color: '#4a4a68', opacity: 0.9, margin: 0 }}>Should you break your fixed rate? Find out here.</p>
-      </div>
-
       <div style={card}>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', columnGap: '1.5rem' }}>
           <MoneyField label="Loan balance" value={balance} onChange={setBalance} />
@@ -3320,11 +3295,6 @@ function CostToWait() {
 
   return (
     <div>
-      <div style={{ ...card, background: C.headerBg }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Cost to Wait Calculator</h1>
-        <p style={{ fontSize: '15px', color: '#4a4a68', opacity: 0.9, margin: 0 }}>See the daily, monthly and annual cost of waiting to fix your rate</p>
-      </div>
-
       <div style={card}>
         <h3 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 1rem', color: C.textPrimary }}>Comparison date (optional)</h3>
         <div style={{ ...inputWrap, maxWidth: '280px' }}>
@@ -3411,6 +3381,7 @@ const LEGAL_PAGES = {
 export default function App() {
   const [path, setPath] = useState(window.location.pathname);
   const activeTab = tabFromPath(path);
+  const hero = heroFor(activeTab, path);
 
   // Navigate inside the app. Firing popstate lets the First Home Playbook's
   // own router (which listens for it) follow along too.
@@ -3509,7 +3480,8 @@ export default function App() {
         onSavedScenarios={() => setShowSavedScenarios(true)}
       />
       {activeTab === 'home' && <Home go={go} />}
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: activeTab === 'home' ? '0.5rem 1rem 1.5rem' : '1.5rem 1rem', boxSizing: 'border-box' }}>
+      <PageHero hero={hero} go={go} />
+      <div style={{ maxWidth: '1100px', margin: hero ? '-64px auto 0' : '0 auto', padding: hero ? '0 1rem 1.5rem' : activeTab === 'home' ? '0.5rem 1rem 1.5rem' : '1.5rem 1rem', boxSizing: 'border-box', position: 'relative' }}>
         {activeTab !== 'home' && renderTab()}
         <p style={{ textAlign: 'center', fontSize: '13px', color: C.textMuted, marginTop: '2rem' }}>
           First Home Playbook and Borrow Checker · parryfs.com · General information only · <a href="/privacy" onClick={e => { e.preventDefault(); handleSetActiveTab('privacy'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Privacy Policy</a> · <a href="/terms" onClick={e => { e.preventDefault(); handleSetActiveTab('terms'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Terms of Use</a>

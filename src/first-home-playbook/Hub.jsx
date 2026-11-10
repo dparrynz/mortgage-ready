@@ -31,13 +31,6 @@ export default function Hub({ onExit, onNavigate }) {
   return (
     <div>
       <PlaybookHeader onExit={onExit} onBackToHub={() => {}} />
-      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '36px', fontWeight: '700', color: C.navy, margin: '0 0 0.75rem', letterSpacing: '-0.01em' }}>The Playbook</h1>
-        <p style={{ fontSize: '15px', color: C.textSecondary, maxWidth: '520px', margin: '0 auto' }}>
-          Everything you need to get your bearings as a first home buyer: tools, guides, and a straightforward way to talk it through with an adviser.
-        </p>
-      </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
         {TILES.map((tile) => (
           <button

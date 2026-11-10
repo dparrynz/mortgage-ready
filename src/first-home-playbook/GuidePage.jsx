@@ -16,7 +16,6 @@ export default function GuidePage({ content, onExit, onBackToHub, hash }) {
     <div>
       <PlaybookHeader title={content.title} onExit={onExit} onBackToHub={onBackToHub} />
       <PlaybookCard>
-        <h1 style={{ fontSize: '24px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.75rem' }}>{content.title}</h1>
         <p style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1.5rem' }}>{content.intro}</p>
 
         {content.sections.map((s) => (
