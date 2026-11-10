@@ -569,7 +569,7 @@ function AuthModal({ onClose, onSuccess }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }} onClick={onClose}>
-      <div style={{ background: 'white', borderRadius: '24px', padding: '2.5rem', maxWidth: '420px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxHeight: '90dvh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: 'white', borderRadius: '24px', padding: 'clamp(1.5rem, 5vw, 2.5rem)', maxWidth: '440px', width: '100%', boxSizing: 'border-box', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden' }} onClick={e => e.stopPropagation()}>
         
         {/* Privacy Policy / Terms of Use sub-view */}
         {legalView ? (
@@ -648,17 +648,17 @@ function AuthModal({ onClose, onSuccess }) {
 
             {/* Name fields for signup */}
             {mode === 'signup' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-                <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div style={{ minWidth: 0 }}>
                   <label style={{ ...labelStyle, marginBottom: '0.5rem', fontSize: '13px' }}>First name</label>
                   <div style={{ ...inputWrap, padding: '0.75rem 1rem' }}>
-                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="John" style={{ ...inputStyle, fontSize: '14px' }} />
+                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="John" style={{ ...inputStyle, fontSize: '14px', minWidth: 0, width: '100%' }} />
                   </div>
                 </div>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <label style={{ ...labelStyle, marginBottom: '0.5rem', fontSize: '13px' }}>Last name</label>
                   <div style={{ ...inputWrap, padding: '0.75rem 1rem' }}>
-                    <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Smith" style={{ ...inputStyle, fontSize: '14px' }} />
+                    <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Smith" style={{ ...inputStyle, fontSize: '14px', minWidth: 0, width: '100%' }} />
                   </div>
                 </div>
               </div>
