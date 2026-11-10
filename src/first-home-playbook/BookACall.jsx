@@ -77,13 +77,15 @@ export default function BookACall({ onExit, onBackToHub, onNavigate }) {
       <PlaybookCard>
         <h1 style={{ fontSize: '24px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.5rem' }}>Get Your Plan</h1>
         <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1.5rem' }}>
-          A no pressure first conversation about buying your first home, covering your numbers and what's possible for you. Send a few details and Dan will follow up, or book straight into a time below.
+          A no pressure first conversation about buying your first home, covering your numbers and what's possible for you. Send a few details and we'll follow up, or book straight into a time below.
         </p>
+
+        <WhatToExpect />
 
         {status === 'sent' ? (
           <div style={{ background: C.greenBg, border: `1px solid ${C.greenBorder}`, borderRadius: '12px', padding: '1.25rem' }}>
-            <p style={{ fontSize: '15px', fontWeight: '600', color: C.green, margin: '0 0 0.25rem' }}>Thanks, that's through to Dan.</p>
-            <p style={{ fontSize: '14px', color: C.textSecondary, margin: 0 }}>He'll be in touch, or pick a time below if you'd rather lock one in now.</p>
+            <p style={{ fontSize: '15px', fontWeight: '600', color: C.green, margin: '0 0 0.25rem' }}>Thanks, we've got your details.</p>
+            <p style={{ fontSize: '14px', color: C.textSecondary, margin: 0 }}>We'll be in touch soon, or pick a time below if you'd rather lock one in now.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
@@ -127,7 +129,7 @@ export default function BookACall({ onExit, onBackToHub, onNavigate }) {
         <h3 style={{ fontSize: '16px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>Or book a time directly</h3>
         <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1rem' }}>Pick a slot that works for you, no need to wait for a reply.</p>
         <a href={BOOKINGS_URL} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, display: 'inline-block', textDecoration: 'none' }}>
-          Book with Dan
+          Book a time
         </a>
 
         <PlaybookDisclaimer />
@@ -141,6 +143,33 @@ function Field({ label, children }) {
     <div style={{ marginBottom: '1.5rem' }}>
       <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '0.75rem', color: C.textPrimary }}>{label}</label>
       <div style={inputWrap}>{children}</div>
+    </div>
+  );
+}
+
+// Sets expectations before someone commits to a call. Removing the unknowns
+// is one of the easiest ways to lift enquiries.
+function WhatToExpect() {
+  const items = [
+    ['ti-coin-off', 'Free for you', "There's no cost to you for our advice. If you go ahead with a home loan, the bank pays us."],
+    ['ti-mood-smile', 'No pressure, no obligation', "It's a conversation, not a sales pitch. You decide if and when to take the next step."],
+    ['ti-shield-check', 'No credit check', "A first chat doesn't involve a credit check, so it won't affect your credit score."],
+    ['ti-file-off', "No paperwork needed yet", "Come as you are. Rough numbers are fine, we'll tell you what's needed later."],
+  ];
+  return (
+    <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.25rem', marginBottom: '1.75rem' }}>
+      <p style={{ fontSize: '15px', fontWeight: '600', color: C.textPrimary, margin: '0 0 1rem' }}>What to expect from a first chat</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+        {items.map(([icon, title, body]) => (
+          <div key={title} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+            <i className={`ti ${icon}`} style={{ fontSize: '20px', color: C.accent, flexShrink: 0, marginTop: '1px' }} />
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.2rem' }}>{title}</p>
+              <p style={{ fontSize: '13px', color: C.textSecondary, lineHeight: 1.6, margin: 0 }}>{body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
