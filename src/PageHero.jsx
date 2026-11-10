@@ -28,6 +28,7 @@ const PLAYBOOK_PAGES = {
 };
 
 export function heroFor(tab, path) {
+  if (tab === 'welcome') return { title: 'Thanks for getting in touch', sub: "We've got your details. While you're here, this is the best place to start.", crumbs: [{ label: 'Home', to: '/' }], crumb: 'Welcome' };
   if (TOOL_PAGES[tab]) return { ...TOOL_PAGES[tab], crumbs: [{ label: 'Home', to: '/' }] };
   if (tab === 'first-home-playbook') {
     const sub = path.replace('/first-home-playbook', '').replace(/\/$/, '') || '/';

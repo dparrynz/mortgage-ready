@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import FirstHomePlaybookRouter from './src/first-home-playbook/FirstHomePlaybookRouter.jsx';
 import Home from './src/Home.jsx';
+import Welcome from './src/Welcome.jsx';
 import PageHero, { heroFor } from './src/PageHero.jsx';
 
 // ─── SUPABASE CLIENT ─────────────────────────────────────────────────────────
@@ -1078,6 +1079,7 @@ const TAB_PATHS = {
   breakeven: '/break-even',
   costtowait: '/cost-to-wait',
   'first-home-playbook': '/first-home-playbook',
+  welcome: '/welcome',
   privacy: '/privacy',
   terms: '/terms',
 };
@@ -3441,6 +3443,7 @@ export default function App() {
       case 'breakeven': return <BreakEven />;
       case 'costtowait': return <CostToWait />;
       case 'first-home-playbook': return <FirstHomePlaybookRouter onExit={() => go('/')} />;
+      case 'welcome': return <Welcome go={go} />;
       case 'privacy': return <PrivacyPage onBack={() => go('/')} onNavigate={handleSetActiveTab} />;
       case 'terms': return <TermsPage onBack={() => go('/')} onNavigate={handleSetActiveTab} />;
       default: return <BorrowChecker />;
