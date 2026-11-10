@@ -752,6 +752,7 @@ const PRIVACY_POLICY_CONTENT = ({ onNavigate }) => (
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>3. What Information We Collect</h4>
     <p><strong>If you use the calculators without an account:</strong><br />We don't collect any personal details. All calculations happen in your browser and no data is stored. We do collect anonymised usage data through Cloudflare Web Analytics and Microsoft Clarity, including session recordings, to understand how people use the site. Financial input fields (like income, debts and property price) are masked in these recordings so the values you enter aren't visible to us.</p>
+    <p><strong>Videos:</strong><br />Some First Home Playbook pages include short videos hosted on YouTube. They use YouTube's privacy enhanced mode and nothing loads from YouTube until you press play. Once you play a video, YouTube's own privacy policy applies to that video.</p>
     <p><strong>If you create an account:</strong></p>
     <ul style={{ paddingLeft: '1.25rem' }}>
       <li>First and last name</li>

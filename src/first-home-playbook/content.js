@@ -348,6 +348,6 @@ export const ARE_YOU_READY_OUTCOMES = {
   },
   ready: {
     title: "Sounds like you're ready for a proper conversation.",
-    body: "Let's talk numbers. Book a call with Dan and we'll map out what's possible for you.",
+    body: "Let's talk numbers. Book a call and we'll map out what's possible for you.",
   },
 };

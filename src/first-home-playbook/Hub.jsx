@@ -34,7 +34,7 @@ export default function Hub({ onExit, onNavigate }) {
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '28px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.5rem' }}>First Home Playbook</h1>
         <p style={{ fontSize: '15px', color: C.textSecondary, maxWidth: '520px', margin: '0 auto' }}>
-          Everything you need to get your bearings as a first home buyer in New Zealand, tools, guides, and a straightforward way to talk it through with Dan.
+          Everything you need to get your bearings as a first home buyer in New Zealand, tools, guides, and a straightforward way to talk it through with an adviser.
         </p>
       </div>
 
