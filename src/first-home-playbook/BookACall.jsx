@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { C, primaryBtn, inputWrap, inputStyle } from '../../ParryFSApp.jsx';
 import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, BOOKINGS_URL } from './shared.jsx';
 
@@ -14,12 +14,41 @@ async function submitEnquiry(payload) {
   return res.ok;
 }
 
+const TURNSTILE_SITE_KEY = '0x4AAAAAAEMcplqQ59H92Bmy';
+
 export default function BookACall({ onExit, onBackToHub, onNavigate }) {
-  const [form, setForm] = useState({ name: '', phone: '', email: '', bestTime: '', comment: '' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', bestTime: '', comment: '', website: '' });
   const [status, setStatus] = useState('idle'); // idle | sending | sent | error
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileRef = useRef(null);
+  const widgetId = useRef(null);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const canSubmit = form.name.trim() && form.email.trim() && form.phone.trim();
+  // Cloudflare Turnstile bot check, same as the sign in form
+  useEffect(() => {
+    if (status === 'sent') return;
+    const render = () => {
+      if (!turnstileRef.current || !window.turnstile || widgetId.current !== null) return;
+      widgetId.current = window.turnstile.render(turnstileRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        callback: (token) => setTurnstileToken(token),
+        'expired-callback': () => setTurnstileToken(''),
+        'error-callback': () => setTurnstileToken(''),
+      });
+    };
+    let timer;
+    if (window.turnstile) render();
+    else timer = setInterval(() => { if (window.turnstile) { clearInterval(timer); render(); } }, 100);
+    return () => {
+      if (timer) clearInterval(timer);
+      if (widgetId.current !== null && window.turnstile) {
+        try { window.turnstile.remove(widgetId.current); } catch (e) {}
+      }
+      widgetId.current = null;
+    };
+  }, [status === 'sent']);
+
+  const canSubmit = form.name.trim() && form.email.trim() && form.phone.trim() && turnstileToken;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,8 +60,15 @@ export default function BookACall({ onExit, onBackToHub, onNavigate }) {
       email: form.email.trim(),
       bestTime: form.bestTime.trim(),
       comment: form.comment.trim(),
+      website: form.website,
+      turnstileToken,
     });
     setStatus(ok ? 'sent' : 'error');
+    if (!ok && window.turnstile && widgetId.current !== null) {
+      // tokens are single use, so get a fresh one for the retry
+      setTurnstileToken('');
+      try { window.turnstile.reset(widgetId.current); } catch (e) {}
+    }
   };
 
   return (
@@ -72,6 +108,11 @@ export default function BookACall({ onExit, onBackToHub, onNavigate }) {
                 style={{ width: '100%', boxSizing: 'border-box', background: C.inputBg, border: 'none', borderRadius: '12px', padding: '1rem 1.25rem', fontSize: '15px', color: C.textPrimary, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
               />
             </div>
+            {/* Honeypot: hidden from people, bots tend to fill it in */}
+            <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px', width: '1px', height: '1px', overflow: 'hidden' }}>
+              <label>Website<input type="text" name="website" tabIndex={-1} autoComplete="off" value={form.website} onChange={set('website')} /></label>
+            </div>
+            <div ref={turnstileRef} style={{ marginBottom: '1rem' }} />
             {status === 'error' && (
               <p style={{ fontSize: '13px', color: C.red, marginBottom: '1rem' }}>Something went wrong sending that — please try again, or use the booking link below.</p>
             )}

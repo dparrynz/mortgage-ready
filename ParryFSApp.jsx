@@ -9,9 +9,47 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabase = (() => {
   const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' };
   
+  // Sessions: Supabase access tokens expire after about an hour. We record when
+  // the token expires and swap the refresh token for a new one shortly before
+  // that, so signed in users aren't silently logged out.
+  const storeSession = (s) => {
+    const expires_at = s.expires_at ? Number(s.expires_at) : Math.floor(Date.now() / 1000) + Number(s.expires_in || 3600);
+    const session = { ...s, expires_at };
+    localStorage.setItem('sb_session', JSON.stringify(session));
+    return session;
+  };
+
+  let refreshing = null;
   const getSession = async () => {
-    const stored = localStorage.getItem('sb_session');
-    return stored ? JSON.parse(stored) : null;
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem('sb_session')); } catch (e) { s = null; }
+    if (!s?.access_token) return null;
+    const now = Math.floor(Date.now() / 1000);
+    if (s.expires_at && s.expires_at - now > 60) return s;
+    if (!s.refresh_token) return s;
+    if (!refreshing) {
+      refreshing = (async () => {
+        try {
+          const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+            method: 'POST', headers, body: JSON.stringify({ refresh_token: s.refresh_token }),
+          });
+          if (!res.ok) { localStorage.removeItem('sb_session'); return null; }
+          return storeSession(await res.json());
+        } catch (e) {
+          return s; // offline: keep the old session and try again next time
+        } finally {
+          refreshing = null;
+        }
+      })();
+    }
+    return refreshing;
+  };
+
+  // JWTs use base64url, which atob can't read directly
+  const userIdFrom = (session) => {
+    if (session.user?.id) return session.user.id;
+    const part = session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(part.padEnd(part.length + (4 - part.length % 4) % 4, '='))).sub;
   };
 
   const signInWithGoogle = async () => {
@@ -28,7 +66,7 @@ const supabase = (() => {
     });
     const data = await res.json();
     if (data.access_token) {
-      localStorage.setItem('sb_session', JSON.stringify(data));
+      storeSession(data);
       return { data, error: null };
     }
     return { data: null, error: data };
@@ -43,7 +81,7 @@ const supabase = (() => {
     });
     const data = await res.json();
     if (!res.ok) return { data: null, error: data };
-    if (data.access_token) localStorage.setItem('sb_session', JSON.stringify(data));
+    if (data.access_token) storeSession(data);
     return { data, error: null };
   };
 
@@ -74,7 +112,7 @@ const supabase = (() => {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/saved_scenarios`, {
       method: 'POST',
       headers: { ...headers, 'Authorization': `Bearer ${session.access_token}`, 'Prefer': 'return=representation' },
-      body: JSON.stringify({ name, inputs, results, user_id: session.user?.id || JSON.parse(atob(session.access_token.split('.')[1])).sub })
+      body: JSON.stringify({ name, inputs, results, user_id: userIdFrom(session) })
     });
     const data = await res.json();
     return res.ok ? { data, error: null } : { data: null, error: data };
@@ -93,7 +131,7 @@ const supabase = (() => {
   const deleteScenario = async (id) => {
     const session = await getSession();
     if (!session?.access_token) return { error: 'Not logged in' };
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/saved_scenarios?id=eq.${id}`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/saved_scenarios?id=eq.${encodeURIComponent(id)}`, {
       method: 'DELETE',
       headers: { ...headers, 'Authorization': `Bearer ${session.access_token}` }
     });
@@ -106,7 +144,7 @@ const supabase = (() => {
   const saveJourneyProgress = async (completed) => {
     const session = await getSession();
     if (!session?.access_token) return { error: 'Not logged in' };
-    const userId = session.user?.id || JSON.parse(atob(session.access_token.split('.')[1])).sub;
+    const userId = userIdFrom(session);
     const res = await fetch(`${SUPABASE_URL}/rest/v1/journey_progress?on_conflict=user_id`, {
       method: 'POST',
       headers: { ...headers, 'Authorization': `Bearer ${session.access_token}`, 'Prefer': 'resolution=merge-duplicates,return=representation' },
@@ -119,8 +157,8 @@ const supabase = (() => {
   const getJourneyProgress = async () => {
     const session = await getSession();
     if (!session?.access_token) return { data: null, error: null };
-    const userId = session.user?.id || JSON.parse(atob(session.access_token.split('.')[1])).sub;
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/journey_progress?user_id=eq.${userId}&select=completed`, {
+    const userId = userIdFrom(session);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/journey_progress?user_id=eq.${encodeURIComponent(userId)}&select=completed`, {
       headers: { ...headers, 'Authorization': `Bearer ${session.access_token}` }
     });
     const data = await res.json();
@@ -136,9 +174,11 @@ const supabase = (() => {
         access_token: params.get('access_token'),
         refresh_token: params.get('refresh_token'),
         expires_in: params.get('expires_in'),
+        expires_at: params.get('expires_at'),
       };
-      localStorage.setItem('sb_session', JSON.stringify(session));
-      window.location.hash = '';
+      storeSession(session);
+      // Remove the tokens from the address bar and browser history
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
       return true;
     }
     return false;
@@ -2590,13 +2630,13 @@ function LoanRepayment() {
               <div style={{ display: 'flex', gap: '6px' }}>
                 <div style={{ width: '70px' }}>
                   <div style={{ ...inputWrap, padding: '0.75rem 0.75rem' }}>
-                    <input type="number" inputMode="numeric" min="0" max="40" value={loan.years || ''} onChange={e => updateLoan(loan.id, 'years', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '32px' }} placeholder="30" />
+                    <input type="number" inputMode="numeric" min="0" max="40" value={loan.years || ''} onChange={e => updateLoan(loan.id, 'years', Math.min(40, Math.max(0, parseInt(e.target.value) || 0)))} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '32px' }} placeholder="30" />
                   </div>
                   <span style={{ fontSize: '12px', color: C.textSecondary }}>Years</span>
                 </div>
                 <div style={{ width: '70px' }}>
                   <div style={{ ...inputWrap, padding: '0.75rem 0.75rem' }}>
-                    <input type="number" inputMode="numeric" min="0" max="11" value={loan.months || ''} onChange={e => updateLoan(loan.id, 'months', parseInt(e.target.value) || 0)} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '32px' }} placeholder="0" />
+                    <input type="number" inputMode="numeric" min="0" max="11" value={loan.months || ''} onChange={e => updateLoan(loan.id, 'months', Math.min(11, Math.max(0, parseInt(e.target.value) || 0)))} style={{ ...inputStyle, fontSize: '15px', minWidth: 0, width: '32px' }} placeholder="0" />
                   </div>
                   <span style={{ fontSize: '12px', color: C.textSecondary }}>Months</span>
                 </div>
@@ -2676,53 +2716,128 @@ function LoanRepayment() {
 }
 
 // ─── 3. QUICK REPAY ──────────────────────────────────────────────────────────
+// Whole number / decimal input that lets the box be empty while typing, and
+// only passes a clamped number up once the value is valid. (The old version
+// put "1" back the moment the box was cleared, so typing 25 gave 125 years.)
+const BoundedNumberField = ({ label, value, onChange, min, max, step = 1, decimals = false, suffix, hint }) => {
+  const [text, setText] = useState(String(value));
+  useEffect(() => { if (Number(text) !== value) setText(String(value)); }, [value]);
+  const clamp = (n) => Math.min(max, Math.max(min, n));
+  const handle = (e) => {
+    const t = e.target.value;
+    setText(t);
+    const n = decimals ? parseFloat(t) : parseInt(t, 10);
+    if (!isNaN(n) && n >= min && n <= max) onChange(n);
+  };
+  const blur = () => {
+    const n = decimals ? parseFloat(text) : parseInt(text, 10);
+    const v = isNaN(n) ? value : clamp(n);
+    setText(String(v));
+    onChange(v);
+  };
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      <label style={labelStyle}>{label}</label>
+      <div style={inputWrap}>
+        <input type="number" inputMode={decimals ? 'decimal' : 'numeric'} min={min} max={max} step={step}
+          value={text} onChange={handle} onBlur={blur} style={{ ...inputStyle, minWidth: 0 }} />
+        {suffix && <span style={{ fontSize: '16px', color: C.textSecondary, fontWeight: '500', flexShrink: 0 }}>{suffix}</span>}
+      </div>
+      {hint && <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0.5rem 0 0' }}>{hint}</p>}
+    </div>
+  );
+};
+
+// Waits until typing pauses before passing the value on, so the schedule and
+// chart aren't rebuilt on every keystroke.
+function useDebounced(value, delay = 250) {
+  const [v, setV] = useState(value);
+  useEffect(() => { const t = setTimeout(() => setV(value), delay); return () => clearTimeout(t); }, [value, delay]);
+  return v;
+}
+
+const QR_FREQ = { Monthly: 12, Fortnightly: 26, Weekly: 52 };
+const QR_MAX_LOAN = 20000000;
+const QR_MAX_RATE = 30;
+
+// Pure function so it can be tested on its own.
+// Periods are numbered from 1; extras and lump sums timed "after 0 years" land
+// on the first payment.
+function quickRepaySchedule({ loanAmount, rate, years, freq, extraAmt = 0, extraAfter = 0, lumpSum = 0, lumpAfter = 0 }) {
+  const ppy = QR_FREQ[freq] || 12;
+  const n = Math.round(years * ppy);
+  const rp = rate / 100 / ppy;
+  if (!(loanAmount > 0) || !(n > 0) || !(rate >= 0)) return null;
+  const pmt = rp === 0 ? loanAmount / n : (loanAmount * rp) / (1 - Math.pow(1 + rp, -n));
+  const extraStart = Math.max(1, Math.round(extraAfter * ppy) + 1);
+  const lumpPeriod = Math.max(1, Math.round(lumpAfter * ppy) + 1);
+  let bal = loanAmount, totalInterest = 0, periods = 0;
+  const yearly = []; // one row per year of the loan
+  let yr = { interest: 0, principal: 0 };
+  for (let i = 1; i <= n && bal > 0.005; i++) {
+    const interest = bal * rp;
+    let prin = pmt - interest;
+    if (extraAmt > 0 && i >= extraStart) prin += extraAmt;
+    if (lumpSum > 0 && i === lumpPeriod) prin += lumpSum;
+    if (prin > bal) prin = bal;
+    bal = Math.max(0, bal - prin);
+    totalInterest += interest;
+    periods = i;
+    yr.interest += interest; yr.principal += prin;
+    if (i % ppy === 0 || bal <= 0.005 || i === n) {
+      yearly.push({ year: Math.ceil(i / ppy), interest: yr.interest, principal: yr.principal, paid: yr.interest + yr.principal, balance: bal });
+      yr = { interest: 0, principal: 0 };
+    }
+  }
+  return { pmt, periods, totalInterest, yearly, ppy };
+}
+
+// Chart points: one per year is plenty and keeps the chart light on phones
+const toChartPoints = (loanAmount, withExtra, base) => {
+  const out = [];
+  for (let y = 0; y <= base.yearly.length; y++) {
+    const w = y === 0 ? loanAmount : withExtra.yearly[y - 1] ? withExtra.yearly[y - 1].balance : null;
+    out.push({ year: y, withExtra: w, original: y === 0 ? loanAmount : base.yearly[y - 1].balance });
+  }
+  return out;
+};
+
 function QuickRepay() {
   const windowWidth = useWindowWidth();
   const isMobile = windowWidth < 768;
-  const [loanAmount, setLoanAmount] = useState(300000);
+  const [loanAmount, setLoanAmount] = useState(500000);
   const [rate, setRate] = useState(5.75);
   const [years, setYears] = useState(30);
-  const [freq, setFreq] = useState('Monthly');
-  const [extraAmt, setExtraAmt] = useState(0);
+  const [freq, setFreq] = useState('Fortnightly');
+  const [extraAmt, setExtraAmt] = useState(100);
   const [extraAfter, setExtraAfter] = useState(0);
   const [lumpSum, setLumpSum] = useState(0);
   const [lumpAfter, setLumpAfter] = useState(0);
-  const [results, setResults] = useState(null);
+  const [showSchedule, setShowSchedule] = useState(false);
 
-  const freqPeriods = { Monthly: 12, Fortnightly: 26, Weekly: 52 };
+  const inputs = useDebounced({
+    loanAmount: Math.min(loanAmount, QR_MAX_LOAN), rate: Math.min(rate, QR_MAX_RATE), years, freq,
+    extraAmt, extraAfter, lumpSum, lumpAfter,
+  });
 
-  const generate = (amt, r, yrs, fr, extra, extraStart, lump, lumpAt) => {
-    const ppy = freqPeriods[fr];
-    const n = yrs * ppy;
-    const rp = r / 100 / ppy;
-    const pmt = (amt * rp) / (1 - Math.pow(1 + rp, -n));
-    const extraStartPeriod = Math.round(extraStart * ppy);
-    const lumpPeriod = Math.round(lumpAt * ppy);
-    let bal = amt, rows = [];
-    for (let i = 1; i <= n && bal > 0.5; i++) {
-      const int = bal * rp;
-      let prin = pmt - int;
-      if (extra > 0 && i >= extraStartPeriod) prin += extra;
-      if (lump > 0 && i === lumpPeriod) prin += lump;
-      if (prin > bal) prin = bal;
-      bal = Math.max(0, bal - prin);
-      rows.push({ num: i, interest: int, principal: prin, payment: int + prin, balance: bal, year: i / ppy });
-    }
-    return { rows, pmt };
-  };
+  const results = React.useMemo(() => {
+    const withExtra = quickRepaySchedule(inputs);
+    const base = quickRepaySchedule({ ...inputs, extraAmt: 0, lumpSum: 0 });
+    if (!withExtra || !base) return null;
+    return {
+      withExtra, base,
+      interestSaved: Math.max(0, base.totalInterest - withExtra.totalInterest),
+      monthsSaved: Math.max(0, (base.periods - withExtra.periods) / base.ppy * 12),
+      chart: toChartPoints(inputs.loanAmount, withExtra, base),
+    };
+  }, [inputs]);
 
-  useEffect(() => {
-    if (!loanAmount || !rate || !years) { setResults(null); return; }
-    const with_ = generate(loanAmount, rate, years, freq, extraAmt, extraAfter, lumpSum, lumpAfter);
-    const base = generate(loanAmount, rate, years, freq, 0, 0, 0, 0);
-    const baseInt = base.rows.reduce((s, r) => s + r.interest, 0);
-    const withInt = with_.rows.reduce((s, r) => s + r.interest, 0);
-    setResults({ with: with_, base, interestSaved: baseInt - withInt, termSaved: base.rows.length - with_.rows.length, basePmt: base.pmt });
-  }, [loanAmount, rate, years, freq, extraAmt, extraAfter, lumpSum, lumpAfter]);
-
-  const reset = () => { setLoanAmount(300000); setRate(5.75); setYears(30); setFreq('Monthly'); setExtraAmt(0); setExtraAfter(0); setLumpSum(0); setLumpAfter(0); };
-
-  const ppy = freqPeriods[freq];
+  const reset = () => { setLoanAmount(500000); setRate(5.75); setYears(30); setFreq('Fortnightly'); setExtraAmt(100); setExtraAfter(0); setLumpSum(0); setLumpAfter(0); };
+  const freqWord = { Monthly: 'month', Fortnightly: 'fortnight', Weekly: 'week' }[freq];
+  const hasExtras = extraAmt > 0 || lumpSum > 0;
+  const saving = results && results.interestSaved > 0.5;
+  const grid = { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', columnGap: '1.5rem' };
+  const sectionTitle = { fontSize: '16px', fontWeight: '500', margin: '0 0 1rem', color: C.textPrimary };
 
   return (
     <div>
@@ -2731,100 +2846,102 @@ function QuickRepay() {
         <p style={{ fontSize: '15px', color: '#4a4a68', opacity: 0.9, margin: 0 }}>See how extra repayments can save you interest and time</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '280px 1fr', gap: '1.5rem' }}>
-        <div style={card}>
-          <h3 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 1.5rem', color: C.textPrimary }}>Inputs</h3>
-          <MoneyField label="Loan amount" value={loanAmount} onChange={setLoanAmount} placeholder="300,000" />
-          <RateField label="Interest rate" value={rate} onChange={setRate} placeholder="5.75" />
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={labelStyle}>Term (years)</label>
-            <div style={inputWrap}><input type="number" inputMode="numeric" min="1" value={years} onChange={e => setYears(parseInt(e.target.value) || 1)} style={inputStyle} /></div>
-          </div>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={labelStyle}>Frequency</label>
-            <select value={freq} onChange={e => setFreq(e.target.value)} style={selectStyle}>
-              {['Monthly', 'Fortnightly', 'Weekly'].map(f => <option key={f}>{f}</option>)}
-            </select>
-          </div>
-          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: C.accentLight, borderRadius: '12px' }}>
-            <label style={{ ...labelStyle, marginBottom: '1rem' }}>Extra repayment</label>
-            <MoneyField label="Amount per period" value={extraAmt} onChange={setExtraAmt} placeholder="0" />
-            <div>
-              <label style={labelStyle}>Starting after (years)</label>
-              <div style={inputWrap}><input type="number" inputMode="decimal" min="0" step="0.1" value={extraAfter} onChange={e => setExtraAfter(parseFloat(e.target.value) || 0)} style={inputStyle} /></div>
-            </div>
-          </div>
-          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: C.accentLight, borderRadius: '12px' }}>
-            <label style={{ ...labelStyle, marginBottom: '1rem' }}>Lump sum repayment</label>
-            <MoneyField label="Amount" value={lumpSum} onChange={setLumpSum} placeholder="0" />
-            <div>
-              <label style={labelStyle}>After (years)</label>
-              <div style={inputWrap}><input type="number" inputMode="decimal" min="0" step="0.1" value={lumpAfter} onChange={e => setLumpAfter(parseFloat(e.target.value) || 0)} style={inputStyle} /></div>
-            </div>
-          </div>
-          <button onClick={reset} style={{ ...secondaryBtn, width: '100%', background: '#FFF0F0', color: C.red }}>Reset</button>
+      <div style={card}>
+        <h3 style={sectionTitle}>Your loan</h3>
+        <div style={grid}>
+          <MoneyField label="Loan amount" value={loanAmount} onChange={v => setLoanAmount(Math.min(v, QR_MAX_LOAN))} placeholder="500,000" />
+          <RateField label="Interest rate" value={rate} onChange={v => setRate(Math.min(v, QR_MAX_RATE))} placeholder="5.75" />
+          <BoundedNumberField label="Loan term" value={years} onChange={setYears} min={1} max={40} suffix="years" />
+        </div>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <label style={labelStyle}>Repayment frequency</label>
+          <SegmentedToggle options={['Weekly', 'Fortnightly', 'Monthly'].map(f => ({ value: f, label: f }))} value={freq} onChange={setFreq} />
         </div>
 
-        <div>
-          {results && (
-            <>
-              <div style={{ ...card, background: C.accentLight }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '500', margin: '0 0 1.5rem', color: C.textPrimary }}>Summary</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '1rem' }}>
-                  <StatCard label="Regular payment" value={`$${fmtNZD(results.basePmt, 2)}`} sub={freq} />
-                  <StatCard label="Total payments" value={results.with.rows.length.toString()} />
-                  {results.interestSaved > 0 && <StatCard label="Interest saved" value={`$${fmtNZD(results.interestSaved)}`} highlight="green" />}
-                  {results.termSaved > 0 && <StatCard label="Time saved" value={fmtYrsMonths(results.termSaved / ppy * 12)} highlight="green" />}
-                </div>
-              </div>
-
-              <div style={card}>
-                <h3 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 1rem', color: C.textPrimary }}>Loan balance over time</h3>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart margin={{ bottom: 20 }}>
-                    <XAxis dataKey="year" type="number" domain={[0, 'dataMax']} label={{ value: 'Years', position: 'insideBottom', offset: -5 }} />
-                    <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip formatter={v => [`$${fmtNZD(v)}`, '']} />
-                    <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: '20px' }} />
-                    <Line data={results.with.rows} type="monotone" dataKey="balance" stroke="#1a1a2e" name="With extra payments" dot={false} strokeWidth={2} />
-                    <Line data={results.base.rows} type="monotone" dataKey="balance" stroke={C.orange} name="Original schedule" dot={false} strokeDasharray="5 5" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div style={card}>
-                <h3 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 1rem', color: C.textPrimary }}>Amortisation</h3>
-                <div style={{ overflowX: 'auto', maxHeight: '400px', overflowY: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                    <thead style={{ position: 'sticky', top: 0, background: C.inputBg }}>
-                      <tr>{['Period', 'Payment', 'Principal', 'Interest', 'Balance'].map(h => <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '500', color: C.textSecondary, borderBottom: `1px solid ${C.borderLight}` }}>{h}</th>)}</tr>
-                    </thead>
-                    <tbody>
-                      {results.with.rows.map((row, i) => (
-                        <tr key={i} style={{ borderBottom: `1px solid ${C.borderLight}` }}>
-                          <td style={{ padding: '0.5rem 1rem', textAlign: 'right', color: C.textSecondary }}>{row.num}</td>
-                          <td style={{ padding: '0.5rem 1rem', textAlign: 'right' }}>${fmtNZD(row.payment, 2)}</td>
-                          <td style={{ padding: '0.5rem 1rem', textAlign: 'right', color: C.green }}>${fmtNZD(row.principal, 2)}</td>
-                          <td style={{ padding: '0.5rem 1rem', textAlign: 'right', color: C.red }}>${fmtNZD(row.interest, 2)}</td>
-                          <td style={{ padding: '0.5rem 1rem', textAlign: 'right', fontWeight: '500' }}>${fmtNZD(row.balance, 2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          )}
-          {!results && (
-            <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', background: C.accentLight }}>
-              <div style={{ textAlign: 'center' }}>
-                <i className="ti ti-calculator" style={{ fontSize: '48px', color: C.textSecondary, opacity: 0.4 }} />
-                <p style={{ color: C.textSecondary, marginTop: '1rem' }}>Enter your loan details to see results</p>
-              </div>
-            </div>
-          )}
+        <div style={{ borderTop: `1px solid ${C.borderLight}`, margin: '0.5rem 0 1.5rem' }} />
+        <h3 style={sectionTitle}>Extra repayments</h3>
+        <div style={grid}>
+          <MoneyField label={`Extra per ${freqWord}`} value={extraAmt} onChange={setExtraAmt} placeholder="0" />
+          <BoundedNumberField label="Starting after" value={extraAfter} onChange={setExtraAfter} min={0} max={40} step={0.5} decimals suffix="years" hint="0 means from your next repayment" />
+          <div />
+          <MoneyField label="One off lump sum" value={lumpSum} onChange={setLumpSum} placeholder="0" />
+          <BoundedNumberField label="Paid after" value={lumpAfter} onChange={setLumpAfter} min={0} max={40} step={0.5} decimals suffix="years" hint="0 means now" />
         </div>
+        <button onClick={reset} style={{ ...secondaryBtn, width: isMobile ? '100%' : 'auto', background: '#FFF0F0', color: C.red }}>Reset</button>
       </div>
+
+      {!results && (
+        <div style={{ ...card, textAlign: 'center', background: C.accentLight }}>
+          <p style={{ color: C.textSecondary, margin: 0 }}>Enter a loan amount, rate and term to see your results</p>
+        </div>
+      )}
+
+      {results && (
+        <>
+          <div style={{ ...card, background: saving ? C.greenBg : C.accentLight, border: `2px solid ${saving ? C.greenBorder : 'rgba(168,181,229,0.3)'}`, textAlign: 'center' }}>
+            {saving ? (
+              <h3 style={{ fontSize: '20px', fontWeight: '500', margin: 0, color: C.textPrimary, lineHeight: 1.5 }}>
+                You could save <span style={{ color: C.green }}>${fmtNZD(results.interestSaved)}</span> in interest
+                {results.monthsSaved >= 1 && <> and be mortgage free <span style={{ color: C.green }}>{fmtYrsMonths(results.monthsSaved)}</span> sooner</>}.
+              </h3>
+            ) : (
+              <h3 style={{ fontSize: '18px', fontWeight: '500', margin: 0, color: C.textPrimary }}>
+                {hasExtras ? 'Your extra repayments start after the loan is already paid off. Try an earlier start.' : 'Add an extra repayment or lump sum to see what you could save.'}
+              </h3>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+            <StatCard label={`Regular repayment`} value={`$${fmtNZD(results.base.pmt)}`} sub={`per ${freqWord}`} />
+            <StatCard label="With extra" value={`$${fmtNZD(results.base.pmt + (extraAmt || 0))}`} sub={`per ${freqWord}`} />
+            <StatCard label="Paid off in" value={fmtYrsMonths(results.withExtra.periods / results.withExtra.ppy * 12)} sub={`instead of ${fmtYrsMonths(results.base.periods / results.base.ppy * 12)}`} />
+            <StatCard label="Total interest" value={`$${fmtNZD(results.withExtra.totalInterest)}`} sub={`instead of $${fmtNZD(results.base.totalInterest)}`} />
+          </div>
+
+          <div style={card}>
+            <h3 style={sectionTitle}>Loan balance over time</h3>
+            <ResponsiveContainer width="100%" height={isMobile ? 220 : 280}>
+              <LineChart data={results.chart} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
+                <XAxis dataKey="year" type="number" domain={[0, 'dataMax']} tickCount={7} label={{ value: 'Years', position: 'insideBottom', offset: -10 }} />
+                <YAxis width={56} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={v => `$${fmtNZD(v)}`} labelFormatter={y => `Year ${y}`} />
+                <Legend verticalAlign="top" height={30} />
+                <Line type="monotone" dataKey="original" stroke={C.orange} name="Original" dot={false} strokeDasharray="5 5" isAnimationActive={false} connectNulls={false} />
+                <Line type="monotone" dataKey="withExtra" stroke={C.accent} name="With extra" dot={false} strokeWidth={2.5} isAnimationActive={false} connectNulls={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div style={card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+              <h3 style={{ ...sectionTitle, margin: 0 }}>Year by year</h3>
+              <button onClick={() => setShowSchedule(s => !s)} style={{ ...secondaryBtn, padding: '0.625rem 1.25rem', fontSize: '14px' }}>{showSchedule ? 'Hide' : 'Show'} schedule</button>
+            </div>
+            {showSchedule && (
+              <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: C.inputBg }}>
+                      {['Year', 'Paid', 'Principal', 'Interest', 'Balance'].map(h => <th key={h} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: '500', color: C.textSecondary, borderBottom: `1px solid ${C.borderLight}`, whiteSpace: 'nowrap' }}>{h}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.withExtra.yearly.map(row => (
+                      <tr key={row.year} style={{ borderBottom: `1px solid ${C.borderLight}` }}>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: C.textSecondary }}>{row.year}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${fmtNZD(row.paid)}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: C.green }}>${fmtNZD(row.principal)}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: C.red }}>${fmtNZD(row.interest)}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: '500' }}>${fmtNZD(row.balance)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
       <Disclaimer />
     </div>
   );
@@ -2990,6 +3107,7 @@ function MortgageComparison() {
 
 // ─── 5. BREAK EVEN ───────────────────────────────────────────────────────────
 function BreakEven() {
+  const isMobile = useWindowWidth() < 768;
   const [balance, setBalance] = useState(500000);
   const [curRate, setCurRate] = useState(6.5);
   const [breakFee, setBreakFee] = useState(12000);
@@ -3060,7 +3178,7 @@ function BreakEven() {
       </div>
 
       <div style={card}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', columnGap: '1.5rem' }}>
           <MoneyField label="Loan balance" value={balance} onChange={setBalance} />
           <RateField label="Current fixed rate (%)" value={curRate} onChange={setCurRate} />
           <MoneyField label="Break fee" value={breakFee} onChange={setBreakFee} />
