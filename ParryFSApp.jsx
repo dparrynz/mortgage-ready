@@ -1098,7 +1098,7 @@ const MORE_TOOLS = [
 const NAV_LINKS = [
   { label: 'Your journey', path: '/first-home-playbook/journey', isActive: (p) => p.startsWith('/first-home-playbook/journey') },
   { label: 'Know your numbers', path: '/borrow-checker', isActive: (p) => p.startsWith('/borrow-checker') || p.startsWith('/first-home-playbook/calculator') },
-  { label: 'Guides', path: '/first-home-playbook', isActive: (p) => p.startsWith('/first-home-playbook') && !/^\/first-home-playbook\/(journey|calculator|book-a-call)/.test(p) },
+  { label: 'The Playbook', path: '/first-home-playbook', isActive: (p) => p.startsWith('/first-home-playbook') && !/^\/first-home-playbook\/(journey|calculator|book-a-call)/.test(p) },
 ];
 
 const NavLink = ({ to, go, children, style, onClick }) => (

@@ -57,7 +57,7 @@ export default function Home({ go }) {
             Everything first home buyers need to know, in one place. Free, simple and jargon free.
           </p>
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
-            <Link to="/first-home-playbook/journey" go={go} style={{ padding: isMobile ? '17px 20px' : '19px 32px', borderRadius: '14px', background: C.red, color: '#FFFFFF', fontWeight: 600, fontSize: isMobile ? '17px' : '18px', textDecoration: 'none', textAlign: 'center' }}>
+            <Link to="/first-home-playbook" go={go} style={{ padding: isMobile ? '17px 20px' : '19px 32px', borderRadius: '14px', background: C.red, color: '#FFFFFF', fontWeight: 600, fontSize: isMobile ? '17px' : '18px', textDecoration: 'none', textAlign: 'center' }}>
               Start the Playbook
             </Link>
             <Link to="/borrow-checker" go={go} style={{ padding: isMobile ? '16px 20px' : '18px 32px', borderRadius: '14px', border: '1px solid #FFFFFF', color: '#FFFFFF', fontWeight: 600, fontSize: isMobile ? '17px' : '18px', textDecoration: 'none', textAlign: 'center' }}>
@@ -90,7 +90,7 @@ export default function Home({ go }) {
       {/* Guides and tools */}
       <section style={{ padding: isMobile ? '48px 20px' : '64px 24px 96px' }}>
         <div style={wrap}>
-          <h2 style={{ margin: '0 0 22px', fontFamily: HEADING, fontSize: isMobile ? '24px' : '32px', fontWeight: 700 }}>Guides and tools</h2>
+          <h2 style={{ margin: '0 0 22px', fontFamily: HEADING, fontSize: isMobile ? '24px' : '32px', fontWeight: 700 }}>Inside the Playbook</h2>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))', gap: isMobile ? '10px' : '16px' }}>
             {TOOLS.map((t) => (
               <Link key={t.path} to={t.path} go={go} style={{ display: 'block', padding: isMobile ? '16px' : '24px', borderRadius: '18px', background: '#F2F6FD', textDecoration: 'none', color: C.navy, minHeight: isMobile ? '96px' : '120px' }}>
