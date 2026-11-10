@@ -115,7 +115,7 @@ export function PlaybookHeader({ title, onExit, onBackToHub }) {
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '13px', color: C.textSecondary }}>
         <button onClick={onExit} style={{ background: 'none', border: 'none', padding: 0, color: C.textSecondary, cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>
-          parryfs.com
+          Home
         </button>
         <span>/</span>
         <button onClick={onBackToHub} style={{ background: 'none', border: 'none', padding: 0, color: C.textSecondary, cursor: 'pointer', fontSize: '13px', textDecoration: 'underline' }}>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import FirstHomePlaybookRouter from './src/first-home-playbook/FirstHomePlaybookRouter.jsx';
+import Home from './src/Home.jsx';
 
 // ─── SUPABASE CLIENT ─────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://cpwbixddgcyingntsxci.supabase.co';
@@ -200,7 +201,7 @@ function useWindowWidth() {
 
 // ─── SHARED STYLES ───────────────────────────────────────────────────────────
 const C = {
-  bg: 'linear-gradient(180deg, #DCEAFF 0%, #EAF2FF 30%, #F3F6FC 60%, #F5F7FA 100%)',
+  bg: 'linear-gradient(180deg, #EAF3FD 0%, #F3F7FD 30%, #F7F9FD 60%, #FFFFFF 100%)',
   headerBg: 'linear-gradient(135deg, #DCEAFF 0%, #EAF2FF 100%)',
   cardBg: 'white',
   accent: '#2F6FED',
@@ -223,6 +224,11 @@ const C = {
   blue: '#2196F3',
   blueBg: 'linear-gradient(135deg, #D4E3FC 0%, #E0EBFC 100%)',
   blueBorder: '#90B4E6',
+  // Homepage palette: two quiet colours (sky blue, white) and one loud (red)
+  sky: '#1572D3',
+  navy: '#0F1E3A',
+  red: '#D93A25',
+  headingFont: "'Space Grotesk', Inter, system-ui, sans-serif",
 };
 
 const card = {
@@ -1059,95 +1065,139 @@ function UserMenu({ user, onSignOut, onSavedScenarios }) {
 }
 
 // ─── TOP NAV ─────────────────────────────────────────────────────────────────
-const TABS = [
-  { id: 'borrow', label: 'Borrow Checker', icon: 'ti-home-check' },
+// Every page has its own address so links can be shared and bookmarked.
+const TAB_PATHS = {
+  home: '/',
+  borrow: '/borrow-checker',
+  repayment: '/loan-repayment',
+  quickrepay: '/quick-repay',
+  comparison: '/mortgage-comparison',
+  breakeven: '/break-even',
+  costtowait: '/cost-to-wait',
+  'first-home-playbook': '/first-home-playbook',
+  privacy: '/privacy',
+  terms: '/terms',
+};
+
+function tabFromPath(path) {
+  if (path.startsWith('/first-home-playbook')) return 'first-home-playbook';
+  const found = Object.entries(TAB_PATHS).find(([id, p]) => p !== '/' && (path === p || path.startsWith(p + '/')));
+  return found ? found[0] : 'home';
+}
+
+const MORE_TOOLS = [
   { id: 'repayment', label: 'Loan Repayment', icon: 'ti-calculator' },
   { id: 'quickrepay', label: 'Quick Repay', icon: 'ti-trending-up' },
   { id: 'comparison', label: 'Mortgage Comparison', icon: 'ti-arrows-exchange' },
   { id: 'breakeven', label: 'Break Even', icon: 'ti-scale' },
   { id: 'costtowait', label: 'Cost to Wait', icon: 'ti-clock' },
-  { id: 'first-home-playbook', label: 'First Home Playbook', icon: 'ti-key' },
 ];
 
-const TopNav = ({ active, setActive, user, onSignIn, onSignOut, onSavedScenarios }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const activeTab = TABS.find(t => t.id === active);
-  const isMobile = useWindowWidth() < 768;
+const NAV_LINKS = [
+  { label: 'Your journey', path: '/first-home-playbook/journey', isActive: (p) => p.startsWith('/first-home-playbook/journey') },
+  { label: 'Know your numbers', path: '/borrow-checker', isActive: (p) => p.startsWith('/borrow-checker') || p.startsWith('/first-home-playbook/calculator') },
+  { label: 'Guides', path: '/first-home-playbook', isActive: (p) => p.startsWith('/first-home-playbook') && !/^\/first-home-playbook\/(journey|calculator|book-a-call)/.test(p) },
+];
 
-  // App name as real text (Google OAuth branding checks the home page for it).
-  // Sits beside the tabs on desktop and in its own row above them on mobile.
-  const brand = (
-    <a
-      href="/"
-      onClick={e => { e.preventDefault(); setActive('borrow'); }}
-      style={{ color: 'white', textDecoration: 'none', fontSize: isMobile ? '14px' : '15px', fontWeight: '600', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', padding: isMobile ? '0.75rem 1rem 0' : '0 1.25rem', flexShrink: 0 }}
-    >
-      Borrow Checker
-    </a>
+const NavLink = ({ to, go, children, style, onClick }) => (
+  <a
+    href={to}
+    onClick={(e) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+      if (onClick) onClick();
+      go(to);
+    }}
+    style={style}
+  >
+    {children}
+  </a>
+);
+
+const TopNav = ({ path, go, user, onSignIn, onSignOut, onSavedScenarios }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef(null);
+  const isMobile = useWindowWidth() < 900;
+  const moreActive = MORE_TOOLS.some(t => path.startsWith(TAB_PATHS[t.id]));
+
+  useEffect(() => { setMenuOpen(false); setMoreOpen(false); }, [path]);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const close = (e) => { if (moreRef.current && !moreRef.current.contains(e.target)) setMoreOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [moreOpen]);
+
+  const linkStyle = (active) => ({
+    color: 'white', opacity: active ? 1 : 0.85, textDecoration: 'none', fontSize: '15px',
+    fontWeight: active ? 600 : 500, padding: '0.5rem 0', whiteSpace: 'nowrap',
+    borderBottom: active ? '2px solid white' : '2px solid transparent',
+  });
+  const planBtn = { background: C.red, color: 'white', textDecoration: 'none', padding: '0.7rem 1.15rem', borderRadius: '999px', fontSize: '14px', fontWeight: 600, whiteSpace: 'nowrap' };
+  const account = user ? (
+    <UserMenu user={user} onSignOut={onSignOut} onSavedScenarios={onSavedScenarios} />
+  ) : (
+    <button onClick={onSignIn} style={{ background: 'white', border: 'none', color: C.navy, padding: '0.6rem 1.1rem', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+      Sign in
+    </button>
   );
 
   return (
-    <div style={{
-      background: C.accent,
-      padding: '0',
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-      boxShadow: '0 2px 20px rgba(0,0,0,0.15)',
-      width: '100%',
-    }}>
-      {isMobile && <div style={{ maxWidth: '1300px', margin: '0 auto' }}>{brand}</div>}
-      <div style={{
-        display: 'flex',
-        maxWidth: '1300px',
-        margin: '0 auto',
-      }}>
-        {!isMobile && brand}
-        <div style={{
-          display: 'flex',
-          flex: 1,
-          minWidth: 0,
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          WebkitOverflowScrolling: 'touch',
-        }}>
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActive(tab.id)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: active === tab.id ? 'white' : 'rgba(255,255,255,0.55)',
-                padding: '1rem 1.25rem',
-                fontSize: '13px',
-                fontWeight: active === tab.id ? '600' : '400',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                borderBottom: active === tab.id ? '3px solid white' : '3px solid transparent',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              <i className={`ti ${tab.icon}`} style={{ fontSize: '16px' }} />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 0.75rem', gap: '0.5rem', flexShrink: 0 }}>
-          {user ? (
-            <UserMenu user={user} onSignOut={onSignOut} onSavedScenarios={onSavedScenarios} />
-          ) : (
-            <button onClick={onSignIn} style={{ background: 'white', border: 'none', color: C.textPrimary, padding: '0.5rem 1.25rem', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>
-              Sign in
-            </button>
-          )}
-        </div>
+    <nav aria-label="Main" style={{ background: C.sky, position: 'sticky', top: 0, zIndex: 100, width: '100%', boxShadow: '0 2px 16px rgba(15,30,58,0.12)' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '1.5rem', padding: isMobile ? '0.75rem 1rem' : '0.9rem 1.5rem' }}>
+        {/* App name as real text (Google OAuth branding checks the home page for it) */}
+        <NavLink to="/" go={go} style={{ color: 'white', textDecoration: 'none', fontFamily: C.headingFont, fontWeight: 700, fontSize: isMobile ? '17px' : '19px', whiteSpace: 'nowrap', marginRight: 'auto' }}>
+          First Home Playbook
+        </NavLink>
+
+        {!isMobile && (
+          <>
+            {NAV_LINKS.map(l => <NavLink key={l.path} to={l.path} go={go} style={linkStyle(l.isActive(path))}>{l.label}</NavLink>)}
+            <div ref={moreRef} style={{ position: 'relative' }}>
+              <button onClick={() => setMoreOpen(o => !o)} aria-expanded={moreOpen} style={{ ...linkStyle(moreActive), background: 'none', border: 'none', borderBottom: moreActive ? '2px solid white' : '2px solid transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'inherit' }}>
+                More tools <i className="ti ti-chevron-down" style={{ fontSize: '14px' }} />
+              </button>
+              {moreOpen && (
+                <div style={{ position: 'absolute', top: 'calc(100% + 10px)', right: 0, background: 'white', borderRadius: '14px', boxShadow: '0 12px 40px rgba(15,30,58,0.18)', padding: '0.5rem', minWidth: '230px', zIndex: 200 }}>
+                  {MORE_TOOLS.map(t => (
+                    <NavLink key={t.id} to={TAB_PATHS[t.id]} go={go} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.7rem 0.85rem', borderRadius: '10px', color: C.navy, textDecoration: 'none', fontSize: '14px', fontWeight: path.startsWith(TAB_PATHS[t.id]) ? 600 : 500, background: path.startsWith(TAB_PATHS[t.id]) ? C.inputBg : 'transparent' }}>
+                      <i className={`ti ${t.icon}`} style={{ fontSize: '17px', color: C.accent }} /> {t.label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+            <NavLink to="/first-home-playbook/book-a-call" go={go} style={planBtn}>Get your plan</NavLink>
+            {account}
+          </>
+        )}
+
+        {isMobile && (
+          <button onClick={() => setMenuOpen(o => !o)} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} style={{ width: '44px', height: '44px', borderRadius: '12px', border: 'none', background: 'rgba(255,255,255,0.18)', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <i className={`ti ${menuOpen ? 'ti-x' : 'ti-menu-2'}`} style={{ fontSize: '22px' }} />
+          </button>
+        )}
       </div>
-    </div>
+
+      {isMobile && menuOpen && (
+        <div style={{ background: 'white', borderTop: `1px solid ${C.borderLight}`, padding: '0.75rem 1rem 1.25rem', boxShadow: '0 12px 30px rgba(15,30,58,0.15)', maxHeight: 'calc(100vh - 68px)', overflowY: 'auto' }}>
+          {[{ label: 'Home', path: '/', isActive: (p) => p === '/' }, ...NAV_LINKS].map(l => (
+            <NavLink key={l.path} to={l.path} go={go} style={{ display: 'block', padding: '0.9rem 0.5rem', color: C.navy, textDecoration: 'none', fontSize: '16px', fontWeight: l.isActive(path) ? 700 : 500, borderBottom: `1px solid ${C.borderLight}` }}>{l.label}</NavLink>
+          ))}
+          <p style={{ margin: '1rem 0.5rem 0.25rem', fontSize: '12px', fontWeight: 600, color: C.textSecondary, textTransform: 'uppercase', letterSpacing: '0.06em' }}>More tools</p>
+          {MORE_TOOLS.map(t => (
+            <NavLink key={t.id} to={TAB_PATHS[t.id]} go={go} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.75rem 0.5rem', color: C.navy, textDecoration: 'none', fontSize: '15px', fontWeight: path.startsWith(TAB_PATHS[t.id]) ? 700 : 500 }}>
+              <i className={`ti ${t.icon}`} style={{ fontSize: '18px', color: C.accent }} /> {t.label}
+            </NavLink>
+          ))}
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '1rem' }}>
+            <NavLink to="/first-home-playbook/book-a-call" go={go} style={{ ...planBtn, flex: 1, textAlign: 'center', padding: '0.95rem', borderRadius: '12px', fontSize: '15px' }}>Get your plan</NavLink>
+            <div style={{ background: C.sky, borderRadius: '999px', padding: '4px' }}>{account}</div>
+          </div>
+        </div>
+      )}
+    </nav>
   );
 };
 
@@ -3342,14 +3392,33 @@ function CostToWait() {
 // Keep DEFAULT_HEAD in step with the <title> and description in index.html.
 // The prerendered /privacy and /terms files load with their own title, so the
 // app can't read the default back from the document.
-const DEFAULT_HEAD = { title: 'Borrow Checker | Mortgage Ready Checker', description: "Find out if you're ready to buy a home in New Zealand" };
+const DEFAULT_HEAD = { title: 'First Home Playbook | Buying your first home, made simple', description: 'Everything first home buyers need to know, in one place. Free guides and tools, including the Borrow Checker. Simple and jargon free.' };
+const PAGE_HEADS = {
+  borrow: { title: 'Borrow Checker | First Home Playbook', description: "Find out what you could borrow and if you're ready to buy a home in New Zealand." },
+  repayment: { title: 'Loan Repayment Calculator | First Home Playbook', description: 'Calculate your mortgage repayments and compare multiple loans.' },
+  quickrepay: { title: 'Quick Repay Calculator | First Home Playbook', description: 'See how extra repayments can save you interest and time.' },
+  comparison: { title: 'Mortgage Comparison | First Home Playbook', description: 'Compare current and new rates and repayments across your loans.' },
+  breakeven: { title: 'Break Even Calculator | First Home Playbook', description: 'Should you break your fixed rate? Find out here.' },
+  costtowait: { title: 'Cost to Wait Calculator | First Home Playbook', description: 'See the daily, monthly and annual cost of waiting to fix your rate.' },
+};
 const LEGAL_PAGES = {
   privacy: { title: 'Privacy Policy | Parry Financial Services', description: 'How Parry Financial Services collects, uses and protects your personal information when you use the parryfs.com mortgage calculators and First Home Playbook.' },
   terms: { title: 'Terms of Use | Parry Financial Services', description: 'The terms that apply when you use the parryfs.com mortgage calculators and First Home Playbook, provided by Parry Financial Services in New Zealand.' },
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('borrow');
+  const [path, setPath] = useState(window.location.pathname);
+  const activeTab = tabFromPath(path);
+
+  // Navigate inside the app. Firing popstate lets the First Home Playbook's
+  // own router (which listens for it) follow along too.
+  const go = (to) => {
+    const [pathname] = to.split('#');
+    if (to !== window.location.pathname + window.location.hash) window.history.pushState({}, '', to);
+    setPath(pathname || '/');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    if (!to.includes('#')) window.scrollTo(0, 0);
+  };
   const { user, loading, signOut, refreshUser } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSavedScenarios, setShowSavedScenarios] = useState(false);
@@ -3398,31 +3467,17 @@ export default function App() {
       case 'comparison': return <MortgageComparison />;
       case 'breakeven': return <BreakEven />;
       case 'costtowait': return <CostToWait />;
-      case 'first-home-playbook': return <FirstHomePlaybookRouter onExit={() => handleSetActiveTab('borrow')} />;
-      case 'privacy': return <PrivacyPage onBack={() => handleSetActiveTab('borrow')} onNavigate={handleSetActiveTab} />;
-      case 'terms': return <TermsPage onBack={() => handleSetActiveTab('borrow')} onNavigate={handleSetActiveTab} />;
+      case 'first-home-playbook': return <FirstHomePlaybookRouter onExit={() => go('/')} />;
+      case 'privacy': return <PrivacyPage onBack={() => go('/')} onNavigate={handleSetActiveTab} />;
+      case 'terms': return <TermsPage onBack={() => go('/')} onNavigate={handleSetActiveTab} />;
       default: return <BorrowChecker />;
     }
   };
 
-  // Minimal URL sync so /first-home-playbook/*, /privacy and /terms deep links
-  // work and the nav tab switch keeps the address bar in step. Existing tabs
-  // are unaffected.
-  const handleSetActiveTab = (id) => {
-    setActiveTab(id);
-    window.history.pushState({}, '', id === 'first-home-playbook' ? '/first-home-playbook' : LEGAL_PAGES[id] ? `/${id}` : '/');
-    if (LEGAL_PAGES[id]) window.scrollTo(0, 0);
-  };
+  const handleSetActiveTab = (id) => go(TAB_PATHS[id] || '/');
 
   useEffect(() => {
-    const syncFromPath = () => {
-      const path = window.location.pathname;
-      if (path.startsWith('/first-home-playbook')) setActiveTab('first-home-playbook');
-      else if (path.startsWith('/privacy')) setActiveTab('privacy');
-      else if (path.startsWith('/terms')) setActiveTab('terms');
-      else setActiveTab('borrow');
-    };
-    syncFromPath();
+    const syncFromPath = () => setPath(window.location.pathname);
     window.addEventListener('popstate', syncFromPath);
     return () => window.removeEventListener('popstate', syncFromPath);
   }, []);
@@ -3430,7 +3485,7 @@ export default function App() {
   // Page title and meta description for /privacy and /terms, and the site
   // defaults on every other tab.
   useEffect(() => {
-    const head = LEGAL_PAGES[activeTab] || DEFAULT_HEAD;
+    const head = LEGAL_PAGES[activeTab] || PAGE_HEADS[activeTab] || DEFAULT_HEAD;
     document.title = head.title;
     document.querySelector('meta[name="description"]')?.setAttribute('content', head.description);
   }, [activeTab]);
@@ -3444,17 +3499,18 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', background: C.bg, width: '100%', boxSizing: 'border-box' }}>
       <TopNav
-        active={activeTab}
-        setActive={handleSetActiveTab}
+        path={path}
+        go={go}
         user={user}
         onSignIn={() => setShowAuthModal(true)}
         onSignOut={signOut}
         onSavedScenarios={() => setShowSavedScenarios(true)}
       />
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '1.5rem 1rem', boxSizing: 'border-box' }}>
-        {renderTab()}
+      {activeTab === 'home' && <Home go={go} />}
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: activeTab === 'home' ? '0.5rem 1rem 1.5rem' : '1.5rem 1rem', boxSizing: 'border-box' }}>
+        {activeTab !== 'home' && renderTab()}
         <p style={{ textAlign: 'center', fontSize: '13px', color: C.textMuted, marginTop: '2rem' }}>
-          Borrow Checker · parryfs.com · NZ mortgage calculators · <a href="/privacy" onClick={e => { e.preventDefault(); handleSetActiveTab('privacy'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Privacy Policy</a> · <a href="/terms" onClick={e => { e.preventDefault(); handleSetActiveTab('terms'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Terms of Use</a>
+          First Home Playbook and Borrow Checker · parryfs.com · General information only · <a href="/privacy" onClick={e => { e.preventDefault(); handleSetActiveTab('privacy'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Privacy Policy</a> · <a href="/terms" onClick={e => { e.preventDefault(); handleSetActiveTab('terms'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Terms of Use</a>
         </p>
       </div>
 
@@ -3471,7 +3527,7 @@ export default function App() {
         <SavedScenarios
           onClose={() => setShowSavedScenarios(false)}
           onLoad={(scenario) => {
-            setActiveTab('borrow');
+            go('/borrow-checker');
           }}
         />
       )}
