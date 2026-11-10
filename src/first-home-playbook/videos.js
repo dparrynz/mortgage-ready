@@ -15,6 +15,7 @@ export const PLAYBOOK_VIDEOS = {
   'kainga-ora-quiz': '', // /kainga-ora-quiz
   glossary: '',          // /glossary
   'book-a-call': '',     // /book-a-call
+  welcome: '',           // /welcome (Facebook ad landing page)
 };
 
 // Optional short line shown under each video. Leave blank for none.

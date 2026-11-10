@@ -149,7 +149,6 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
     <div>
       <PlaybookHeader title="Your journey" onExit={onExit} onBackToHub={onBackToHub} />
       <PlaybookCard>
-        <h1 style={{ fontSize: '24px', fontWeight: '500', color: C.textPrimary, margin: '0 0 1rem' }}>The first home journey, start to finish</h1>
 
         {JOURNEY_INTRO_PARAGRAPHS.map((p, i) => (
           <p key={i} style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>{p}</p>

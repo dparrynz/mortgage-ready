@@ -31,13 +31,6 @@ export default function Hub({ onExit, onNavigate }) {
   return (
     <div>
       <PlaybookHeader onExit={onExit} onBackToHub={() => {}} />
-      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.5rem' }}>First Home Playbook</h1>
-        <p style={{ fontSize: '15px', color: C.textSecondary, maxWidth: '520px', margin: '0 auto' }}>
-          Everything you need to get your bearings as a first home buyer in New Zealand, tools, guides, and a straightforward way to talk it through with an adviser.
-        </p>
-      </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
         {TILES.map((tile) => (
           <button
@@ -59,8 +52,8 @@ export default function Hub({ onExit, onNavigate }) {
             onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
             onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
           >
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: C.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className={`ti ${tile.icon}`} style={{ fontSize: '20px', color: C.accent }} />
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: tile.id === 'book-a-call' ? '#FDECE9' : C.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className={`ti ${tile.icon}`} style={{ fontSize: '20px', color: tile.id === 'book-a-call' ? C.red : C.accent }} />
             </div>
             <p style={{ fontSize: '16px', fontWeight: '600', color: C.textPrimary, margin: 0 }}>{tile.title}</p>
             <p style={{ fontSize: '13px', color: C.textSecondary, margin: 0, lineHeight: 1.5 }}>{tile.blurb}</p>
