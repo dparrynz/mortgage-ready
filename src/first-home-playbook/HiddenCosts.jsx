@@ -10,7 +10,7 @@ const COSTS = [
   { id: 'legal', title: 'Legal fees', fact: 'Usually a few thousand dollars', body: 'A lawyer or conveyancer reviews your agreement, transfers the title and manages settlement. Some charge a fixed fee, others charge based on the time and work involved.' },
   { id: 'building', title: 'Building report', fact: 'A few hundred to around $1,000', body: 'An inspector checks for structural issues, moisture and other problems that could be costly later. The cost depends on the type and size of the property.' },
   { id: 'lim', title: 'LIM report', fact: 'From the council', body: 'Shows consents, code compliance, rates and any known issues with the property or land.' },
-  { id: 'valuation', title: 'Valuation', fact: 'Sometimes required', body: 'Some lenders need an independent valuation before confirming your loan. The cost can be yours.' },
+  { id: 'valuation', title: 'Registered valuation', fact: 'Sometimes required', body: "An independent registered valuer confirms the property's market value, so you and your lender know you're not paying more than it's worth. Some lenders require one before confirming your loan." },
   { id: 'moving', title: 'Moving costs', fact: 'Easy to underestimate', body: 'Removalists, connecting power and internet, and insurance for your new home.' },
   { id: 'ongoing', title: 'Ongoing costs', fact: 'From settlement day', body: 'Rates, insurance and any body corporate fees start when you settle, so include them in your budget now.' },
 ];
@@ -33,7 +33,7 @@ const Icon = ({ id }) => (
 // Colours are picked inside the component: C isn't ready at import time
 // (ParryFSApp.jsx and the Playbook import each other).
 const WHEN = [
-  { title: 'Before you go unconditional', items: 'Building report, LIM and any valuation', colour: 'red' },
+  { title: 'Before you go unconditional', items: 'Building report, LIM and any registered valuation', colour: 'red' },
   { title: 'On settlement day', items: 'Legal fees', colour: 'sky' },
   { title: 'Once you move in', items: 'Moving costs, rates and insurance', colour: 'navy' },
 ];
