@@ -123,9 +123,10 @@ export default function DepositSources({ onNavigate, hash }) {
         </div>
       </section>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem', alignItems: 'stretch' }}>
+      {/* One panel: deposit timeline on the left, bottom line coming out of it on the right */}
+      <section style={{ ...card, padding: isMobile ? '10px' : '12px', marginBottom: '1rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '12px', alignItems: 'stretch' }}>
         {/* Bank vs seller deposit */}
-        <section id="bank-vs-seller-deposit" style={{ ...box, marginBottom: 0, flex: '3 1 440px', scrollMarginTop: '90px' }}>
+        <div id="bank-vs-seller-deposit" style={{ flex: '3 1 0', minWidth: 0, padding: isMobile ? '1.1rem 0.75rem 0.75rem' : '1.5rem 1.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', scrollMarginTop: '90px' }}>
           <H2>Two kinds of "deposit"</H2>
           <p style={{ margin: '0 0 18px', fontSize: '14px', color: C.textSecondary, lineHeight: 1.55 }}>The bank deposit is your total share. The seller deposit is part of it, paid earlier.</p>
           {[
@@ -147,7 +148,7 @@ export default function DepositSources({ onNavigate, hash }) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B8301C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, marginTop: '1px' }}><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
             <p style={{ margin: 0, fontSize: '13px', lineHeight: 1.55, color: '#5A1F14' }}><strong>Worth knowing:</strong> once you're unconditional you're committed. Check with your adviser and solicitor that your funds will be ready in time.</p>
           </div>
-          <button onClick={() => setMore((m) => !m)} aria-expanded={more} style={{ marginTop: '14px', background: 'none', border: 0, padding: 0, color: C.accent, fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={() => setMore((m) => !m)} aria-expanded={more} style={{ marginTop: '14px', alignSelf: 'flex-start', background: 'none', border: 0, padding: 0, color: C.accent, fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
             {more ? 'Show less' : 'How it can strengthen your offer'}
           </button>
           {more && (
@@ -155,16 +156,16 @@ export default function DepositSources({ onNavigate, hash }) {
               If a seller needs their deposit quickly, for example to pay the deposit on their next home, paying it promptly from cash can make your offer stand out. If cash is tight, a smaller seller deposit can often be negotiated.
             </p>
           )}
-        </section>
+        </div>
 
         {/* Bottom line */}
-        <section style={{ flex: '2 1 280px', alignSelf: 'flex-start', background: C.navy, color: '#FFFFFF', borderRadius: '24px', padding: isMobile ? '1.4rem' : '1.75rem' }}>
+        <div style={{ flex: '2 1 0', minWidth: 0, background: C.navy, color: '#FFFFFF', borderRadius: '18px', padding: isMobile ? '1.4rem' : '1.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#9DC4F3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>The bottom line</p>
           <p style={{ margin: '0 0 20px', fontSize: isMobile ? '17px' : '19px', lineHeight: 1.5, fontWeight: 500 }}>Most buyers mix two or three sources. Not sure what you've got? That's what a first chat is for.</p>
           <a href="/first-home-playbook/calculator" onClick={go('/calculator')} style={{ display: 'block', textAlign: 'center', padding: '15px', borderRadius: '12px', background: C.red, color: '#FFFFFF', fontWeight: 600, fontSize: '16px', textDecoration: 'none', marginBottom: '10px' }}>Check what I could borrow</a>
           <a href="/first-home-playbook/book-a-call" onClick={go('/book-a-call')} style={{ display: 'block', textAlign: 'center', padding: '14px', borderRadius: '12px', border: '1px solid #3A4C70', color: '#FFFFFF', fontWeight: 600, fontSize: '15px', textDecoration: 'none' }}>Get your plan</a>
-        </section>
-      </div>
+        </div>
+      </section>
 
       <PlaybookDisclaimer />
     </div>

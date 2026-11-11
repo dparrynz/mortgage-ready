@@ -64,9 +64,9 @@ export default function HiddenCosts({ onNavigate }) {
         </div>
       </section>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem', alignItems: 'stretch' }}>
-        {/* When they come up */}
-        <section style={{ ...box, marginBottom: 0, flex: '3 1 440px' }}>
+      {/* One panel: timeline on the left, bottom line coming out of it on the right */}
+      <section style={{ ...card, padding: isMobile ? '10px' : '12px', marginBottom: '1rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '12px', alignItems: 'stretch' }}>
+        <div style={{ flex: '3 1 0', minWidth: 0, padding: isMobile ? '1.1rem 0.75rem 0.75rem' : '1.5rem 1.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <h2 style={{ margin: '0 0 16px', fontFamily: C.headingFont, fontSize: '24px', fontWeight: 700, color: C.navy }}>When they come up</h2>
           {WHEN.map((w, i) => (
             <div key={w.title} style={{ display: 'flex', gap: '12px' }}>
@@ -80,16 +80,15 @@ export default function HiddenCosts({ onNavigate }) {
               </div>
             </div>
           ))}
-        </section>
+        </div>
 
-        {/* Bottom line */}
-        <section style={{ flex: '2 1 280px', background: C.navy, color: '#FFFFFF', borderRadius: '24px', padding: isMobile ? '1.4rem' : '1.75rem' }}>
+        <div style={{ flex: '2 1 0', minWidth: 0, background: C.navy, color: '#FFFFFF', borderRadius: '18px', padding: isMobile ? '1.4rem' : '1.75rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#9DC4F3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>The bottom line</p>
           <p style={{ margin: '0 0 20px', fontSize: isMobile ? '17px' : '19px', lineHeight: 1.5, fontWeight: 500 }}>Set aside a buffer of $3,000 to $5,000 for legal, building and LIM costs, and talk it through before you make an offer.</p>
           <a href="/first-home-playbook/calculator" onClick={go('/calculator')} style={{ display: 'block', textAlign: 'center', padding: '15px', borderRadius: '12px', background: C.red, color: '#FFFFFF', fontWeight: 600, fontSize: '16px', textDecoration: 'none', marginBottom: '10px' }}>Check what I could borrow</a>
           <a href="/first-home-playbook/book-a-call" onClick={go('/book-a-call')} style={{ display: 'block', textAlign: 'center', padding: '14px', borderRadius: '12px', border: '1px solid #3A4C70', color: '#FFFFFF', fontWeight: 600, fontSize: '15px', textDecoration: 'none' }}>Get your plan</a>
-        </section>
-      </div>
+        </div>
+      </section>
 
       <PlaybookDisclaimer />
     </div>
