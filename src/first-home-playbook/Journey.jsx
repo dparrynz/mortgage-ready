@@ -93,26 +93,6 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
   const [checklist, setChecklist] = useState({});
   const [loaded, setLoaded] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [openWhoChip, setOpenWhoChip] = useState(null);
-  const whoChipsRef = React.useRef(null);
-
-  useEffect(() => {
-    if (!openWhoChip) return;
-    const closeIfOutside = (e) => {
-      if (whoChipsRef.current && !whoChipsRef.current.contains(e.target)) setOpenWhoChip(null);
-    };
-    const closeOnEscape = (e) => { if (e.key === 'Escape') setOpenWhoChip(null); };
-    document.addEventListener('mousedown', closeIfOutside);
-    document.addEventListener('touchstart', closeIfOutside);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('mousedown', closeIfOutside);
-      document.removeEventListener('touchstart', closeIfOutside);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [openWhoChip]);
-
-  useEffect(() => { setOpenWhoChip(null); }, [selectedStage, path]);
 
   const stages = useMemo(() => journeyStagesForPath(path), [path]);
   const usedAnchors = useMemo(() => new Set(), [path, selectedStage, expandedFullText]);
@@ -170,150 +150,74 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
     if (route) onNavigate(route);
   };
 
-  return (
+  const pathToggle = (
+    <SegmentedToggle options={PATH_OPTIONS} value={path} onChange={(v) => { setPath(v); setSelectedStage((s) => Math.min(s, stages.length - 1)); }} />
+  );
+
+  const label = { fontSize: '12px', fontWeight: '700', color: C.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 0.6rem' };
+
+  // Everything about the selected stage. Shown on the right on desktop, and
+  // opened in place under the stage name on phones.
+  const stageDetail = (
     <div>
-      <PlaybookHeader title="Your journey" onExit={onExit} onBackToHub={onBackToHub} />
-      <PlaybookCard>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.6rem' }}>
+        <h2 style={{ fontSize: isMobile ? '19px' : '22px', fontWeight: 700, color: C.navy, margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <span style={{ width: '42px', height: '42px', borderRadius: '12px', background: C.inputBg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><StageIcon title={stage.title} size={22} /></span>
+          {stage.title}
+        </h2>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: C.accent, background: C.inputBg, borderRadius: '999px', padding: '0.3rem 0.75rem' }}>{stage.time}</span>
+      </div>
+      <p style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.65, margin: '0 0 1.25rem' }}>
+        {linkifyGlossaryTerms(stage.desc, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
+      </p>
 
-        <div style={{ marginBottom: '1.5rem' }}>
-          <SegmentedToggle options={PATH_OPTIONS} value={path} onChange={(v) => { setPath(v); setSelectedStage((s) => Math.min(s, stages.length - 1)); }} />
-        </div>
+      {/* To-dos */}
+      <div style={{ background: C.inputBg, borderRadius: '16px', padding: '1rem 1.1rem', marginBottom: '1rem' }}>
+        <p style={label}>Your to-dos</p>
+        {stage.todos.map((todo, ti) => {
+          const checkboxId = `journey-todo-${path}-${selectedStage}-${ti}`;
+          const done = isTodoDone(selectedStage, ti);
+          return (
+            <label key={ti} htmlFor={checkboxId} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', padding: '0.45rem 0', cursor: 'pointer' }}>
+              <input id={checkboxId} type="checkbox" checked={done} onChange={() => toggleTodo(selectedStage, ti)} style={{ marginTop: '2px', width: '18px', height: '18px', flexShrink: 0, cursor: 'pointer', accentColor: C.green }} />
+              <span style={{ fontSize: '15px', color: done ? C.textMuted : C.navy, textDecoration: done ? 'line-through' : 'none', lineHeight: 1.5 }}>{linkifyFloodViewer(todo)}</span>
+            </label>
+          );
+        })}
+      </div>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ height: '8px', borderRadius: '4px', background: C.inputBg, overflow: 'hidden' }}>
-            <div style={{ width: `${progressPct}%`, height: '100%', background: C.accent, borderRadius: '4px', transition: 'width 0.2s' }} />
-          </div>
-          <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0.5rem 0 0' }}>{doneTodos} of {totalTodos} to-dos done</p>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '1.5rem' }}>
-          {stages.map((s, i) => {
-            const selected = i === selectedStage;
-            const complete = isStageComplete(i);
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setSelectedStage(i)}
-                style={{
-                  textAlign: 'left',
-                  padding: '0.75rem 0.85rem',
-                  borderRadius: '12px',
-                  border: selected ? `2px solid ${C.accent}` : `2px solid ${C.borderLight}`,
-                  background: selected ? C.accentLight : 'white',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '0.5rem',
-                  minHeight: '52px',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', minWidth: 0 }}>
-                  <StageIcon title={s.title} size={20} colour={selected ? C.accent : C.sky} />
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: C.textPrimary, lineHeight: 1.3 }}>{i + 1}. {s.title}</span>
-                </span>
-                {complete && <i className="ti ti-circle-check-filled" style={{ fontSize: '16px', color: C.green, flexShrink: 0 }} />}
-              </button>
-            );
-          })}
-        </div>
-
-        <div style={{ background: C.inputBg, borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: '700', color: C.navy, margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <span style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'white', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><StageIcon title={stage.title} size={22} /></span>
-              {selectedStage + 1}. {stage.title}
-            </h2>
-            <span style={{ fontSize: '13px', color: C.textMuted }}>{stage.time}</span>
-          </div>
-          <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>
-            {linkifyGlossaryTerms(stage.desc, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
-          </p>
-
-          <p style={{ fontSize: '12px', fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0 0 0.5rem' }}>Who's involved</p>
-          <div ref={whoChipsRef} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.25rem' }}>
-            {stage.who.map((w) => {
-              const chipKey = `${selectedStage}-${w}`;
-              const info = findWhoInfo(w);
-              const isOpen = openWhoChip === chipKey;
-              return (
-                <div key={w} style={{ position: 'relative' }}>
-                  <button
-                    type="button"
-                    onClick={() => setOpenWhoChip(isOpen ? null : chipKey)}
-                    aria-expanded={isOpen}
-                    style={{ fontSize: '12px', fontWeight: '500', color: C.accent, background: isOpen ? C.accentLight : 'white', border: 'none', borderRadius: '999px', padding: '0.3rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                  >
-                    {w}
-                    {info && <i className={`ti ${isOpen ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: '11px' }} />}
-                  </button>
-                  {isOpen && info && (
-                    <div
-                      role="dialog"
-                      style={{
-                        position: 'absolute',
-                        top: 'calc(100% + 6px)',
-                        left: 0,
-                        zIndex: 20,
-                        width: '260px',
-                        maxWidth: '80vw',
-                        background: 'white',
-                        borderRadius: '12px',
-                        padding: '1rem',
-                        boxShadow: '0 8px 28px rgba(0,0,0,0.18)',
-                        border: `1px solid ${C.borderLight}`,
-                      }}
-                    >
-                      <p style={{ fontSize: '14px', fontWeight: '600', color: C.textPrimary, margin: '0 0 0.5rem' }}>{info.who}</p>
-                      <p style={{ fontSize: '12px', color: C.textMuted, margin: '0 0 0.5rem' }}><strong>Works for:</strong> {info.worksFor}</p>
-                      <p style={{ fontSize: '13px', color: C.textSecondary, lineHeight: 1.6, margin: '0 0 0.5rem' }}>{info.does}</p>
-                      <p style={{ fontSize: '12px', color: C.textMuted, margin: '0 0 0.5rem' }}><strong>Rough cost to you:</strong> {info.cost}</p>
-                      <p style={{ fontSize: '11px', color: C.textMuted, fontStyle: 'italic', margin: 0 }}>Costs are a rough guide only.</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <p style={{ fontSize: '12px', fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0 0 0.5rem' }}>Your to-dos</p>
-          <div style={{ marginBottom: '1.25rem' }}>
-            {stage.todos.map((todo, ti) => {
-              const checkboxId = `journey-todo-${path}-${selectedStage}-${ti}`;
-              const done = isTodoDone(selectedStage, ti);
-              return (
-                <label key={ti} htmlFor={checkboxId} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.5rem 0', cursor: 'pointer' }}>
-                  <input
-                    id={checkboxId}
-                    type="checkbox"
-                    checked={done}
-                    onChange={() => toggleTodo(selectedStage, ti)}
-                    style={{ marginTop: '3px', width: '16px', height: '16px', flexShrink: 0, cursor: 'pointer' }}
-                  />
-                  <span style={{ fontSize: '14px', color: done ? C.textMuted : C.textPrimary, textDecoration: done ? 'line-through' : 'none', lineHeight: 1.5 }}>{linkifyFloodViewer(todo)}</span>
-                </label>
-              );
-            })}
-          </div>
-
-          {stage.related && stage.related.length > 0 && (
-            <>
-              <p style={{ fontSize: '12px', fontWeight: '600', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0 0 0.5rem' }}>Related</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: fullText ? '1.25rem' : 0 }}>
-                {stage.related.map((label) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => goRelated(label)}
-                    style={{ fontSize: '13px', color: C.accent, background: 'white', border: `1px solid ${C.borderLight}`, borderRadius: '10px', padding: '0.4rem 0.85rem', cursor: 'pointer' }}
-                  >
-                    {label} →
-                  </button>
-                ))}
+      {/* Who's involved */}
+      <p style={label}>Who's involved</p>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+        {stage.who.map((w) => {
+          const info = findWhoInfo(w);
+          return (
+            <div key={w} style={{ border: `1px solid ${C.borderLight}`, borderRadius: '16px', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: C.navy, margin: 0 }}>{info ? info.who : w}</p>
+                {info && <span style={{ fontSize: '11px', fontWeight: 600, color: C.textSecondary, whiteSpace: 'nowrap' }}>Works for: {info.worksFor}</span>}
               </div>
-            </>
-          )}
+              {info && <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.55, margin: '0 0 0.5rem' }}>{info.does}</p>}
+              {info && <p style={{ fontSize: '13px', color: C.navy, margin: 0 }}><strong>Rough cost:</strong> {info.cost}</p>}
+            </div>
+          );
+        })}
+      </div>
+      <p style={{ fontSize: '12px', color: C.textMuted, fontStyle: 'italic', margin: '-0.4rem 0 1rem' }}>Costs are a rough guide only.</p>
+
+      {/* Related */}
+      {stage.related && stage.related.length > 0 && (
+        <div style={{ background: '#EAF1FE', borderRadius: '16px', padding: '1rem 1.1rem', marginBottom: '1rem' }}>
+          <p style={label}>Helpful for this stage</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {stage.related.map((label2) => (
+              <button key={label2} type="button" onClick={() => goRelated(label2)} style={{ fontSize: '14px', fontWeight: 600, color: C.accent, background: 'white', border: 'none', borderRadius: '10px', padding: '0.55rem 0.9rem', cursor: 'pointer' }}>
+                {label2} →
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
           {fullText && (
             <div>
@@ -373,34 +277,88 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
               )}
             </div>
           )}
-        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.5rem' }}>
-          <button
-            type="button"
-            onClick={() => setSelectedStage((s) => Math.max(0, s - 1))}
-            disabled={selectedStage === 0}
-            style={{ ...secondaryBtn, opacity: selectedStage === 0 ? 0.4 : 1, cursor: selectedStage === 0 ? 'not-allowed' : 'pointer' }}
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedStage((s) => Math.min(stages.length - 1, s + 1))}
-            disabled={selectedStage === stages.length - 1}
-            style={{ ...primaryBtn, opacity: selectedStage === stages.length - 1 ? 0.4 : 1, cursor: selectedStage === stages.length - 1 ? 'not-allowed' : 'pointer' }}
-          >
-            Next
-          </button>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', marginTop: '1.25rem' }}>
+        <button type="button" onClick={() => setSelectedStage((s) => Math.max(0, s - 1))} disabled={selectedStage === 0} style={{ ...secondaryBtn, border: `1px solid ${C.borderLight}`, opacity: selectedStage === 0 ? 0.4 : 1, cursor: selectedStage === 0 ? 'not-allowed' : 'pointer' }}>
+          Back
+        </button>
+        <button type="button" onClick={() => setSelectedStage((s) => Math.min(stages.length - 1, s + 1))} disabled={selectedStage === stages.length - 1} style={{ ...primaryBtn, opacity: selectedStage === stages.length - 1 ? 0.4 : 1, cursor: selectedStage === stages.length - 1 ? 'not-allowed' : 'pointer' }}>
+          Next stage
+        </button>
+      </div>
+    </div>
+  );
 
-        {!user && (
-          <p style={{ fontSize: '13px', color: C.textMuted, margin: '0 0 1.5rem' }}>
-            Your progress is saved on this device.{' '}
-            <button type="button" onClick={() => setShowAuthModal(true)} style={{ background: 'none', border: 'none', padding: 0, color: C.accent, textDecoration: 'underline', fontSize: '13px', cursor: 'pointer' }}>
-              Log in to save your progress
+  // The list of stages down the left, joined by a line
+  const stageList = (
+    <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+      {stages.map((s, i) => {
+        const selected = i === selectedStage;
+        const complete = isStageComplete(i);
+        const last = i === stages.length - 1;
+        return (
+          <li key={i} style={{ position: 'relative' }}>
+            {!last && <span aria-hidden="true" style={{ position: 'absolute', left: '27px', top: '50px', bottom: '-6px', width: '2px', background: complete ? C.green : '#D5E0F2' }} />}
+            <button
+              type="button"
+              onClick={() => setSelectedStage(i)}
+              aria-current={selected ? 'step' : undefined}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.6rem', margin: '0 0 6px', borderRadius: '14px', border: 'none', background: selected ? '#EAF1FE' : 'transparent', cursor: 'pointer', textAlign: 'left', position: 'relative' }}
+            >
+              <span style={{ width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: complete ? C.green : selected ? C.accent : 'white', border: complete || selected ? 'none' : `2px solid #D5E0F2` }}>
+                {complete
+                  ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
+                  : <StageIcon title={s.title} size={19} colour={selected ? 'white' : C.sky} />}
+              </span>
+              <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                <span style={{ fontSize: '15px', fontWeight: selected ? 700 : 600, color: C.navy, lineHeight: 1.3 }}>{i + 1}. {s.title}</span>
+                <span style={{ fontSize: '12px', color: C.textSecondary }}>{s.time}</span>
+              </span>
+              {isMobile && <span aria-hidden="true" style={{ color: C.accent, fontSize: '20px' }}>{selected ? '−' : '+'}</span>}
             </button>
-          </p>
+            {isMobile && selected && (
+              <div style={{ margin: '0.25rem 0 1.25rem', padding: '1rem', border: `1px solid ${C.borderLight}`, borderRadius: '16px', background: 'white', position: 'relative', zIndex: 1 }}>{stageDetail}</div>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+
+  return (
+    <div>
+      <PlaybookHeader title="Your journey" onExit={onExit} onBackToHub={onBackToHub} />
+      <PlaybookCard style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
+        {/* Top: path choice and progress */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.5rem' }}>
+          {pathToggle}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', flex: isMobile ? '1 1 100%' : '0 1 360px' }}>
+            <span style={{ fontFamily: C.headingFont, fontSize: '30px', fontWeight: 700, color: progressPct === 100 ? C.green : C.navy, minWidth: '64px' }}>{progressPct}%</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ height: '10px', borderRadius: '5px', background: C.inputBg, overflow: 'hidden' }} role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100} aria-label="Journey progress">
+                <div style={{ width: `${progressPct}%`, height: '100%', background: C.green, borderRadius: '5px', transition: 'width 0.25s' }} />
+              </div>
+              <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0.35rem 0 0' }}>{doneTodos} of {totalTodos} to-dos done</p>
+            </div>
+          </div>
+        </div>
+
+        {isMobile ? stageList : (
+          <div style={{ display: 'grid', gridTemplateColumns: '290px minmax(0, 1fr)', gap: '2rem', alignItems: 'start' }}>
+            <div style={{ position: 'sticky', top: '90px' }}>{stageList}</div>
+            <div style={{ borderLeft: `1px solid ${C.borderLight}`, paddingLeft: '2rem' }}>{stageDetail}</div>
+          </div>
+        )}
+
+        {/* Save progress */}
+        {!user && (
+          <div style={{ marginTop: '1.75rem', background: C.navy, color: 'white', borderRadius: '18px', padding: isMobile ? '1.1rem' : '1.25rem 1.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.9rem' }}>
+            <div style={{ flex: '1 1 300px' }}>
+              <p style={{ margin: '0 0 0.2rem', fontSize: '16px', fontWeight: 700 }}>Save your progress</p>
+              <p style={{ margin: 0, fontSize: '14px', color: '#C2CDE2', lineHeight: 1.5 }}>Your ticks are saved on this device for now. Create a free account to pick up where you left off on any device.</p>
+            </div>
+            <button type="button" onClick={() => setShowAuthModal(true)} style={{ ...primaryBtn, whiteSpace: 'nowrap' }}>Save my progress</button>
+          </div>
         )}
 
         <PlaybookDisclaimer />
