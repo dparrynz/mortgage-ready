@@ -7,18 +7,16 @@ import { PlaybookHeader, PlaybookDisclaimer } from './shared.jsx';
 // Approved design: "Playbook redesign" page on the design canvas.
 
 const SOURCES = [
-  { id: 'kiwisaver', title: 'KiwiSaver', fact: '3+ years a member · leave $1,000 in', body: "If you've been a member for at least three years, you can usually withdraw your contributions and returns for your first home. There's no fixed cap, it depends on how much you've built up." },
-  { id: 'savings', title: 'Your savings', fact: 'Banks like a steady track record', body: 'Regular saving over time shows a lender you can manage money and meet repayments. A lump sum that appeared last month counts for less.' },
-  { id: 'gift', title: 'Family gift', fact: 'Needs a signed gift letter', body: "Common and generally accepted, as long as it's a genuine gift, not a loan you're expected to repay." },
-  { id: 'ko', title: 'Kāinga Ora First Home Loan', fact: 'As little as 5% deposit', body: "It doesn't give you money, but if you're eligible it lowers the deposit you need from the usual 20% to as little as 5%." },
-  { id: 'equity', title: 'Family equity', fact: 'Worth a proper conversation', body: "Equity in your own or a family member's property can sometimes stand in for a cash deposit. It's more complex, so talk it through first." },
+  { id: 'kiwisaver', title: 'KiwiSaver', fact: 'After 3 years as a member', body: 'Members of at least three years can withdraw their KiwiSaver savings towards a first home, leaving a minimum of $1,000 in the account. Your solicitor applies for the withdrawal.' },
+  { id: 'savings', title: 'Your savings', fact: 'Shows your track record', body: 'Regular saving over time shows lenders you can manage your money and meet your repayments.' },
+  { id: 'gift', title: 'Family gift', fact: 'Large or small', body: 'Gifts from family are widely accepted, as long as they are not repayable. Lenders usually ask for a signed gift letter confirming this.' },
+  { id: 'equity', title: 'Family equity', fact: 'Support from a family home', body: 'A family member can offer the equity in their own home as extra security for your loan, which can reduce the cash deposit you need. This is more complex, so get advice before going ahead.' },
 ];
 
 const ICONS = {
-  kiwisaver: <><path d="M5 11a7 6 0 0 1 13-1h2v4h-2a7 6 0 0 1-3 3v3h-3v-2h-3v2H6v-3.5A6 6 0 0 1 5 11z" /><path d="M15 9.5h.01" /></>,
+  kiwisaver: <><ellipse cx="9" cy="12.8" rx="6.3" ry="5" /><path d="M13.6 9.3c.9-1.5 3-1.6 3.9-.3" /><path d="M17.5 9.5c1.6 1.2 3.3 3.3 4.6 5.8" /><path d="M7.5 17.6v3.2M11 17.6v3.2M6.3 20.8h2.4M9.8 20.8h2.4" /><path d="M15.6 9.6h.01" /></>,
   savings: <><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M16 15h2" /></>,
   gift: <><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M5 12v8h14v-8M12 8v12M12 8c-1.5-3-5-3-5-1s3 1 5 1zM12 8c1.5-3 5-3 5-1s-3 1-5 1z" /></>,
-  ko: <><path d="M19 5 5 19" /><circle cx="7" cy="7" r="2.5" /><circle cx="17" cy="17" r="2.5" /></>,
   equity: <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></>,
 };
 
@@ -84,7 +82,7 @@ export default function DepositSources({ onNavigate, hash }) {
 
       {/* Sources */}
       <section style={box}>
-        <H2>5 places it can come from</H2>
+        <H2>4 places it can come from</H2>
         {isMobile && <p style={{ margin: '0 0 14px', fontSize: '14px', color: C.textSecondary }}>Tap any to learn more.</p>}
         {isMobile ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -106,7 +104,7 @@ export default function DepositSources({ onNavigate, hash }) {
             })}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '14px', marginTop: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginTop: '14px' }}>
             {SOURCES.map((s) => (
               <div key={s.id} style={{ background: C.inputBg, borderRadius: '18px', padding: '18px' }}>
                 <div style={{ marginBottom: '14px' }}><Icon id={s.id} /></div>
@@ -117,6 +115,12 @@ export default function DepositSources({ onNavigate, hash }) {
             ))}
           </div>
         )}
+        <div style={{ marginTop: '14px', display: 'flex', flexWrap: 'wrap', gap: '6px 12px', alignItems: 'center', background: '#EAF1FE', borderRadius: '14px', padding: '12px 14px' }}>
+          <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.55, color: C.navy, flex: '1 1 260px' }}>
+            <strong>Good to know:</strong> the Kāinga Ora First Home Loan isn't a deposit source, but if you're eligible it can lower the deposit you need to as little as 5%.
+          </p>
+          <a href="/first-home-playbook/kainga-ora" onClick={go('/kainga-ora')} style={{ fontSize: '14px', fontWeight: 600, color: C.accent, whiteSpace: 'nowrap' }}>See if it applies →</a>
+        </div>
       </section>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem', alignItems: 'stretch' }}>
