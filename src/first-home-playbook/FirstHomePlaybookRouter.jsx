@@ -4,13 +4,12 @@ import Hub from './Hub.jsx';
 import Calculator from './Calculator.jsx';
 import AreYouReadyQuiz from './AreYouReadyQuiz.jsx';
 import KaingaOraQuiz from './KaingaOraQuiz.jsx';
-import GuidePage from './GuidePage.jsx';
 import Glossary from './Glossary.jsx';
 import BookACall from './BookACall.jsx';
 import Journey from './Journey.jsx';
 import DepositSources from './DepositSources.jsx';
 import HiddenCosts from './HiddenCosts.jsx';
-import { KAINGA_ORA_EXPLAINER } from './content.js';
+import KaingaOraPage from './KaingaOraPage.jsx';
 
 function subPathFromLocation() {
   const path = window.location.pathname.replace(PLAYBOOK_ROOT, '');
@@ -57,7 +56,7 @@ export default function FirstHomePlaybookRouter({ onExit }) {
     case '/kainga-ora-quiz': page = <KaingaOraQuiz {...pageProps} />; break;
     case '/deposit-sources': page = <DepositSources {...pageProps} />; break;
     case '/costs-of-buying': page = <HiddenCosts {...pageProps} />; break;
-    case '/kainga-ora': page = <GuidePage content={KAINGA_ORA_EXPLAINER} {...pageProps} />; break;
+    case '/kainga-ora': page = <KaingaOraPage {...pageProps} />; break;
     case '/glossary': page = <Glossary {...pageProps} />; break;
     case '/book-a-call': page = <BookACall {...pageProps} />; break;
     default: page = <Hub onExit={onExit} onNavigate={navigate} />;

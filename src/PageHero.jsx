@@ -1,6 +1,5 @@
 import React from 'react';
 import { C, useWindowWidth } from '../ParryFSApp.jsx';
-import { KAINGA_ORA_EXPLAINER } from './first-home-playbook/content.js';
 
 // The blue to white banner ("hero") at the top of every page, matching the
 // homepage so the whole site reads as one design.
@@ -22,7 +21,7 @@ const PLAYBOOK_PAGES = {
   '/kainga-ora-quiz': { crumb: 'Kāinga Ora quiz', title: 'Kāinga Ora qualifying quiz', sub: 'A fast read on eligibility, using the same criteria as our Borrow Checker.' },
   '/deposit-sources': { crumb: 'Deposit sources', title: 'Where your deposit can come from', sub: 'Most first home buyers combine a few sources, not just savings.' },
   '/costs-of-buying': { crumb: 'Hidden costs', title: 'What buying really costs, beyond the deposit', sub: 'Budget for these early, so there are no surprises before settlement.' },
-  '/kainga-ora': { crumb: 'Kāinga Ora explained', title: KAINGA_ORA_EXPLAINER.title },
+  '/kainga-ora': { crumb: 'Kāinga Ora explained', title: 'Kāinga Ora First Home Loan, explained', sub: 'Buy with as little as a 5% deposit, if you meet the criteria.' },
   '/glossary': { crumb: 'Jargon glossary', title: 'First home buyer terms, in plain English', sub: 'This list keeps growing over time.' },
   '/book-a-call': { crumb: 'Get your plan', title: 'Get your plan' },
 };
