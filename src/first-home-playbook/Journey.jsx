@@ -5,6 +5,7 @@ import {
   JOURNEY_RELATED_ROUTES,
   journeyStagesForPath, normaliseJourneyProgress,
   JOURNEY_FULL_TEXT,
+  JOURNEY_FULL_TEXT_AUCTION,
   JOURNEY_WHO_DOES_WHAT,
   JOURNEY_GLOSSARY_LINKS,
   FLOOD_VIEWER_URL,
@@ -181,7 +182,7 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
   const progressPct = totalTodos ? Math.round((doneTodos / totalTodos) * 100) : 0;
 
   const stage = stages[selectedStage];
-  const fullText = path === 'negotiation' ? JOURNEY_FULL_TEXT[selectedStage] : null;
+  const fullText = (path === 'auction' && JOURNEY_FULL_TEXT_AUCTION[selectedStage]) || JOURNEY_FULL_TEXT[selectedStage];
 
   const goRelated = (label) => {
     const route = JOURNEY_RELATED_ROUTES[label];
@@ -198,16 +199,13 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
   // opened in place under the stage name on phones.
   const stageDetail = (
     <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.6rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '1.1rem' }}>
         <h2 style={{ fontSize: isMobile ? '19px' : '22px', fontWeight: 700, color: C.navy, margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <span style={{ width: '42px', height: '42px', borderRadius: '12px', background: C.inputBg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><StageIcon title={stage.title} size={22} /></span>
           {stage.title}
         </h2>
         <span style={{ fontSize: '13px', fontWeight: 600, color: C.accent, background: C.inputBg, borderRadius: '999px', padding: '0.3rem 0.75rem' }}>{stage.time}</span>
       </div>
-      <p style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.65, margin: '0 0 1.25rem' }}>
-        {linkifyGlossaryTerms(stage.desc, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
-      </p>
 
       {/* To-dos */}
       <div style={{ background: C.inputBg, borderRadius: '16px', padding: '1rem 1.1rem', marginBottom: '1rem' }}>
@@ -223,6 +221,70 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
           );
         })}
       </div>
+
+      {/* The detail, in bullet points */}
+          {fullText && (
+            <div>
+              {(
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <p style={label}>What happens</p>
+                  {fullText.paragraphs.map((p, i) => (
+                    <p key={`p-${i}`} style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.65, margin: '0 0 0.75rem' }}>
+                      {linkifyGlossaryTerms(p, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
+                    </p>
+                  ))}
+                  {fullText.list && (
+                    <ul style={{ margin: '0 0 0.75rem', paddingLeft: '1.25rem' }}>
+                      {fullText.list.map((item, i) => (
+                        <li key={i} style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.65, marginBottom: '0.35rem' }}>
+                          {linkifyGlossaryTerms(item, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {fullText.paragraphs2 && fullText.paragraphs2.map((p, i) => (
+                    <p key={`p2-${i}`} style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.65, margin: '0 0 0.75rem' }}>{p}</p>
+                  ))}
+                  {fullText.list2 && (
+                    <ul style={{ margin: '0 0 0.75rem', paddingLeft: '1.25rem' }}>
+                      {fullText.list2.map((item, i) => (
+                        <li key={i} style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.65, marginBottom: '0.35rem' }}>
+                          {linkifyGlossaryTerms(item, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {fullText.floodViewerLink && (
+                    <p style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.65, margin: '0 0 0.75rem' }}>
+                      In Auckland, the{' '}
+                      <a href={FLOOD_VIEWER_URL} target="_blank" rel="noopener noreferrer" style={{ color: C.accent, textDecoration: 'underline' }}>
+                        Auckland Flood Viewer
+                      </a>{' '}
+                      shows flood plains and overland flow paths for any address.
+                    </p>
+                  )}
+                  {fullText.depositSourcesLink && (
+                    <p style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.65, margin: '0 0 0.75rem' }}>
+                      See the{' '}
+                      <a
+                        href={`${PLAYBOOK_ROOT}/deposit-sources#bank-vs-seller-deposit`}
+                        onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); onNavigate('/deposit-sources#bank-vs-seller-deposit'); }}
+                        style={{ color: C.accent, textDecoration: 'underline' }}
+                      >
+                        Deposit Sources guide
+                      </a>{' '}
+                      for how the two deposits differ.
+                    </p>
+                  )}
+                  {fullText.trailing && fullText.trailing.map((p, i) => (
+                    <p key={`t-${i}`} style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.65, margin: 0 }}>
+                      {linkifyGlossaryTerms(p, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
       {/* Who's involved */}
       <p style={label}>Who's involved</p>
@@ -259,65 +321,6 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
           </div>
         </div>
       )}
-
-          {fullText && (
-            <div>
-              <button
-                type="button"
-                onClick={() => setExpandedFullText((e) => !e)}
-                style={{ background: 'none', border: 'none', color: C.accent, fontSize: '13px', fontWeight: '500', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-              >
-                {expandedFullText ? 'Show less' : 'Read more'}
-                <i className={`ti ${expandedFullText ? 'ti-chevron-up' : 'ti-chevron-down'}`} style={{ fontSize: '14px' }} />
-              </button>
-
-              {expandedFullText && (
-                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: `1px solid ${C.borderLight}` }}>
-                  {fullText.paragraphs.map((p, i) => (
-                    <p key={`p-${i}`} style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 0.75rem' }}>
-                      {linkifyGlossaryTerms(p, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
-                    </p>
-                  ))}
-                  {fullText.list && (
-                    <ul style={{ margin: '0 0 0.75rem', paddingLeft: '1.25rem' }}>
-                      {fullText.list.map((item, i) => (
-                        <li key={i} style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, marginBottom: '0.35rem' }}>
-                          {linkifyGlossaryTerms(item, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {fullText.floodViewerLink && (
-                    <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 0.75rem' }}>
-                      In Auckland, the{' '}
-                      <a href={FLOOD_VIEWER_URL} target="_blank" rel="noopener noreferrer" style={{ color: C.accent, textDecoration: 'underline' }}>
-                        Auckland Flood Viewer
-                      </a>{' '}
-                      shows flood plains and overland flow paths for any address.
-                    </p>
-                  )}
-                  {fullText.depositSourcesLink && (
-                    <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 0.75rem' }}>
-                      See the{' '}
-                      <a
-                        href={`${PLAYBOOK_ROOT}/deposit-sources#bank-vs-seller-deposit`}
-                        onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); onNavigate('/deposit-sources#bank-vs-seller-deposit'); }}
-                        style={{ color: C.accent, textDecoration: 'underline' }}
-                      >
-                        Deposit Sources guide
-                      </a>{' '}
-                      for how the two deposits differ.
-                    </p>
-                  )}
-                  {fullText.trailing && fullText.trailing.map((p, i) => (
-                    <p key={`t-${i}`} style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: 0 }}>
-                      {linkifyGlossaryTerms(p, JOURNEY_GLOSSARY_LINKS, usedAnchors, onNavigate)}
-                    </p>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', marginTop: '1.25rem' }}>
         <button type="button" onClick={() => setSelectedStage((s) => Math.max(0, s - 1))} disabled={selectedStage === 0} style={{ ...secondaryBtn, border: `1px solid ${C.borderLight}`, opacity: selectedStage === 0 ? 0.4 : 1, cursor: selectedStage === 0 ? 'not-allowed' : 'pointer' }}>

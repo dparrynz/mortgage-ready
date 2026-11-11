@@ -261,10 +261,16 @@ export const JOURNEY_FULL_TEXT = [
   {
     heading: '2. House hunting',
     paragraphs: [
-      "This is the fun part, but it helps to remember one thing. The agent works for the seller. They must treat you fairly and honestly, but their job is to get the best result for the seller.",
-      'After a viewing you like, ask the agent for:',
+      "This is the fun part. A few things make it easier:",
     ],
     list: [
+      "Plan your weekends around open homes and pick a shortlist each week, so you're not rushing between them.",
+      'Set up saved searches on Trade Me Property and realestate.co.nz so new listings come to you.',
+      "Get to know a few local agents. They often hear about homes before they're advertised.",
+      'Remember the agent works for the seller. They must treat you fairly and honestly, but their job is to get the best price for the seller, so keep your top price to yourself.',
+    ],
+    paragraphs2: ['After a viewing you like, ask the agent for:'],
+    list2: [
       'the property documents (title, LIM if they have one, building report, rates information)',
       "body corporate documents if it's a unit title, such as an apartment or some townhouses",
       'the method of sale and any deadline or auction date',
@@ -277,7 +283,7 @@ export const JOURNEY_FULL_TEXT = [
     paragraphs: ["Before you offer, get a feel for what you'd be buying. You don't need to be an expert, but you do need to know what to hand to the experts."],
     list: [
       'Send the documents to your solicitor for a quick look.',
-      'Check the property is insurable. Some insurers restrict cover for flood prone or high hazard areas. In Auckland, the Auckland Flood Viewer shows flood plains and overland flow paths for any address.',
+      'Check the property is insurable. Some insurers restrict cover for flood prone or high hazard areas.',
       'Speak with your mortgage adviser about the property. They may have access to property information and can check it fits your approval.',
       'Sites like homes.co.nz and oneroof.co.nz are handy for a rough idea, but treat their estimates with a grain of salt. Agents can sometimes adjust listing information, which can inflate the estimated value.',
       "Decide whether you'll rely on vendor reports or get your own building inspection and LIM.",
@@ -338,6 +344,45 @@ export const JOURNEY_FULL_TEXT = [
     ],
   },
 ];
+
+// Auction versions of the stages that differ. Stages not listed here use
+// the negotiation text above.
+export const JOURNEY_FULL_TEXT_AUCTION = {
+  2: {
+    paragraphs: ['A winning bid at auction is unconditional, so all your checks happen before auction day.'],
+    list: [
+      'Send the auction documents to your solicitor to review.',
+      "Get your own building report. You can't make your bid subject to one.",
+      'Check the property can be insured, as some insurers limit cover in flood prone areas.',
+      'Let your adviser know early. The bank may want a valuation before it will confirm finance for this property.',
+    ],
+    floodViewerLink: true,
+  },
+  3: {
+    paragraphs: ['Bid in the room or by phone. If the hammer falls on your bid, you\'ve bought it.'],
+    list: [
+      "Set your top price beforehand so you don't get caught up in the moment.",
+      'Register to bid with the agent before the auction starts.',
+      'Have your deposit ready to pay on the day, often 10% of the price.',
+    ],
+  },
+  4: {
+    paragraphs: ["There's no conditional period at auction. The deal is locked in on the day."],
+    list: [
+      'You sign the agreement straight after the auction.',
+      "The seller's deposit is usually paid on the day, into the agent's trust account.",
+      'Your solicitor takes it from there.',
+    ],
+    depositSourcesLink: true,
+  },
+  5: {
+    paragraphs: ["Before settlement we finalise your loan, the same as for a negotiated sale."],
+    list: [
+      'We finalise your loan structure and repayments together.',
+      "You accept the bank's formal loan offer.",
+    ],
+  },
+};
 
 // Backs the "Who's involved" chip popovers on the journey page's stage
 // cards (tap a chip to see that person's works-for/does/cost).
