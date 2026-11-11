@@ -32,9 +32,9 @@ The seller deposit is not an extra cost. It counts towards the purchase price, s
 
 The timing is where the two deposits catch people out.
 
-KiwiSaver withdrawals usually take some time to process and are generally paid to your lawyer for settlement. That means KiwiSaver money is often not available in time to pay a seller deposit that's due on the unconditional date. If your deposit is mostly KiwiSaver, you may have less cash on hand for the seller deposit than you expect.
+A KiwiSaver first home withdrawal can be used for the seller deposit, but only if it's planned for. The withdrawal can take 10 to 15 working days to process, the sale and purchase agreement needs a clause covering it, and the money is held until settlement rather than passed to the seller. It also can't be used for the deposit at an auction. Our article on [using KiwiSaver for your first home](/articles/kiwisaver-first-home-withdrawal) explains how this works.
 
-A recent first home buyer we worked with found this out while making an offer. Their deposit was a mix of KiwiSaver and cash savings, and the agent suggested using the cash as the seller deposit because it could be paid straight away, while the KiwiSaver funds would arrive at settlement.
+Cash, on the other hand, can be paid straight away and released to the seller sooner. A recent first home buyer we worked with found this out while making an offer. Their deposit was a mix of KiwiSaver and cash savings, and the agent suggested using the cash as the seller deposit because the owners needed funds for their next purchase, while the KiwiSaver money would go towards settlement.
 
 ## Can the seller deposit help your offer?
 
@@ -46,7 +46,7 @@ On the other hand, if your available cash is limited, you can ask for a smaller 
 
 1. **Know your total deposit and where each part is coming from.** List your cash, KiwiSaver and any family help separately.
 2. **Work out how much cash you can pay before settlement.** This is the realistic ceiling for your seller deposit.
-3. **Check the deposit amount and timing before you sign.** Your lawyer can review this in the sale and purchase agreement, and suggest changes if needed.
+3. **Check the deposit amount and timing before you sign.** Your lawyer can review this in the sale and purchase agreement, add a KiwiSaver clause if you need one, and suggest other changes.
 4. **Talk to your adviser early.** They can confirm how much the bank needs from you and make sure the timing of each payment works.
 
 Once you go unconditional, you're committed to the purchase, and backing out can mean losing your seller deposit and more. Getting the numbers clear before you make an offer avoids that pressure.

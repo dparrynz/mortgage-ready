@@ -44,7 +44,7 @@ known, plus common search questions. Aim for two a month.
 | # | Article | Related guide | Status |
 |---|---------|---------------|--------|
 | 1 | Seller deposit vs bank deposit: why they're not the same | deposit-sources | Draft |
-| 2 | Using KiwiSaver for your first home: how the withdrawal works | deposit-sources | |
+| 2 | Using KiwiSaver for your first home: how the withdrawal works | deposit-sources | Draft |
 | 3 | LIM vs building report: what each covers, and should you trust the vendor's report? | journey | |
 | 4 | RV, CV, asking price and registered valuations: what the numbers actually tell you | borrow-checker | |
 | 5 | Freehold, cross lease or unit title: what it means for a first home buyer | glossary | |
