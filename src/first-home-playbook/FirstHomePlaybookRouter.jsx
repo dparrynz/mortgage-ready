@@ -4,11 +4,12 @@ import Hub from './Hub.jsx';
 import Calculator from './Calculator.jsx';
 import AreYouReadyQuiz from './AreYouReadyQuiz.jsx';
 import KaingaOraQuiz from './KaingaOraQuiz.jsx';
-import GuidePage from './GuidePage.jsx';
 import Glossary from './Glossary.jsx';
 import BookACall from './BookACall.jsx';
 import Journey from './Journey.jsx';
-import { DEPOSIT_SOURCES, COSTS_OF_BUYING, KAINGA_ORA_EXPLAINER } from './content.js';
+import DepositSources from './DepositSources.jsx';
+import HiddenCosts from './HiddenCosts.jsx';
+import KaingaOraPage from './KaingaOraPage.jsx';
 
 function subPathFromLocation() {
   const path = window.location.pathname.replace(PLAYBOOK_ROOT, '');
@@ -41,6 +42,8 @@ export default function FirstHomePlaybookRouter({ onExit }) {
     window.history.pushState({}, '', full);
     setSubPath(pureSubPath === '' ? '/' : pureSubPath);
     setHash(newHash || '');
+    // Let the rest of the site (page hero, top nav) know the page changed
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   const backToHub = () => navigate('/');
@@ -53,9 +56,9 @@ export default function FirstHomePlaybookRouter({ onExit }) {
     case '/calculator': page = <Calculator {...pageProps} />; break;
     case '/are-you-ready': page = <AreYouReadyQuiz {...pageProps} />; break;
     case '/kainga-ora-quiz': page = <KaingaOraQuiz {...pageProps} />; break;
-    case '/deposit-sources': page = <GuidePage content={DEPOSIT_SOURCES} {...pageProps} />; break;
-    case '/costs-of-buying': page = <GuidePage content={COSTS_OF_BUYING} {...pageProps} />; break;
-    case '/kainga-ora': page = <GuidePage content={KAINGA_ORA_EXPLAINER} {...pageProps} />; break;
+    case '/deposit-sources': page = <DepositSources {...pageProps} />; break;
+    case '/costs-of-buying': page = <HiddenCosts {...pageProps} />; break;
+    case '/kainga-ora': page = <KaingaOraPage {...pageProps} />; break;
     case '/glossary': page = <Glossary {...pageProps} />; break;
     case '/book-a-call': page = <BookACall {...pageProps} />; break;
     default: page = <Hub onExit={onExit} onNavigate={navigate} />;
