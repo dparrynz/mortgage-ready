@@ -1,5 +1,6 @@
 import React from 'react';
 import { C, useWindowWidth } from '../ParryFSApp.jsx';
+import Reviews from './Reviews.jsx';
 
 // Homepage: "Bold and simple", all blue with red for the main actions.
 // Two quiet colours (sky blue and white) and one loud one (red), so the red
@@ -99,6 +100,13 @@ export default function Home({ go }) {
               </Link>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Reviews */}
+      <section style={{ padding: isMobile ? '8px 20px 48px' : '0 24px 96px' }}>
+        <div style={wrap}>
+          <Reviews />
         </div>
       </section>
 

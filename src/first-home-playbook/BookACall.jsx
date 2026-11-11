@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { C, primaryBtn, inputWrap, inputStyle } from '../../ParryFSApp.jsx';
 import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, BOOKINGS_URL } from './shared.jsx';
+import Reviews from '../Reviews.jsx';
 
 // Posts to the /api/notify-enquiry serverless function (api/notify-enquiry.js),
 // which emails Dan via Resend. Plain notification only, no automation beyond
@@ -130,6 +131,9 @@ export default function BookACall({ onExit, onBackToHub, onNavigate }) {
         <a href={BOOKINGS_URL} target="_blank" rel="noopener noreferrer" style={{ ...primaryBtn, display: 'inline-block', textDecoration: 'none' }}>
           Book a time
         </a>
+
+        <div style={{ borderTop: `1px solid ${C.borderLight}`, margin: '2rem 0 1.5rem' }} />
+        <Reviews title="What first home buyers say" compact />
 
         <PlaybookDisclaimer />
       </PlaybookCard>
