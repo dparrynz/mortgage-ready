@@ -381,9 +381,9 @@ const SegmentedToggle = ({ options, value, onChange }) => (
         type="button"
         onClick={() => onChange(opt.value)}
         style={{
-          background: value === opt.value ? C.accent : 'transparent',
+          background: value === opt.value ? C.red : 'transparent',
           color: value === opt.value ? 'white' : C.textSecondary,
-          border: 'none',
+          border: 'none', fontWeight: value === opt.value ? '600' : '500',
           padding: '8px 16px',
           minHeight: '44px',
           display: 'flex',
@@ -391,7 +391,6 @@ const SegmentedToggle = ({ options, value, onChange }) => (
           justifyContent: 'center',
           borderRadius: '8px',
           fontSize: '13px',
-          fontWeight: '500',
           cursor: 'pointer',
           transition: 'all 0.15s',
           whiteSpace: 'nowrap',
