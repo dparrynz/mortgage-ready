@@ -21,11 +21,12 @@ const WHO = [
   'NZ citizen, permanent resident or resident visa holder living in NZ',
   'First home buyer, or a previous owner in a similar position',
   "You'll live in the home yourself",
-  'At least a 5% deposit',
+  'DEPOSIT_LINK',
 ];
 
 const GOOD_TO_KNOW = [
-  "It's a normal home loan at normal interest rates, not a grant.",
+  "It's a normal home loan, not a grant.",
+  "You can access the lender's special interest rates.",
   'You apply through a participating lender, not Kāinga Ora.',
   'You still need to show you can afford the repayments.',
   'There are no house price caps.',
@@ -63,16 +64,20 @@ export default function KaingaOraPage({ onNavigate }) {
             </div>
           </div>
         ))}
-        <p style={{ margin: '4px 0 0', fontSize: '14px', color: C.textSecondary, lineHeight: 1.55 }}>Kāinga Ora backs part of the loan, which lets lenders approve a smaller deposit than usual.</p>
       </section>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
         {/* Who it's for */}
-        <section style={{ ...box, marginBottom: 0 }}>
+        <section style={{ ...box, marginBottom: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
           <h2 style={h2}>Who it's for</h2>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {WHO.map((w) => (
-              <li key={w} style={{ display: 'flex', gap: '10px', fontSize: '15px', lineHeight: 1.5, color: C.navy }}><Tick />{w}</li>
+              <li key={w} style={{ display: 'flex', gap: '10px', fontSize: '15px', lineHeight: 1.5, color: C.navy }}>
+                <Tick />
+                {w === 'DEPOSIT_LINK'
+                  ? <span>At least a 5% deposit. <a href="/first-home-playbook/deposit-sources" onClick={go('/deposit-sources')} style={{ color: C.accent, fontWeight: 600 }}>Where it can come from</a></span>
+                  : w}
+              </li>
             ))}
           </ul>
         </section>
