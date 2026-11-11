@@ -88,7 +88,7 @@ export default function BookACall({ onExit, onBackToHub, onNavigate }) {
             <p style={{ fontSize: '14px', color: C.textSecondary, margin: 0 }}>We'll be in touch soon, or pick a time below if you'd rather lock one in now.</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} data-clarity-mask="true">
             <Field label="Name">
               <input value={form.name} onChange={set('name')} required style={inputStyle} placeholder="Your name" />
             </Field>

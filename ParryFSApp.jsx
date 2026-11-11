@@ -569,7 +569,7 @@ function AuthModal({ onClose, onSuccess }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }} onClick={onClose}>
-      <div style={{ background: 'white', borderRadius: '24px', padding: 'clamp(1.5rem, 5vw, 2.5rem)', maxWidth: '440px', width: '100%', boxSizing: 'border-box', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden' }} onClick={e => e.stopPropagation()}>
+      <div data-clarity-mask="true" style={{ background: 'white', borderRadius: '24px', padding: 'clamp(1.5rem, 5vw, 2.5rem)', maxWidth: '440px', width: '100%', boxSizing: 'border-box', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', maxHeight: '90dvh', overflowY: 'auto', overflowX: 'hidden' }} onClick={e => e.stopPropagation()}>
         
         {/* Privacy Policy / Terms of Use sub-view */}
         {legalView ? (
@@ -1791,7 +1791,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   }
 
   return (
-    <div>
+    <div data-clarity-mask="true">
       <div style={{ ...card, padding: '1.25rem 1.5rem', marginBottom: '1rem' }}>
         <ProgressBar />
       </div>
