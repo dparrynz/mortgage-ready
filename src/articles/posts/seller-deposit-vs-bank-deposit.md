@@ -3,7 +3,7 @@ title: Seller deposit vs bank deposit: why they're not the same
 description: The deposit the bank needs and the deposit you pay the seller are two different things. Here's how each works, and how to plan for both.
 date: 2026-11-12
 guide: deposit-sources
-draft: true
+draft: false
 ---
 When people talk about "the deposit", they usually mean one number. In practice, buying a home involves two different deposits, and mixing them up is one of the most common surprises for first home buyers.
 

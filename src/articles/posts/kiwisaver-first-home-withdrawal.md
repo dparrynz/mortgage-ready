@@ -3,7 +3,7 @@ title: Using KiwiSaver for your first home: how the withdrawal works
 description: Who can use KiwiSaver to buy a first home, how much you can take out, how long it takes, and how to use it for your deposit or settlement.
 date: 2026-11-12
 guide: deposit-sources
-draft: true
+draft: false
 ---
 For most first home buyers, KiwiSaver is the biggest part of their deposit. A KiwiSaver first home withdrawal lets you take out almost all of your balance to put towards buying a home you'll live in.
 
