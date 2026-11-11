@@ -1505,10 +1505,8 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const partnerGrossWithSuper = partnerGross + (applicationType === 'joint' ? nzSuperGrossAnnualFor(true) : 0);
     const totalBase = primaryGrossWithSuper + partnerGrossWithSuper;
 
-    // Kainga Ora eligibility - individual threshold $95k, joint threshold $150k
-    const isKO = isFirstHomeBuyer && (
-      applicationType === 'single' ? primaryGrossWithSuper <= 95000 : totalBase <= 150000
-    );
+    // Kāinga Ora eligibility: $95k single, $150k single with dependants, $150k joint
+    const isKO = isFirstHomeBuyer && checkKaingaOraIncomeCap({ applicationType, baseSalary: primaryGrossWithSuper, partnerBaseSalary: partnerGrossWithSuper, dependents });
 
     // Minimum deposit:
     // 5%  - Kainga Ora eligible
@@ -1662,7 +1660,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const partnerSL = partnerHasStudentLoan && partnerSalaryMode !== 'net' ? Math.max(0, (partnerGross - slThreshold) * 0.12 / 12) : 0;
     const slMonthly = primarySL + partnerSL;
 
-    const isKO = isFirstHomeBuyer && (applicationType === 'single' ? primaryGrossWithSuper <= 95000 : totalBase <= 150000);
+    const isKO = isFirstHomeBuyer && checkKaingaOraIncomeCap({ applicationType, baseSalary: primaryGrossWithSuper, partnerBaseSalary: totalBase - primaryGrossWithSuper, dependents });
 
     const primaryAge = parseInt(applicantAge) || 0;
     const partnerAgeInt = parseInt(partnerAge) || 0;
@@ -3562,8 +3560,11 @@ export { PrivacyPage, TermsPage, LEGAL_PAGES };
 // instruction not to alter existing Borrow Checker calculation logic. If
 // Kāinga Ora revises these thresholds, or calculate()'s formula changes
 // again, this needs updating to match.
-export function checkKaingaOraIncomeCap({ applicationType, baseSalary, partnerBaseSalary = 0, nzSuper = 0, partnerNzSuper = 0 }) {
+// Kāinga Ora First Home Loan income caps: $95,000 for one buyer with no
+// dependants, $150,000 for one buyer with dependants, $150,000 combined for
+// two or more buyers.
+export function checkKaingaOraIncomeCap({ applicationType, baseSalary, partnerBaseSalary = 0, nzSuper = 0, partnerNzSuper = 0, dependents = 0 }) {
   const primaryGrossWithSuper = baseSalary + nzSuper;
-  const totalBase = primaryGrossWithSuper + (applicationType === 'joint' ? partnerBaseSalary + partnerNzSuper : 0);
-  return applicationType === 'single' ? primaryGrossWithSuper <= 95000 : totalBase <= 150000;
+  if (applicationType !== 'joint') return primaryGrossWithSuper <= (dependents > 0 ? 150000 : 95000);
+  return primaryGrossWithSuper + partnerBaseSalary + partnerNzSuper <= 150000;
 }
