@@ -4,8 +4,10 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Everything first home buyers need to know, in one place. Free guides and tools, including the Borrow Checker. Simple and jargon free." />
+    <!--seo--><!-- The build fills this in per page from src/seo.js -->
     <title>First Home Playbook | Buying your first home, made simple</title>
+    <meta name="description" content="Everything first home buyers need to know, in one place. Free guides and tools, including the Borrow Checker. Simple and jargon free." />
+    <!--/seo-->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" />
@@ -28,7 +30,8 @@
     <div id="root"><!--static-shell-->
       <!-- Plain HTML stand-in so the raw page carries the app name and
            legal links (Google OAuth branding check). React replaces it on load.
-           The build swaps this block for the prerendered /privacy and /terms. -->
+           The build swaps this block for each prerendered page (see vite.config.js);
+           the untouched copy becomes dist/spa.html, the fallback for other paths. -->
       <div style="min-height:100vh;background:#F5F7FA">
         <header style="background:#1572D3;padding:1rem 1.25rem">
           <a href="/" style="color:white;text-decoration:none;font-size:17px;font-weight:700">First Home Playbook</a>

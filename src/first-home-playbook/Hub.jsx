@@ -1,6 +1,6 @@
 import React from 'react';
 import { C } from '../../ParryFSApp.jsx';
-import { PlaybookHeader, PlaybookDisclaimer, TILES, useJourneyProgress } from './shared.jsx';
+import { PlaybookHeader, PlaybookDisclaimer, TILES, PLAYBOOK_ROOT, useJourneyProgress } from './shared.jsx';
 import { journeyProgressFor } from './content.js';
 
 // Ticks are shared across both paths, so show whichever path has more done.
@@ -23,10 +23,18 @@ export default function Hub({ onExit, onNavigate }) {
       <PlaybookHeader onExit={onExit} onBackToHub={() => {}} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
         {TILES.map((tile) => (
-          <button
+          // A real link (not a button) so search engines can follow it too.
+          <a
             key={tile.id}
-            onClick={() => onNavigate(tile.path)}
+            href={`${PLAYBOOK_ROOT}${tile.path}`}
+            onClick={(e) => {
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+              e.preventDefault();
+              onNavigate(tile.path);
+            }}
             style={{
+              textDecoration: 'none',
+              color: 'inherit',
               textAlign: 'left',
               background: C.cardBg,
               border: 'none',
@@ -57,7 +65,7 @@ export default function Hub({ onExit, onNavigate }) {
                 </p>
               </div>
             )}
-          </button>
+          </a>
         ))}
       </div>
 
