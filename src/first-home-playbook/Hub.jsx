@@ -1,25 +1,15 @@
 import React from 'react';
 import { C } from '../../ParryFSApp.jsx';
 import { PlaybookHeader, PlaybookDisclaimer, TILES, useJourneyProgress } from './shared.jsx';
-import { journeyStagesForPath } from './content.js';
+import { journeyProgressFor } from './content.js';
 
-// Of the two journey paths (todos differ on the stages auction overrides),
-// picks whichever the visitor has actually put ticks against. If they've
-// dabbled in both, shows whichever has more done so the tile reflects real
-// progress rather than double-counting across paths.
+// Ticks are shared across both paths, so show whichever path has more done.
 function bestJourneyProgress(checklist) {
   if (!checklist) return null;
   let best = null;
   for (const path of ['negotiation', 'auction']) {
-    const stages = journeyStagesForPath(path);
-    const totalTodos = stages.reduce((sum, s) => sum + s.todos.length, 0);
-    const doneTodos = stages.reduce(
-      (sum, s, i) => sum + s.todos.filter((_, ti) => !!checklist[path]?.[i]?.[ti]).length,
-      0
-    );
-    if (doneTodos > 0 && (!best || doneTodos > best.doneTodos)) {
-      best = { doneTodos, totalTodos, pct: Math.round((doneTodos / totalTodos) * 100) };
-    }
+    const { ticked, total, pct } = journeyProgressFor(checklist, path);
+    if (ticked > 0 && (!best || pct > best.pct)) best = { doneTodos: ticked, totalTodos: total, pct };
   }
   return best;
 }

@@ -3,7 +3,7 @@ import { C, primaryBtn, secondaryBtn, useAuth, AuthModal, supabase, useWindowWid
 import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, linkifyGlossaryTerms, PLAYBOOK_ROOT, JOURNEY_PROGRESS_LS_KEY } from './shared.jsx';
 import {
   JOURNEY_RELATED_ROUTES,
-  journeyStagesForPath,
+  journeyStagesForPath, normaliseJourneyProgress,
   JOURNEY_FULL_TEXT,
   JOURNEY_WHO_DOES_WHAT,
   JOURNEY_GLOSSARY_LINKS,
@@ -56,6 +56,44 @@ function findWhoInfo(chipLabel) {
   return JOURNEY_WHO_DOES_WHAT.find((row) => row.who === lookupName);
 }
 
+
+// A small picture for each person in "Who's involved"
+const WHO_ICONS = {
+  'Mortgage adviser': <><circle cx="12" cy="8" r="3.5" /><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" /><path d="M15.5 4.5h4v3h-2l-1.5 1.3V7.5" /></>,
+  'Solicitor or conveyancer': <><path d="M12 4v16" /><path d="M8 20h8" /><path d="M5 7h14" /><path d="M7 7l-3 6a3 3 0 0 0 6 0z" /><path d="M17 7l-3 6a3 3 0 0 0 6 0z" /></>,
+  'Real estate agent': <><path d="M5 21V4" /><path d="M5 5h13v7H5" /><path d="M9.5 10.5 11.5 8l2 2.5" /><path d="M10 10.5v-.5h3v.5" /></>,
+  'Bank (lender)': <><path d="M3 10 12 4l9 6" /><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8" /><path d="M3 20h18" /></>,
+  'Building inspector': <><rect x="5" y="4" width="11" height="16" rx="2" /><path d="M8 9h5M8 12.5h3" /><circle cx="16" cy="15" r="3" /><path d="m18.2 17.2 2.3 2.3" /></>,
+  'Registered valuer': <><path d="M3.5 12.5 12 4h7.5v7.5L11 20z" /><circle cx="15.5" cy="8" r="1.4" /></>,
+  'Insurer': <><path d="M12 3.5 19 6v5.5c0 4.3-3 7.6-7 9-4-1.4-7-4.7-7-9V6z" /><path d="M9 12l2 2 4-4" /></>,
+  'Council': <><rect x="4" y="8" width="16" height="12" rx="1" /><path d="M8 8V5h8v3" /><path d="M8 12h2M14 12h2M8 16h2M14 16h2" /></>,
+};
+
+function WhoIcon({ name }) {
+  const paths = WHO_ICONS[name];
+  if (!paths) return null;
+  return (
+    <span style={{ width: '46px', height: '46px', borderRadius: '14px', background: '#EAF1FE', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.sky} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths}</svg>
+    </span>
+  );
+}
+
+// Progress wheel with the percentage in the middle
+function ProgressRing({ pct, size = 84 }) {
+  const stroke = 9;
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Journey progress">
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#DCE6F5" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={C.red} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - pct / 100)} style={{ transition: 'stroke-dashoffset 0.3s' }} />
+      </svg>
+      <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: C.headingFont, fontSize: size > 70 ? '21px' : '17px', fontWeight: 700, color: C.navy }}>{pct}%</span>
+    </div>
+  );
+}
 
 // One simple line icon per stage, picked from the stage title
 const STAGE_ICON_PATHS = [
@@ -112,7 +150,7 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
         const { data } = await supabase.getJourneyProgress();
         if (data) merged = data;
       }
-      if (!cancelled) { setChecklist(merged); setLoaded(true); }
+      if (!cancelled) { setChecklist(normaliseJourneyProgress(merged)); setLoaded(true); }
     })();
     return () => { cancelled = true; };
   }, [user]);
@@ -125,17 +163,17 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
 
   useEffect(() => { setExpandedFullText(false); }, [selectedStage, path]);
 
+  // Ticks are keyed by the to-do wording so they carry across both paths
   const toggleTodo = (stageIdx, todoIdx) => {
+    const key = stages[stageIdx].todos[todoIdx];
     setChecklist((prev) => {
-      const pathData = { ...(prev[path] || {}) };
-      const stageData = { ...(pathData[stageIdx] || {}) };
-      stageData[todoIdx] = !stageData[todoIdx];
-      pathData[stageIdx] = stageData;
-      return { ...prev, [path]: pathData };
+      const done = { ...(prev.done || {}) };
+      if (done[key]) delete done[key]; else done[key] = true;
+      return { done };
     });
   };
 
-  const isTodoDone = (stageIdx, todoIdx) => !!checklist[path]?.[stageIdx]?.[todoIdx];
+  const isTodoDone = (stageIdx, todoIdx) => !!checklist.done?.[stages[stageIdx].todos[todoIdx]];
   const isStageComplete = (stageIdx) => stages[stageIdx].todos.every((_, ti) => isTodoDone(stageIdx, ti));
 
   const totalTodos = stages.reduce((sum, s) => sum + s.todos.length, 0);
@@ -179,7 +217,7 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
           const done = isTodoDone(selectedStage, ti);
           return (
             <label key={ti} htmlFor={checkboxId} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', padding: '0.45rem 0', cursor: 'pointer' }}>
-              <input id={checkboxId} type="checkbox" checked={done} onChange={() => toggleTodo(selectedStage, ti)} style={{ marginTop: '2px', width: '18px', height: '18px', flexShrink: 0, cursor: 'pointer', accentColor: C.green }} />
+              <input id={checkboxId} type="checkbox" checked={done} onChange={() => toggleTodo(selectedStage, ti)} style={{ marginTop: '2px', width: '18px', height: '18px', flexShrink: 0, cursor: 'pointer', accentColor: C.red }} />
               <span style={{ fontSize: '15px', color: done ? C.textMuted : C.navy, textDecoration: done ? 'line-through' : 'none', lineHeight: 1.5 }}>{linkifyFloodViewer(todo)}</span>
             </label>
           );
@@ -193,9 +231,12 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
           const info = findWhoInfo(w);
           return (
             <div key={w} style={{ border: `1px solid ${C.borderLight}`, borderRadius: '16px', padding: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.4rem' }}>
-                <p style={{ fontSize: '15px', fontWeight: 700, color: C.navy, margin: 0 }}>{info ? info.who : w}</p>
-                {info && <span style={{ fontSize: '11px', fontWeight: 600, color: C.textSecondary, whiteSpace: 'nowrap' }}>Works for: {info.worksFor}</span>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.6rem' }}>
+                {info && <WhoIcon name={info.who} />}
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: '15px', fontWeight: 700, color: C.navy, margin: 0 }}>{info ? info.who : w}</p>
+                  {info && <span style={{ fontSize: '12px', fontWeight: 600, color: C.textSecondary }}>Works for {info.worksFor.charAt(0).toLowerCase() + info.worksFor.slice(1)}</span>}
+                </div>
               </div>
               {info && <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.55, margin: '0 0 0.5rem' }}>{info.does}</p>}
               {info && <p style={{ fontSize: '13px', color: C.navy, margin: 0 }}><strong>Rough cost:</strong> {info.cost}</p>}
@@ -298,14 +339,14 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
         const last = i === stages.length - 1;
         return (
           <li key={i} style={{ position: 'relative' }}>
-            {!last && <span aria-hidden="true" style={{ position: 'absolute', left: '27px', top: '50px', bottom: '-6px', width: '2px', background: complete ? C.green : '#D5E0F2' }} />}
+            {!last && <span aria-hidden="true" style={{ position: 'absolute', left: '27px', top: '50px', bottom: '-6px', width: '2px', background: complete ? C.red : '#D5E0F2' }} />}
             <button
               type="button"
               onClick={() => setSelectedStage(i)}
               aria-current={selected ? 'step' : undefined}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.6rem', margin: '0 0 6px', borderRadius: '14px', border: 'none', background: selected ? '#EAF1FE' : 'transparent', cursor: 'pointer', textAlign: 'left', position: 'relative' }}
             >
-              <span style={{ width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: complete ? C.green : selected ? C.accent : 'white', border: complete || selected ? 'none' : `2px solid #D5E0F2` }}>
+              <span style={{ width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: complete ? C.red : selected ? C.accent : 'white', border: complete || selected ? 'none' : `2px solid #D5E0F2` }}>
                 {complete
                   ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
                   : <StageIcon title={s.title} size={19} colour={selected ? 'white' : C.sky} />}
@@ -325,39 +366,50 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
     </ol>
   );
 
+  const progressCard = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: C.inputBg, borderRadius: '18px', padding: '1rem', marginBottom: '1.25rem' }}>
+      <ProgressRing pct={progressPct} size={isMobile ? 72 : 84} />
+      <div>
+        <p style={{ margin: '0 0 0.2rem', fontSize: '15px', fontWeight: 700, color: C.navy }}>{progressPct === 100 ? 'All done!' : 'Your progress'}</p>
+        <p style={{ margin: 0, fontSize: '13px', color: C.textSecondary, lineHeight: 1.45 }}>{doneTodos} of {totalTodos} to-dos ticked off</p>
+      </div>
+    </div>
+  );
+
+  const savePrompt = !user && (
+    <div style={{ marginTop: '1.25rem', background: C.navy, color: 'white', borderRadius: '18px', padding: '1.1rem' }}>
+      <p style={{ margin: '0 0 0.3rem', fontSize: '16px', fontWeight: 700 }}>Save your progress</p>
+      <p style={{ margin: '0 0 0.9rem', fontSize: '13px', color: '#C2CDE2', lineHeight: 1.5 }}>Your ticks are saved on this device for now. Create a free account to pick up where you left off on any device.</p>
+      <button type="button" onClick={() => setShowAuthModal(true)} style={{ ...primaryBtn, width: '100%' }}>Save my progress</button>
+    </div>
+  );
+
   return (
     <div>
       <PlaybookHeader title="Your journey" onExit={onExit} onBackToHub={onBackToHub} />
       <PlaybookCard style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
-        {/* Top: path choice and progress */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.5rem' }}>
+        {/* Top: how it's being sold */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem 1.25rem', marginBottom: '1.5rem' }}>
           {pathToggle}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', flex: isMobile ? '1 1 100%' : '0 1 360px' }}>
-            <span style={{ fontFamily: C.headingFont, fontSize: '30px', fontWeight: 700, color: progressPct === 100 ? C.green : C.navy, minWidth: '64px' }}>{progressPct}%</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ height: '10px', borderRadius: '5px', background: C.inputBg, overflow: 'hidden' }} role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100} aria-label="Journey progress">
-                <div style={{ width: `${progressPct}%`, height: '100%', background: C.green, borderRadius: '5px', transition: 'width 0.25s' }} />
-              </div>
-              <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0.35rem 0 0' }}>{doneTodos} of {totalTodos} to-dos done</p>
-            </div>
-          </div>
+          <p style={{ margin: 0, fontSize: '14px', color: C.textSecondary, lineHeight: 1.5, flex: '1 1 260px' }}>
+            Pick how the home is being sold. Your ticks carry across both, so nothing is lost if you switch.
+          </p>
         </div>
 
-        {isMobile ? stageList : (
+        {isMobile ? (
+          <>
+            {progressCard}
+            {stageList}
+            {savePrompt}
+          </>
+        ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '290px minmax(0, 1fr)', gap: '2rem', alignItems: 'start' }}>
-            <div style={{ position: 'sticky', top: '90px' }}>{stageList}</div>
-            <div style={{ borderLeft: `1px solid ${C.borderLight}`, paddingLeft: '2rem' }}>{stageDetail}</div>
-          </div>
-        )}
-
-        {/* Save progress */}
-        {!user && (
-          <div style={{ marginTop: '1.75rem', background: C.navy, color: 'white', borderRadius: '18px', padding: isMobile ? '1.1rem' : '1.25rem 1.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.9rem' }}>
-            <div style={{ flex: '1 1 300px' }}>
-              <p style={{ margin: '0 0 0.2rem', fontSize: '16px', fontWeight: 700 }}>Save your progress</p>
-              <p style={{ margin: 0, fontSize: '14px', color: '#C2CDE2', lineHeight: 1.5 }}>Your ticks are saved on this device for now. Create a free account to pick up where you left off on any device.</p>
+            <div>
+              {progressCard}
+              {stageList}
+              {savePrompt}
             </div>
-            <button type="button" onClick={() => setShowAuthModal(true)} style={{ ...primaryBtn, whiteSpace: 'nowrap' }}>Save my progress</button>
+            <div style={{ borderLeft: `1px solid ${C.borderLight}`, paddingLeft: '2rem' }}>{stageDetail}</div>
           </div>
         )}
 

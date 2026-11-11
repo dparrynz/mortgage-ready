@@ -199,22 +199,47 @@ export const JOURNEY_RELATED_ROUTES = {
 };
 
 export const JOURNEY_STAGES_NEGOTIATION = [
-  { title: 'Pre-approval', time: '1 to 3 weeks', desc: "Work out what you can borrow and get the bank's approval in principle before you fall in love with a house.", who: ['Mortgage adviser', 'Bank'], todos: ['Book a call with your adviser', 'Gather payslips and bank statements', 'Know where your deposit is coming from'], related: ['Are You Ready?', 'Borrow Checker', 'Deposit Sources', 'Kāinga Ora explained', 'Kāinga Ora Qualifying Quiz'] },
-  { title: 'House hunting', time: 'Weeks to months', desc: 'Open homes and viewings. Remember the agent works for the seller.', who: ['Agent'], todos: ['Ask the agent for the property documents', 'Ask about the method of sale', 'Check if the property is in a flood zone with the Auckland Flood Viewer'], related: ['Hidden costs', 'Glossary'] },
-  { title: 'Homework', time: '1 to 2 weeks', desc: 'Hand the documents to the experts and check the property is insurable.', who: ['Solicitor', 'Insurer', 'Mortgage adviser'], todos: ['Send documents to your solicitor', 'Check insurability', 'Talk to your adviser about the property'], related: ['Glossary'] },
-  { title: 'Making an offer', time: 'A few days', desc: 'Your solicitor reviews the agreement. Make your conditions subject to 10 working days.', who: ['Solicitor', 'Agent', 'Mortgage adviser'], todos: ['Solicitor reviews the agreement', 'Add finance, building and LIM conditions', 'Sign and negotiate'], related: ['Glossary'] },
-  { title: 'Conditional period', time: 'Usually 10 working days', desc: 'Work through each condition by its due date. The busiest stage.', who: ['Mortgage adviser', 'Building inspector', 'Valuer', 'Solicitor', 'Insurer'], todos: ['Finance approved', 'Building report reviewed', 'LIM reviewed', 'Insurance quote confirmed'], related: ['Hidden costs'] },
-  { title: 'Unconditional', time: '1 day', desc: "The deal is locked in and the seller's deposit is paid.", who: ['Solicitor', 'Agent', 'Mortgage adviser'], todos: ['Pay the seller deposit', 'Finalise loan structure', "Accept the bank's loan offer"], related: ['Deposit Sources'] },
-  { title: 'Settlement', time: 'Usually 2 to 8 weeks later', desc: 'Money moves and the house becomes yours. Your solicitor does the heavy lifting.', who: ['Solicitor', 'Bank', 'Insurer'], todos: ['Sign loan documents', 'Apply for KiwiSaver withdrawal', 'Insurance in place from settlement', 'Pre-settlement inspection'], related: ['Hidden costs'] },
-  { title: 'Keys', time: 'Settlement day', desc: 'Collect the keys once settlement is confirmed.', who: ['Agent'], todos: ['Set up power and internet', 'Check your first repayment date', 'Book a review with your adviser'], related: ['Book a call'] },
+  { title: 'Pre-approval', time: '1 to 3 weeks', desc: "Before you start looking, find out what you can borrow. Your adviser looks at your income, expenses, deposit and debts, then gets a bank to approve you in principle. Most pre-approvals last 3 to 6 months, so you can house hunt knowing your budget.", who: ['Mortgage adviser', 'Bank'], todos: ['Book a call with your adviser', 'Gather payslips and bank statements', 'Know where your deposit is coming from'], related: ['Are You Ready?', 'Borrow Checker', 'Deposit Sources', 'Kāinga Ora explained', 'Kāinga Ora Qualifying Quiz'] },
+  { title: 'House hunting', time: 'Weeks to months', desc: "Plan your weekends around open homes and pick a shortlist each week, so you're not rushing between them. Set up saved searches on Trade Me Property and realestate.co.nz so new listings come to you. Get to know a few local agents, as they often hear about homes before they're advertised. Remember the agent works for the seller, so keep your top price to yourself.", who: ['Agent'], todos: ['Ask the agent for the property documents', 'Ask about the method of sale', 'Check if the property is in a flood zone with the Auckland Flood Viewer'], related: ['Hidden costs', 'Glossary'] },
+  { title: 'Homework', time: '1 to 2 weeks', desc: "Found one you like? Ask the agent for the property documents and pass them to your solicitor. Check the property can be insured, look at flood maps and recent sales nearby, and talk to your adviser to make sure it fits your approval. Online value estimates are a rough guide only.", who: ['Solicitor', 'Insurer', 'Mortgage adviser'], todos: ['Send documents to your solicitor', 'Check insurability', 'Talk to your adviser about the property'], related: ['Glossary'] },
+  { title: 'Making an offer', time: 'A few days', desc: "Most offers use the standard Agreement for Sale and Purchase. Have your solicitor look over it before you sign, and add conditions that protect you, like finance, a building report and a LIM. Make your conditions subject to 10 working days, which gives everyone time to work through them. If an agent pushes for a quick signature, taking a day to get advice is normal.", who: ['Solicitor', 'Agent', 'Mortgage adviser'], todos: ['Solicitor reviews the agreement', 'Add finance, building and LIM conditions', 'Sign and negotiate'], related: ['Glossary'] },
+  { title: 'Conditional period', time: 'Usually 10 working days', desc: "The busiest stage. Each condition has a due date: we send the agreement to the bank for final approval, a building inspector checks the property, your solicitor reviews the LIM, and you confirm insurance. If something serious comes up, your solicitor can advise whether to renegotiate or walk away.", who: ['Mortgage adviser', 'Building inspector', 'Valuer', 'Solicitor', 'Insurer'], todos: ['Finance approved', 'Building report reviewed', 'LIM reviewed', 'Insurance quote confirmed'], related: ['Hidden costs'] },
+  { title: 'Unconditional', time: '1 day', desc: "Once every condition is met, your solicitor tells the seller's solicitor and the deal is locked in. The seller's deposit, often 10% of the price, is usually paid now into the agent's trust account. We then finalise your loan structure and you accept the bank's loan offer.", who: ['Solicitor', 'Agent', 'Mortgage adviser'], todos: ['Pay the seller deposit', 'Finalise loan structure', "Accept the bank's loan offer"], related: ['Deposit Sources'] },
+  { title: 'Settlement', time: 'Usually 2 to 8 weeks later', desc: "The day money moves and the house becomes yours. You sign your loan documents with your solicitor, apply for your KiwiSaver withdrawal early (providers need several working days), and make sure insurance starts from settlement day. A day or two before, you do a pre-settlement inspection to check everything is as agreed.", who: ['Solicitor', 'Bank', 'Insurer'], todos: ['Sign loan documents', 'Apply for KiwiSaver withdrawal', 'Insurance in place from settlement', 'Pre-settlement inspection'], related: ['Hidden costs'] },
+  { title: 'Keys', time: 'Settlement day', desc: "Once the seller's solicitor confirms settlement, the agent releases your keys, often in the early afternoon. Set up power, internet and contents insurance, and check when your first repayment comes out. Book a catch up with your adviser in the first year to review your loan as fixed terms roll over.", who: ['Agent'], todos: ['Set up power and internet', 'Check your first repayment date', 'Book a review with your adviser'], related: ['Book a call'] },
 ];
 
 export const JOURNEY_STAGES_AUCTION_OVERRIDES = {
-  2: { title: 'Homework before auction', time: 'Before auction day', desc: 'Everything must be done before you bid, because a winning bid is unconditional.', who: ['Solicitor', 'Building inspector', 'Insurer', 'Mortgage adviser'], todos: ['Solicitor reviews auction documents', 'Get your own building report', 'Confirm insurance', 'Confirm finance for this property'], related: ['Glossary'] },
-  3: { title: 'Auction day', time: 'On the day', desc: "Bid in the room or by phone. If you win, you've bought it.", who: ['Agent', 'Mortgage adviser'], todos: ['Set your top price', 'Register to bid', 'Bring the deposit arrangements'], related: ['Glossary'] },
-  4: { title: 'Unconditional on the day', time: 'Same day', desc: "There's no conditional period at auction. The deposit is usually paid on the day.", who: ['Solicitor', 'Agent'], todos: ['Pay the seller deposit', 'Sign the agreement'], related: ['Deposit Sources'] },
-  5: { title: 'Finalise the loan', time: 'Before settlement', desc: "We finalise your loan structure and you accept the bank's loan offer.", who: ['Mortgage adviser', 'Bank'], todos: ['Finalise loan structure', "Accept the bank's loan offer"], related: ['Deposit Sources'] },
+  2: { title: 'Homework before auction', time: 'Before auction day', desc: "A winning bid at auction is unconditional, so all your checks happen before auction day. Your solicitor reviews the auction documents, you get your own building report, and you confirm insurance. Let your adviser know early, as the bank may want a valuation before it will confirm finance for this property.", who: ['Solicitor', 'Building inspector', 'Insurer', 'Mortgage adviser'], todos: ['Solicitor reviews auction documents', 'Get your own building report', 'Confirm insurance', 'Confirm finance for this property'], related: ['Glossary'] },
+  3: { title: 'Auction day', time: 'On the day', desc: "Bid in the room or by phone. Set your top price beforehand so you don't get caught up in the moment, register to bid, and have your deposit ready to pay on the day. If the hammer falls on your bid, you've bought it.", who: ['Agent', 'Mortgage adviser'], todos: ['Set your top price', 'Register to bid', 'Bring the deposit arrangements'], related: ['Glossary'] },
+  4: { title: 'Unconditional on the day', time: 'Same day', desc: "There's no conditional period at auction. You sign the agreement straight after the auction and the deposit is usually paid on the day. Your solicitor takes it from there.", who: ['Solicitor', 'Agent'], todos: ['Pay the seller deposit', 'Sign the agreement'], related: ['Deposit Sources'] },
+  5: { title: 'Finalise the loan', time: 'Before settlement', desc: "We finalise your loan structure and repayments, then you accept the bank's loan offer. It's the same as a negotiated sale, just without the conditional period first.", who: ['Mortgage adviser', 'Bank'], todos: ['Finalise loan structure', "Accept the bank's loan offer"], related: ['Deposit Sources'] },
 };
+
+// Ticks are stored by to-do wording, so the same to-do (for example
+// "Book a call with your adviser") stays ticked when switching between the
+// negotiation and auction paths. Older saves were stored per path and stage
+// number; normaliseJourneyProgress converts those.
+export function normaliseJourneyProgress(saved) {
+  if (!saved || typeof saved !== 'object') return { done: {} };
+  const done = { ...(saved.done || {}) };
+  for (const path of ['negotiation', 'auction']) {
+    const old = saved[path];
+    if (!old) continue;
+    journeyStagesForPath(path).forEach((stage, i) => {
+      stage.todos.forEach((todo, ti) => { if (old[i]?.[ti]) done[todo] = true; });
+    });
+  }
+  return { done };
+}
+
+export function journeyProgressFor(progress, path) {
+  const done = normaliseJourneyProgress(progress).done;
+  const stages = journeyStagesForPath(path);
+  const total = stages.reduce((sum, s) => sum + s.todos.length, 0);
+  const ticked = stages.reduce((sum, s) => sum + s.todos.filter((t) => done[t]).length, 0);
+  return { total, ticked, pct: total ? Math.round((ticked / total) * 100) : 0 };
+}
 
 export function journeyStagesForPath(path) {
   if (path !== 'auction') return JOURNEY_STAGES_NEGOTIATION;
