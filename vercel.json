@@ -4,7 +4,7 @@
   "framework": "vite",
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/spa.html" }
+    { "source": "/(.*)", "destination": "/spa" }
   ],
   "headers": [
     {
