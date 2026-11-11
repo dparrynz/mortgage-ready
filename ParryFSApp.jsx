@@ -4,6 +4,7 @@ import FirstHomePlaybookRouter from './src/first-home-playbook/FirstHomePlaybook
 import Home from './src/Home.jsx';
 import Welcome from './src/Welcome.jsx';
 import PageHero, { heroFor } from './src/PageHero.jsx';
+import { SEO_PAGES, applySeo } from './src/seo.js';
 
 // ─── SUPABASE CLIENT ─────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://cpwbixddgcyingntsxci.supabase.co';
@@ -3360,24 +3361,13 @@ function CostToWait() {
 }
 
 // ─── ROOT APP ─────────────────────────────────────────────────────────────────
-// Keep DEFAULT_HEAD in step with the <title> and description in index.html.
-// The prerendered /privacy and /terms files load with their own title, so the
-// app can't read the default back from the document.
-const DEFAULT_HEAD = { title: 'First Home Playbook | Buying your first home, made simple', description: 'Everything first home buyers need to know, in one place. Free guides and tools, including the Borrow Checker. Simple and jargon free.' };
-const PAGE_HEADS = {
-  borrow: { title: 'Borrow Checker | First Home Playbook', description: "Find out what you could borrow and if you're ready to buy a home in New Zealand." },
-  repayment: { title: 'Loan Repayment Calculator | First Home Playbook', description: 'Calculate your mortgage repayments and compare multiple loans.' },
-  quickrepay: { title: 'Quick Repay Calculator | First Home Playbook', description: 'See how extra repayments can save you interest and time.' },
-  comparison: { title: 'Mortgage Comparison | First Home Playbook', description: 'Compare current and new rates and repayments across your loans.' },
-  breakeven: { title: 'Break Even Calculator | First Home Playbook', description: 'Should you break your fixed rate? Find out here.' },
-  costtowait: { title: 'Cost to Wait Calculator | First Home Playbook', description: 'See the daily, monthly and annual cost of waiting to fix your rate.' },
-};
-const LEGAL_PAGES = {
-  privacy: { title: 'Privacy Policy | Parry Financial Services', description: 'How Parry Financial Services collects, uses and protects your personal information when you use the parryfs.com mortgage calculators and First Home Playbook.' },
-  terms: { title: 'Terms of Use | Parry Financial Services', description: 'The terms that apply when you use the parryfs.com mortgage calculators and First Home Playbook, provided by Parry Financial Services in New Zealand.' },
-};
+// Page titles, descriptions and canonical links live in src/seo.js.
+// LEGAL_PAGES is kept for the legal page components that read it.
+const LEGAL_PAGES = { privacy: SEO_PAGES['/privacy'], terms: SEO_PAGES['/terms'] };
 
-export default function App() {
+// prerender: set only by the build step (vite.config.js), which renders each
+// public page to plain HTML. It skips the signed-in check, which can't run there.
+export default function App({ prerender = false }) {
   const [path, setPath] = useState(window.location.pathname);
   const activeTab = tabFromPath(path);
   const hero = heroFor(activeTab, path);
@@ -3455,15 +3445,10 @@ export default function App() {
     return () => window.removeEventListener('popstate', syncFromPath);
   }, []);
 
-  // Page title and meta description for /privacy and /terms, and the site
-  // defaults on every other tab.
-  useEffect(() => {
-    const head = LEGAL_PAGES[activeTab] || PAGE_HEADS[activeTab] || DEFAULT_HEAD;
-    document.title = head.title;
-    document.querySelector('meta[name="description"]')?.setAttribute('content', head.description);
-  }, [activeTab]);
+  // Page title, description and canonical link for the current page.
+  useEffect(() => { applySeo(path); }, [path]);
 
-  if (loading) return (
+  if (loading && !prerender) return (
     <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: C.textSecondary }}>Loading...</p>
     </div>

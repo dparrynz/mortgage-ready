@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { C, card, useWindowWidth } from '../ParryFSApp.jsx';
 import { PlaybookVideo } from './first-home-playbook/shared.jsx';
 import { PLAYBOOK_VIDEOS, PLAYBOOK_VIDEO_CAPTIONS } from './first-home-playbook/videos.js';
@@ -23,14 +23,7 @@ const NEXT = [
 export default function Welcome({ go }) {
   const isMobile = useWindowWidth() < 768;
 
-  // Keep this page out of search results
-  useEffect(() => {
-    const meta = document.createElement('meta');
-    meta.name = 'robots';
-    meta.content = 'noindex';
-    document.head.appendChild(meta);
-    return () => meta.remove();
-  }, []);
+  // Kept out of search results by its noindex entry in src/seo.js.
 
   return (
     <div>
