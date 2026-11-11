@@ -42,6 +42,8 @@ export default function FirstHomePlaybookRouter({ onExit }) {
     window.history.pushState({}, '', full);
     setSubPath(pureSubPath === '' ? '/' : pureSubPath);
     setHash(newHash || '');
+    // Let the rest of the site (page hero, top nav) know the page changed
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   const backToHub = () => navigate('/');
