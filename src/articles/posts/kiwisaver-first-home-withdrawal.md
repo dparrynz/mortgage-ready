@@ -37,7 +37,7 @@ You may still qualify as a **previous home owner** if your financial position is
 
 ## How does the withdrawal process work?
 
-1. **Get pre-approval for your home loan.** Your adviser and bank will include your KiwiSaver balance in your deposit. Lenders usually want to see a recent KiwiSaver statement.
+1. **Get pre-approval for your home loan.** Your adviser and bank will include your KiwiSaver balance in your deposit. Lenders usually want to see a KiwiSaver eligibility letter from your provider, confirming the exact amount you're eligible to withdraw.
 2. **Find a home and sign a sale and purchase agreement.** You can't apply for the withdrawal until you have an agreement for a specific property.
 3. **Your lawyer prepares the paperwork.** This includes a letter of undertaking to your KiwiSaver provider, confirming the details of the purchase.
 4. **Fill in your provider's first home withdrawal form.** Each provider has its own form, and it usually needs to be signed in front of a lawyer or Justice of the Peace.
