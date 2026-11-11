@@ -15,7 +15,7 @@ const TOOL_PAGES = {
 
 const PLAYBOOK_PAGES = {
   '/': { title: 'The Playbook', sub: 'Everything you need to get your bearings as a first home buyer: tools, guides, and a straightforward way to talk it through with an adviser.' },
-  '/journey': { crumb: 'Your journey', title: 'The first home journey, start to finish' },
+  '/journey': { crumb: 'Your journey', title: 'The first home journey, start to finish', sub: 'Every stage from pre-approval to keys, and who to call at each one.' },
   '/calculator': { crumb: 'Know your numbers', title: 'Know your numbers', sub: "Find out if you're ready to buy, or how much you could borrow." },
   '/are-you-ready': { crumb: 'Are you ready?', title: 'Are you ready?', sub: 'A quick, no pressure self check on where you stand.' },
   '/kainga-ora-quiz': { crumb: 'Kāinga Ora quiz', title: 'Kāinga Ora qualifying quiz', sub: 'A fast read on eligibility, using the same criteria as our Borrow Checker.' },

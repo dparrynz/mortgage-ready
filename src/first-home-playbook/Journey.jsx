@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { C, primaryBtn, secondaryBtn, useAuth, AuthModal, supabase, useWindowWidth, SegmentedToggle } from '../../ParryFSApp.jsx';
 import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, linkifyGlossaryTerms, PLAYBOOK_ROOT, JOURNEY_PROGRESS_LS_KEY } from './shared.jsx';
 import {
-  JOURNEY_INTRO_PARAGRAPHS,
   JOURNEY_RELATED_ROUTES,
   journeyStagesForPath,
   JOURNEY_FULL_TEXT,
@@ -55,6 +54,32 @@ const WHO_CHIP_ALIASES = {
 function findWhoInfo(chipLabel) {
   const lookupName = WHO_CHIP_ALIASES[chipLabel] || chipLabel;
   return JOURNEY_WHO_DOES_WHAT.find((row) => row.who === lookupName);
+}
+
+
+// One simple line icon per stage, picked from the stage title
+const STAGE_ICON_PATHS = [
+  ['pre-approval', <><circle cx="12" cy="12" r="9" /><path d="M8.5 12.2l2.4 2.4 4.6-4.8" /></>],
+  ['hunting', <><path d="M3 11 12 4l9 7" /><path d="M5 10v10h8" /><circle cx="17" cy="17" r="3" /><path d="m19.2 19.2 2 2" /></>],
+  ['homework', <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 3h6v3H9zM9 11h6M9 15h4" /></>],
+  ['offer', <><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z" /><path d="M13.5 8.5l2 2" /></>],
+  ['unconditional', <><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>],
+  ['conditional', <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2.5M10 2h4" /></>],
+  ['auction day', <><path d="m14 5 5 5M9.5 9.5l5 5M12 7l5 5-2.5 2.5-5-5z" /><path d="M10.5 13.5 4 20" /></>],
+  ['finalise', <><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 14l2 2 4-4" /></>],
+  ['settlement', <><path d="M3 10l9-6 9 6" /><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" /></>],
+  ['keys', <><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M17 6l2.5 2.5M14.5 8.5l2 2" /></>],
+];
+
+function StageIcon({ title, size = 20, colour }) {
+  const t = title.toLowerCase();
+  const found = STAGE_ICON_PATHS.find(([k]) => t.includes(k));
+  if (!found) return null;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={colour || C.sky} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+      {found[1]}
+    </svg>
+  );
 }
 
 export default function Journey({ onExit, onBackToHub, onNavigate }) {
@@ -150,10 +175,6 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
       <PlaybookHeader title="Your journey" onExit={onExit} onBackToHub={onBackToHub} />
       <PlaybookCard>
 
-        {JOURNEY_INTRO_PARAGRAPHS.map((p, i) => (
-          <p key={i} style={{ fontSize: '15px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>{p}</p>
-        ))}
-
         <div style={{ marginBottom: '1.5rem' }}>
           <SegmentedToggle options={PATH_OPTIONS} value={path} onChange={(v) => { setPath(v); setSelectedStage((s) => Math.min(s, stages.length - 1)); }} />
         </div>
@@ -185,10 +206,13 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   gap: '0.5rem',
-                  minHeight: '44px',
+                  minHeight: '52px',
                 }}
               >
-                <span style={{ fontSize: '12px', fontWeight: '600', color: C.textPrimary, lineHeight: 1.3 }}>{i + 1}. {s.title}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', minWidth: 0 }}>
+                  <StageIcon title={s.title} size={20} colour={selected ? C.accent : C.sky} />
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: C.textPrimary, lineHeight: 1.3 }}>{i + 1}. {s.title}</span>
+                </span>
                 {complete && <i className="ti ti-circle-check-filled" style={{ fontSize: '16px', color: C.green, flexShrink: 0 }} />}
               </button>
             );
@@ -197,7 +221,10 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
 
         <div style={{ background: C.inputBg, borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <h2 style={{ fontSize: '19px', fontWeight: '600', color: C.textPrimary, margin: 0 }}>{selectedStage + 1}. {stage.title}</h2>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', color: C.navy, margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <span style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'white', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><StageIcon title={stage.title} size={22} /></span>
+              {selectedStage + 1}. {stage.title}
+            </h2>
             <span style={{ fontSize: '13px', color: C.textMuted }}>{stage.time}</span>
           </div>
           <p style={{ fontSize: '14px', color: C.textSecondary, lineHeight: 1.7, margin: '0 0 1rem' }}>
