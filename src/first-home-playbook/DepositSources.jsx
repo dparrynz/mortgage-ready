@@ -7,9 +7,9 @@ import { PlaybookHeader, PlaybookDisclaimer } from './shared.jsx';
 // Approved design: "Playbook redesign" page on the design canvas.
 
 const SOURCES = [
-  { id: 'kiwisaver', title: 'KiwiSaver', fact: 'After 3 years as a member', body: 'Members of at least three years can withdraw their KiwiSaver savings towards a first home, leaving a minimum of $1,000 in the account. Your solicitor applies for the withdrawal.' },
+  { id: 'kiwisaver', title: 'KiwiSaver', fact: 'After 3 years as a member', body: 'Members of at least three years can withdraw their KiwiSaver savings towards a first home, leaving a minimum of $1,000 in the account.' },
   { id: 'savings', title: 'Your savings', fact: 'Shows your track record', body: 'Regular saving over time shows lenders you can manage your money and meet your repayments.' },
-  { id: 'gift', title: 'Family gift', fact: 'Large or small', body: 'Gifts from family are widely accepted, as long as they are not repayable. Lenders usually ask for a signed gift letter confirming this.' },
+  { id: 'gift', title: 'Family gift or loan', fact: 'Large or small', body: 'Gifts from family are widely accepted, as long as they are not repayable. A family loan can also be used, but any repayments will be included when a lender works out what you can afford.' },
   { id: 'equity', title: 'Family equity', fact: 'Support from a family home', body: 'A family member can offer the equity in their own home as extra security for your loan, which can reduce the cash deposit you need. This is more complex, so get advice before going ahead.' },
 ];
 
