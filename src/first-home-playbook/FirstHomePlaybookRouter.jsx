@@ -8,7 +8,8 @@ import GuidePage from './GuidePage.jsx';
 import Glossary from './Glossary.jsx';
 import BookACall from './BookACall.jsx';
 import Journey from './Journey.jsx';
-import { DEPOSIT_SOURCES, COSTS_OF_BUYING, KAINGA_ORA_EXPLAINER } from './content.js';
+import DepositSources from './DepositSources.jsx';
+import { COSTS_OF_BUYING, KAINGA_ORA_EXPLAINER } from './content.js';
 
 function subPathFromLocation() {
   const path = window.location.pathname.replace(PLAYBOOK_ROOT, '');
@@ -53,7 +54,7 @@ export default function FirstHomePlaybookRouter({ onExit }) {
     case '/calculator': page = <Calculator {...pageProps} />; break;
     case '/are-you-ready': page = <AreYouReadyQuiz {...pageProps} />; break;
     case '/kainga-ora-quiz': page = <KaingaOraQuiz {...pageProps} />; break;
-    case '/deposit-sources': page = <GuidePage content={DEPOSIT_SOURCES} {...pageProps} />; break;
+    case '/deposit-sources': page = <DepositSources {...pageProps} />; break;
     case '/costs-of-buying': page = <GuidePage content={COSTS_OF_BUYING} {...pageProps} />; break;
     case '/kainga-ora': page = <GuidePage content={KAINGA_ORA_EXPLAINER} {...pageProps} />; break;
     case '/glossary': page = <Glossary {...pageProps} />; break;
