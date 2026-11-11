@@ -7,8 +7,8 @@ import { PlaybookHeader, PlaybookDisclaimer } from './shared.jsx';
 // line card. Enough to budget with confidence, not a technical guide.
 
 const COSTS = [
-  { id: 'legal', title: 'Legal fees', fact: 'Usually a few thousand dollars', body: 'A lawyer or conveyancer reviews your agreement, transfers the title and manages settlement.' },
-  { id: 'building', title: 'Building report', fact: 'A few hundred to around $1,000', body: 'An inspector checks for structural issues, moisture and other problems that could be costly later.' },
+  { id: 'legal', title: 'Legal fees', fact: 'Usually a few thousand dollars', body: 'A lawyer or conveyancer reviews your agreement, transfers the title and manages settlement. Some charge a fixed fee, others charge based on the time and work involved.' },
+  { id: 'building', title: 'Building report', fact: 'A few hundred to around $1,000', body: 'An inspector checks for structural issues, moisture and other problems that could be costly later. The cost depends on the type and size of the property.' },
   { id: 'lim', title: 'LIM report', fact: 'From the council', body: 'Shows consents, code compliance, rates and any known issues with the property or land.' },
   { id: 'valuation', title: 'Valuation', fact: 'Sometimes required', body: 'Some lenders need an independent valuation before confirming your loan. The cost can be yours.' },
   { id: 'moving', title: 'Moving costs', fact: 'Easy to underestimate', body: 'Removalists, connecting power and internet, and insurance for your new home.' },
@@ -64,7 +64,7 @@ export default function HiddenCosts({ onNavigate }) {
         </div>
       </section>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem', alignItems: 'stretch' }}>
         {/* When they come up */}
         <section style={{ ...box, marginBottom: 0, flex: '3 1 440px' }}>
           <h2 style={{ margin: '0 0 16px', fontFamily: C.headingFont, fontSize: '24px', fontWeight: 700, color: C.navy }}>When they come up</h2>
@@ -85,7 +85,7 @@ export default function HiddenCosts({ onNavigate }) {
         {/* Bottom line */}
         <section style={{ flex: '2 1 280px', background: C.navy, color: '#FFFFFF', borderRadius: '24px', padding: isMobile ? '1.4rem' : '1.75rem' }}>
           <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#9DC4F3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>The bottom line</p>
-          <p style={{ margin: '0 0 20px', fontSize: isMobile ? '17px' : '19px', lineHeight: 1.5, fontWeight: 500 }}>Set aside a buffer of a few thousand dollars for legal, building and LIM costs, and talk it through before you make an offer.</p>
+          <p style={{ margin: '0 0 20px', fontSize: isMobile ? '17px' : '19px', lineHeight: 1.5, fontWeight: 500 }}>Set aside a buffer of $3,000 to $5,000 for legal, building and LIM costs, and talk it through before you make an offer.</p>
           <a href="/first-home-playbook/calculator" onClick={go('/calculator')} style={{ display: 'block', textAlign: 'center', padding: '15px', borderRadius: '12px', background: C.red, color: '#FFFFFF', fontWeight: 600, fontSize: '16px', textDecoration: 'none', marginBottom: '10px' }}>Check what I could borrow</a>
           <a href="/first-home-playbook/book-a-call" onClick={go('/book-a-call')} style={{ display: 'block', textAlign: 'center', padding: '14px', borderRadius: '12px', border: '1px solid #3A4C70', color: '#FFFFFF', fontWeight: 600, fontSize: '15px', textDecoration: 'none' }}>Get your plan</a>
         </section>
