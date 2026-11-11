@@ -31,6 +31,7 @@ function prerenderPages() {
         configFile: false,
         logLevel: 'error',
         plugins: [rechartsStub, react()],
+        define: { __SHOW_DRAFTS__: JSON.stringify(SHOW_DRAFTS) },
         build: { ssr: 'src/prerender-entry.js', outDir: ssrDir, emptyOutDir: true, rollupOptions: { output: { entryFileNames: 'entry.mjs' } } },
       })
       const { renderPage, SEO_PAGES, sitemapPaths, seoHeadHtml, SITE_URL } = await import(`${pathToFileURL(resolve(ssrDir, 'entry.mjs')).href}?t=${Date.now()}`)
@@ -54,13 +55,17 @@ function prerenderPages() {
       }
 
       const today = new Date().toISOString().slice(0, 10)
-      const urls = sitemapPaths().map(({ path, priority }) =>
-        `  <url>\n    <loc>${SITE_URL}${path === '/' ? '/' : path}</loc>\n    <lastmod>${today}</lastmod>\n    <priority>${priority.toFixed(1)}</priority>\n  </url>`)
+      const urls = sitemapPaths().map(({ path, priority, lastmod }) =>
+        `  <url>\n    <loc>${SITE_URL}${path === '/' ? '/' : path}</loc>\n    <lastmod>${lastmod || today}</lastmod>\n    <priority>${priority.toFixed(1)}</priority>\n  </url>`)
       await writeFile(resolve(outDir, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`)
     },
   }
 }
 
+// Draft articles show everywhere except the live site.
+const SHOW_DRAFTS = process.env.VERCEL_ENV !== 'production'
+
 export default defineConfig({
   plugins: [react(), prerenderPages()],
+  define: { __SHOW_DRAFTS__: JSON.stringify(SHOW_DRAFTS) },
 })

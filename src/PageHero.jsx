@@ -1,5 +1,6 @@
 import React from 'react';
 import { C, useWindowWidth } from '../ParryFSApp.jsx';
+import { articlesHero } from './articles/ArticlesPage.jsx';
 
 // The blue to white banner ("hero") at the top of every page, matching the
 // homepage so the whole site reads as one design.
@@ -28,6 +29,7 @@ const PLAYBOOK_PAGES = {
 
 export function heroFor(tab, path) {
   if (tab === 'welcome') return { title: 'Thanks for getting in touch', sub: "We've got your details. While you're here, this is the best place to start.", crumbs: [{ label: 'Home', to: '/' }], crumb: 'Welcome' };
+  if (tab === 'articles') return articlesHero(path);
   if (TOOL_PAGES[tab]) return { ...TOOL_PAGES[tab], crumbs: [{ label: 'Home', to: '/' }] };
   if (tab === 'first-home-playbook') {
     const sub = path.replace('/first-home-playbook', '').replace(/\/$/, '') || '/';
