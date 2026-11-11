@@ -40,10 +40,10 @@ export function useJourneyProgress() {
   return checklist;
 }
 
-// Single place to update the First Home Playbook Enquiry Bookings link
-// (current link expires 1 December 2026, per the build brief). BookACall.jsx
-// and the journey page's call to action both import this same constant.
-export const BOOKINGS_URL = 'https://outlook.office.com/bookwithme/user/35910337ef6b47e19c21334740c35b06@mikepero.co.nz/meetingtype/S_Ma3DVzG0q0a21VJQQ2GA2?bookingcode=5864afb8-c9dc-4233-bb2a-85d8ad303c85&anonymous&ismsaljsauthenabled&ep=mLinkFromTile';
+// Single place to update the First Home Playbook Enquiry Bookings link.
+// Same link as the MailerLite nurture emails. Expires 8 February 2027:
+// replace it here and in the emails before then.
+export const BOOKINGS_URL = 'https://bookings.cloud.microsoft/bookwithme/user/35910337ef6b47e19c21334740c35b06@mikepero.co.nz/meetingtype/S_Ma3DVzG0q0a21VJQQ2GA2?bookingcode=5864afb8-c9dc-4233-bb2a-85d8ad303c85&anonymous&ismsaljsauthenabled&ep=mcard';
 
 export const TILES = [
   { id: 'journey', title: 'Start here: your journey', blurb: 'Every step of buying your first home, from pre-approval to keys, and who to call at each stage.', icon: 'ti-route', path: '/journey' },
