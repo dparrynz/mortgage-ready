@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { C, primaryBtn, inputWrap, inputStyle } from '../../ParryFSApp.jsx';
 import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, BOOKINGS_URL } from './shared.jsx';
+import Reviews from '../Reviews.jsx';
 
 // Posts to the /api/notify-enquiry serverless function (api/notify-enquiry.js),
 // which emails Dan via Resend. Plain notification only, no automation beyond
@@ -131,6 +132,9 @@ export default function BookACall({ onExit, onBackToHub, onNavigate }) {
           Book a time
         </a>
 
+        <div style={{ borderTop: `1px solid ${C.borderLight}`, margin: '2rem 0 1.5rem' }} />
+        <Reviews title="What first home buyers say" compact />
+
         <PlaybookDisclaimer />
       </PlaybookCard>
     </div>
@@ -150,7 +154,6 @@ function Field({ label, children }) {
 // is one of the easiest ways to lift enquiries.
 function WhatToExpect() {
   const items = [
-    ['ti-coin-off', 'Free for you', "There's no cost to you for our advice. If you go ahead with a home loan, the bank pays us."],
     ['ti-mood-smile', 'No pressure, no obligation', "It's a conversation, not a sales pitch. You decide if and when to take the next step."],
     ['ti-shield-check', 'No credit check', "A first chat doesn't involve a credit check, so it won't affect your credit score."],
     ['ti-file-off', "No paperwork needed yet", "Come as you are. Rough numbers are fine, we'll tell you what's needed later."],
