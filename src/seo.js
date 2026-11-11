@@ -10,6 +10,8 @@
 // To add a page: add a line here. It is then prerendered, given its own title
 // and description, and listed in the sitemap automatically.
 
+import { ARTICLES, ARTICLES_ROOT } from './articles/index.js';
+
 export const SITE_URL = 'https://parryfs.com';
 export const SITE_NAME = 'First Home Playbook';
 
@@ -130,6 +132,19 @@ export const SEO_PAGES = {
   },
 };
 
+// Articles add themselves from src/articles/posts. Drafts (only on preview
+// links) are kept out of search.
+if (ARTICLES.length) {
+  SEO_PAGES[ARTICLES_ROOT] = {
+    title: brand('Articles for first home buyers'),
+    description: 'Plain English answers to the questions first home buyers ask most, from deposits and offers to settlement day.',
+    priority: 0.8,
+  };
+  for (const a of ARTICLES) {
+    SEO_PAGES[a.path] = { title: brand(a.title), description: a.description, priority: 0.7, noindex: a.draft, article: a };
+  }
+}
+
 const normalise = (path) => (path.length > 1 ? path.replace(/\/+$/, '') : path) || '/';
 
 // Settings for any path. Unknown paths get the homepage title but are kept
@@ -149,7 +164,7 @@ export function seoFor(path) {
 export function sitemapPaths() {
   return Object.entries(SEO_PAGES)
     .filter(([, p]) => !p.noindex && !p.canonical)
-    .map(([path, p]) => ({ path, priority: p.priority ?? 0.5 }));
+    .map(([path, p]) => ({ path, priority: p.priority ?? 0.5, lastmod: p.article?.date }));
 }
 
 // Keeps the <head> tags in step with the page in the browser.
@@ -180,11 +195,20 @@ export function seoHeadHtml(path) {
     `<meta name="description" content="${esc(s.description)}" />`,
     `<link rel="canonical" href="${esc(s.canonicalUrl)}" />`,
     `<meta name="robots" content="${s.noindex ? 'noindex, follow' : 'index, follow'}" />`,
-    `<meta property="og:type" content="website" />`,
+    `<meta property="og:type" content="${s.article ? 'article' : 'website'}" />`,
     `<meta property="og:site_name" content="${esc(SITE_NAME)}" />`,
     `<meta property="og:title" content="${esc(s.title)}" />`,
     `<meta property="og:description" content="${esc(s.description)}" />`,
     `<meta property="og:url" content="${esc(s.canonicalUrl)}" />`,
     `<meta name="twitter:card" content="summary" />`,
+    ...(s.article ? [`<script type="application/ld+json">${JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: s.article.title,
+      description: s.article.description,
+      datePublished: s.article.date,
+      mainEntityOfPage: s.canonicalUrl,
+      publisher: { '@type': 'Organization', name: SITE_NAME, url: SITE_URL },
+    }).replace(/</g, '\\u003c')}</script>`] : []),
   ].join('\n    ');
 }

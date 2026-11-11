@@ -3,6 +3,8 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Ba
 import FirstHomePlaybookRouter from './src/first-home-playbook/FirstHomePlaybookRouter.jsx';
 import Home from './src/Home.jsx';
 import Welcome from './src/Welcome.jsx';
+import ArticlesPage from './src/articles/ArticlesPage.jsx';
+import { ARTICLES } from './src/articles/index.js';
 import PageHero, { heroFor } from './src/PageHero.jsx';
 import { SEO_PAGES, applySeo } from './src/seo.js';
 
@@ -1080,6 +1082,7 @@ const TAB_PATHS = {
   costtowait: '/cost-to-wait',
   'first-home-playbook': '/first-home-playbook',
   welcome: '/welcome',
+  articles: '/articles',
   privacy: '/privacy',
   terms: '/terms',
 };
@@ -1102,6 +1105,8 @@ const NAV_LINKS = [
   { label: 'Your journey', path: '/first-home-playbook/journey', isActive: (p) => p.startsWith('/first-home-playbook/journey') },
   { label: 'Know your numbers', path: '/borrow-checker', isActive: (p) => p.startsWith('/borrow-checker') || p.startsWith('/first-home-playbook/calculator') },
   { label: 'The Playbook', path: '/first-home-playbook', isActive: (p) => p.startsWith('/first-home-playbook') && !/^\/first-home-playbook\/(journey|calculator|book-a-call)/.test(p) },
+  // Shown once there is at least one article to read.
+  ...(ARTICLES.length ? [{ label: 'Articles', path: '/articles', isActive: (p) => p.startsWith('/articles') }] : []),
 ];
 
 const NavLink = ({ to, go, children, style, onClick }) => (
@@ -3431,6 +3436,7 @@ export default function App({ prerender = false }) {
       case 'costtowait': return <CostToWait />;
       case 'first-home-playbook': return <FirstHomePlaybookRouter onExit={() => go('/')} />;
       case 'welcome': return <Welcome go={go} />;
+      case 'articles': return <ArticlesPage path={path} go={go} />;
       case 'privacy': return <PrivacyPage onBack={() => go('/')} onNavigate={handleSetActiveTab} />;
       case 'terms': return <TermsPage onBack={() => go('/')} onNavigate={handleSetActiveTab} />;
       default: return <BorrowChecker />;
