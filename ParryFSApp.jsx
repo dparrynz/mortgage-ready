@@ -1505,10 +1505,8 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const partnerGrossWithSuper = partnerGross + (applicationType === 'joint' ? nzSuperGrossAnnualFor(true) : 0);
     const totalBase = primaryGrossWithSuper + partnerGrossWithSuper;
 
-    // Kainga Ora eligibility - individual threshold $95k, joint threshold $150k
-    const isKO = isFirstHomeBuyer && (
-      applicationType === 'single' ? primaryGrossWithSuper <= 95000 : totalBase <= 150000
-    );
+    // Kāinga Ora eligibility: $95k single, $150k single with dependants, $150k joint
+    const isKO = isFirstHomeBuyer && checkKaingaOraIncomeCap({ applicationType, baseSalary: primaryGrossWithSuper, partnerBaseSalary: partnerGrossWithSuper, dependents });
 
     // Minimum deposit:
     // 5%  - Kainga Ora eligible
@@ -1586,13 +1584,13 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     if (!depPass) {
       const shortfall = minDep - deposit;
       feedback.push(isKO
-        ? { type: 'info', title: 'You qualify for Kainga Ora First Home Loan', message: `Great news! You're eligible for a Kainga Ora First Home Loan with just a 5% deposit. You'll need to save an additional $${fmtNZD(shortfall)} to meet this requirement.` }
+        ? { type: 'info', title: 'You qualify for Kāinga Ora First Home Loan', message: `Great news! You're eligible for a Kāinga Ora First Home Loan with just a 5% deposit. You'll need to save an additional $${fmtNZD(shortfall)} to meet this requirement.` }
         : { type: 'danger', title: 'Deposit too low', message: `You'll need a minimum 10% deposit ($${fmtNZD(minDep)}) to be considered for a mortgage on this property. You're $${fmtNZD(shortfall)} short.` }
       );
     } else if (!dtiPass) {
       if (isKO && !umiPass) {
         // Merge DTI and KO UMI fail into single message
-        feedback.push({ type: 'warning', title: 'Loan amount too high', message: `The mortgage is too large relative to your income. Even with Kainga Ora eligibility, the repayments can't be serviced at this price. ${debtAdvice}` });
+        feedback.push({ type: 'warning', title: 'Loan amount too high', message: `The mortgage is too large relative to your income. Even with Kāinga Ora eligibility, the repayments can't be serviced at this price. ${debtAdvice}` });
       } else {
         feedback.push(hasExistingDebt
           ? { type: 'warning', title: 'Debt levels', message: 'Your total debt (including this mortgage) is higher than banks typically allow. Consider paying down existing debts or increasing your deposit to lower the loan amount.' }
@@ -1601,16 +1599,16 @@ function BorrowChecker({ onSavePrompt, onSave }) {
       }
     } else if (!umiPass) {
       if (isKO) {
-        feedback.push({ type: 'warning', title: 'Almost there', message: `You qualify for a Kainga Ora First Home Loan based on your deposit and income, but your monthly budget is a little tight. ${debtAdvice}` });
+        feedback.push({ type: 'warning', title: 'Almost there', message: `You qualify for a Kāinga Ora First Home Loan based on your deposit and income (minimum 5%, $${fmtNZD(minDep)}), but your monthly budget is a little tight. ${debtAdvice}` });
       } else if (!isFullDeposit) {
         feedback.push({ type: 'warning', title: 'Deposit and servicing need attention', message: `With less than 20% deposit and a tight monthly budget, lending options are limited. ${debtAdvice}`, expandable: !hasExistingDebt });
       } else {
         feedback.push({ type: 'warning', title: 'Strong deposit, servicing needs work', message: `Your deposit is solid but your monthly budget is too tight for banks to lend comfortably. ${debtAdvice}` });
       }
     } else if (isKO) {
-      feedback.push({ type: 'success', title: 'Kainga Ora ready!', message: "Excellent! You meet all the criteria for a Kainga Ora First Home Loan. You're ready to start house hunting with confidence." });
+      feedback.push({ type: 'success', title: 'Kāinga Ora ready!', message: `Excellent! You meet all the criteria for a Kāinga Ora First Home Loan. Your minimum deposit is 5% ($${fmtNZD(minDep)}) and you have $${fmtNZD(deposit)}. You're ready to start house hunting with confidence.` });
     } else if (!isFullDeposit) {
-      feedback.push({ type: 'success', title: "You're mortgage ready, with fewer lenders", message: "Your servicing is strong. With less than 20% deposit you'll have a smaller choice of lenders and may pay a low equity margin, but you can start house hunting.", expandable: true });
+      feedback.push({ type: 'success', title: "You're mortgage ready, with fewer lenders", message: `Your servicing is strong. Your minimum deposit is 10% ($${fmtNZD(minDep)}) and you have $${fmtNZD(deposit)}. With less than 20% deposit you'll have a smaller choice of lenders and may pay a low equity margin, but you can start house hunting.`, expandable: true });
     } else {
       feedback.push({ type: 'success', title: "You're mortgage ready!", message: "Great news! With a strong 20%+ deposit and solid servicing, you'll have excellent lending options across all major banks." });
     }
@@ -1662,7 +1660,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const partnerSL = partnerHasStudentLoan && partnerSalaryMode !== 'net' ? Math.max(0, (partnerGross - slThreshold) * 0.12 / 12) : 0;
     const slMonthly = primarySL + partnerSL;
 
-    const isKO = isFirstHomeBuyer && (applicationType === 'single' ? primaryGrossWithSuper <= 95000 : totalBase <= 150000);
+    const isKO = isFirstHomeBuyer && checkKaingaOraIncomeCap({ applicationType, baseSalary: primaryGrossWithSuper, partnerBaseSalary: totalBase - primaryGrossWithSuper, dependents });
 
     const primaryAge = parseInt(applicantAge) || 0;
     const partnerAgeInt = parseInt(partnerAge) || 0;
@@ -1844,7 +1842,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                     <input type="checkbox" checked={isFirstHomeBuyer} onChange={e => setIsFirstHomeBuyer(e.target.checked)} style={{ width: '20px', height: '20px', cursor: 'pointer' }} />
                     <div>
                       <span style={{ fontWeight: '500', color: C.textPrimary, display: 'block', marginBottom: '0.25rem' }}>I'm buying my first home</span>
-                      <span style={{ fontSize: '13px', color: C.textSecondary }}>First home buyers may qualify for Kainga Ora and lower deposit requirements</span>
+                      <span style={{ fontSize: '13px', color: C.textSecondary }}>First home buyers may qualify for Kāinga Ora and lower deposit requirements</span>
                     </div>
                   </label>
                 </div>
@@ -1973,7 +1971,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                     <option value={8}>8%</option>
                     <option value={10}>10%</option>
                   </select>
-                  <p style={{ fontSize: '12px', color: C.textSecondary, margin: '0.5rem 0 0' }}>Used to estimate your gross income for eligibility checks (Kainga Ora, debt-to-income)</p>
+                  <p style={{ fontSize: '12px', color: C.textSecondary, margin: '0.5rem 0 0' }}>Used to estimate your gross income for eligibility checks (Kāinga Ora, debt-to-income)</p>
                 </div>
               </>
             )}
@@ -2321,7 +2319,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                     </div>
                     {maxBorrowing.isKO && (
                       <div style={{ background: C.green + '18', borderRadius: '8px', padding: '0.5rem 1rem' }}>
-                        <p style={{ fontSize: '12px', fontWeight: '500', color: C.green, margin: 0 }}>Kainga Ora eligible ✓</p>
+                        <p style={{ fontSize: '12px', fontWeight: '500', color: C.green, margin: 0 }}>Kāinga Ora eligible ✓</p>
                       </div>
                     )}
                   </div>
@@ -3562,8 +3560,11 @@ export { PrivacyPage, TermsPage, LEGAL_PAGES };
 // instruction not to alter existing Borrow Checker calculation logic. If
 // Kāinga Ora revises these thresholds, or calculate()'s formula changes
 // again, this needs updating to match.
-export function checkKaingaOraIncomeCap({ applicationType, baseSalary, partnerBaseSalary = 0, nzSuper = 0, partnerNzSuper = 0 }) {
+// Kāinga Ora First Home Loan income caps: $95,000 for one buyer with no
+// dependants, $150,000 for one buyer with dependants, $150,000 combined for
+// two or more buyers.
+export function checkKaingaOraIncomeCap({ applicationType, baseSalary, partnerBaseSalary = 0, nzSuper = 0, partnerNzSuper = 0, dependents = 0 }) {
   const primaryGrossWithSuper = baseSalary + nzSuper;
-  const totalBase = primaryGrossWithSuper + (applicationType === 'joint' ? partnerBaseSalary + partnerNzSuper : 0);
-  return applicationType === 'single' ? primaryGrossWithSuper <= 95000 : totalBase <= 150000;
+  if (applicationType !== 'joint') return primaryGrossWithSuper <= (dependents > 0 ? 150000 : 95000);
+  return primaryGrossWithSuper + partnerBaseSalary + partnerNzSuper <= 150000;
 }
