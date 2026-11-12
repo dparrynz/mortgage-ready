@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useScrollToTopOnChange } from '../useScrollToTopOnChange.js';
 import { useWindowWidth } from '../../ParryFSApp.jsx';
 import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer } from './shared.jsx';
 import { ARE_YOU_READY_QUESTIONS } from './content.js';
@@ -20,6 +21,8 @@ export default function AreYouReadyQuiz({ onExit, onBackToHub, onNavigate }) {
   const total = ARE_YOU_READY_QUESTIONS.length;
   const [answers, setAnswers] = useState(Array(total).fill(null));
   const [step, setStep] = useState(0);
+  const topRef = useRef(null);
+  useScrollToTopOnChange(topRef, step);
   const done = step >= total;
 
   const answer = (oi) => {
@@ -79,6 +82,7 @@ export default function AreYouReadyQuiz({ onExit, onBackToHub, onNavigate }) {
   return (
     <div>
       <PlaybookHeader title="Are You Ready?" onExit={onExit} onBackToHub={onBackToHub} />
+      <div ref={topRef} />
       <PlaybookCard style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
         {!done && (
           <div style={{ maxWidth: '620px', margin: '0 auto' }}>

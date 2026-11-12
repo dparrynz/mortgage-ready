@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useScrollToTopOnChange } from '../useScrollToTopOnChange.js';
 import { C, primaryBtn, secondaryBtn, useAuth, AuthModal, supabase, useWindowWidth, SegmentedToggle } from '../../ParryFSApp.jsx';
 import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer, linkifyGlossaryTerms, PLAYBOOK_ROOT, JOURNEY_PROGRESS_LS_KEY } from './shared.jsx';
 import {
@@ -128,6 +129,8 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
 
   const [path, setPath] = useState('negotiation');
   const [selectedStage, setSelectedStage] = useState(0);
+  const stageTopRef = useRef(null);
+  useScrollToTopOnChange(stageTopRef, selectedStage);
   const [expandedFullText, setExpandedFullText] = useState(false);
   const [checklist, setChecklist] = useState({});
   const [loaded, setLoaded] = useState(false);
@@ -198,7 +201,7 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
   // Everything about the selected stage. Shown on the right on desktop, and
   // opened in place under the stage name on phones.
   const stageDetail = (
-    <div>
+    <div ref={stageTopRef}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '1.1rem' }}>
         <h2 style={{ fontSize: isMobile ? '19px' : '22px', fontWeight: 700, color: C.navy, margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <span style={{ width: '42px', height: '42px', borderRadius: '12px', background: C.inputBg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><StageIcon title={stage.title} size={22} /></span>

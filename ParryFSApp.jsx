@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Ba
 import FirstHomePlaybookRouter from './src/first-home-playbook/FirstHomePlaybookRouter.jsx';
 import Home from './src/Home.jsx';
 import Welcome from './src/Welcome.jsx';
+import { useScrollToTopOnChange } from './src/useScrollToTopOnChange.js';
 import ArticlesPage from './src/articles/ArticlesPage.jsx';
 import { ARTICLES } from './src/articles/index.js';
 import PageHero, { heroFor } from './src/PageHero.jsx';
@@ -1218,6 +1219,8 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   const [page, setPage] = useState(1);
   const [showCover, setShowCover] = useState(true);
   const totalPages = 5;
+  const stepsTopRef = useRef(null);
+  useScrollToTopOnChange(stepsTopRef, showCover ? 0 : page);
 
   const [purchasePrice, setPurchasePrice] = useState(650000);
   const [deposit, setDeposit] = useState(0);
@@ -1792,7 +1795,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
   }
 
   return (
-    <div>
+    <div ref={stepsTopRef}>
       <div style={{ ...card, padding: '1.25rem 1.5rem', marginBottom: '1rem' }}>
         <ProgressBar />
       </div>
