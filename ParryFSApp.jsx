@@ -1221,7 +1221,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
 
   const [purchasePrice, setPurchasePrice] = useState(650000);
   const [deposit, setDeposit] = useState(0);
-  const [mode, setMode] = useState(null); // null = not chosen, 'know' = knows price, 'discover' = wants to find out
+  const [mode, setMode] = useState('discover'); // Only 'discover' is offered now; 'know' (property in mind) path removed from the UI
   const [depositKiwiSaver, setDepositKiwiSaver] = useState(0);
   const [depositSavings, setDepositSavings] = useState(0);
   const [depositGift, setDepositGift] = useState(0);
@@ -1676,6 +1676,11 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     const r = 0.07 / 12;
     const maxLoanFromDTI = usableGross * 6 - creditCardLimit - bnplLimit;
 
+    // Deposit cap: banks need at least 5% deposit (Kainga Ora First Home Loan) or 10% otherwise,
+    // so the deposit limits the purchase price to deposit / minDepPct, and the loan to that less the deposit.
+    const minDepPct = isKO ? 0.05 : 0.10;
+    const maxLoanFromDeposit = Math.max(0, deposit / minDepPct - deposit);
+
     // The <20%-deposit servicing buffer ($600 vs $350) depends on the resulting purchase
     // price's LVR, but that price is what we're solving for here (unlike Know-price mode,
     // where price is a known input) - so resolve it with a small fixed-point loop instead of
@@ -1684,7 +1689,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
       const availableForMortgage = netMonthly - livingExp - ccExp - bnplExp - slMonthly - otherMonthlyLoans - reqUmi;
       if (availableForMortgage <= 0) return 0;
       const maxLoanFromServicing = availableForMortgage * (Math.pow(1 + r, n) - 1) / (r * Math.pow(1 + r, n));
-      return Math.max(0, Math.min(maxLoanFromServicing, maxLoanFromDTI));
+      return Math.max(0, Math.min(maxLoanFromServicing, maxLoanFromDTI, maxLoanFromDeposit));
     }
 
     let reqUmi = 350; // optimistic starting guess - refined below if it turns out deposit is <20%
@@ -1699,10 +1704,11 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     }
 
     if (maxLoan <= 0) {
-      setMaxBorrowing({ maxLoan: 0, maxPurchase: deposit, canBorrow: false, tips: [] });
+      setMaxBorrowing({ maxLoan: 0, maxPurchase: deposit, canBorrow: false, tips: [], noDeposit: deposit <= 0 });
       return;
     }
 
+    const limitedByDeposit = maxLoan >= maxLoanFromDeposit - 1;
     const maxPurchase = maxLoan + deposit;
 
     const tips = [];
@@ -1723,7 +1729,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
       if (amountTo20 > 0) tips.push({ type: 'deposit', message: `Saving an additional $${fmtNZD(Math.round(amountTo20 / 1000) * 1000)} would get you to a 20% deposit, opening up more lenders and potentially a better interest rate.` });
     }
 
-    setMaxBorrowing({ maxLoan: Math.round(maxLoan), maxPurchase: Math.round(maxPurchase), canBorrow: maxLoan > 0, tips, depositPct: currentDepositPct, isKO, loanTerm, netMonthly, livingExp });
+    setMaxBorrowing({ maxLoan: Math.round(maxLoan), maxPurchase: Math.round(maxPurchase), canBorrow: maxLoan > 0, tips, depositPct: currentDepositPct, isKO, loanTerm, netMonthly, livingExp, limitedByDeposit, minDepPct: minDepPct * 100 });
   }
 
   const ProgressBar = () => (
@@ -1739,20 +1745,12 @@ function BorrowChecker({ onSavePrompt, onSave }) {
 
   const Nav = () => (
     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem', gap: '1rem' }}>
-      <button onClick={() => {
-        if (page === 1 && mode !== null) {
-          setMode(null);
-        } else {
-          setPage(Math.max(1, page - 1));
-        }
-      }} style={{ ...secondaryBtn, opacity: (page === 1 && mode === null) ? 0 : 1, pointerEvents: (page === 1 && mode === null) ? 'none' : 'auto' }}>
+      <button onClick={() => setPage(Math.max(1, page - 1))} style={{ ...secondaryBtn, opacity: page === 1 ? 0 : 1, pointerEvents: page === 1 ? 'none' : 'auto' }}>
         <i className="ti ti-arrow-left" style={{ marginRight: '6px' }} /> Back
       </button>
       {page < totalPages
-        ? (page === 1 && mode === null
-            ? null
-            : <button onClick={() => setPage(page + 1)} style={primaryBtn}>Continue <i className="ti ti-arrow-right" style={{ marginLeft: '6px' }} /></button>)
-        : <button onClick={() => { setPage(1); setResults(null); setMaxBorrowing(null); setMode(null); }} style={secondaryBtn}>Start Over</button>
+        ? <button onClick={() => setPage(page + 1)} style={primaryBtn}>Continue <i className="ti ti-arrow-right" style={{ marginLeft: '6px' }} /></button>
+        : <button onClick={() => { setPage(1); setResults(null); setMaxBorrowing(null); }} style={secondaryBtn}>Start Over</button>
       }
     </div>
   );
@@ -1803,42 +1801,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
         {/* PAGE 1 */}
         {page === 1 && (
           <div>
-            {mode === null ? (
-              <>
-                <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Let's get started</h2>
-                <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 2rem' }}>Do you have a property in mind?</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <button
-                    onClick={() => setMode('know')}
-                    style={{ background: C.inputBg, border: `2px solid transparent`, borderRadius: '16px', padding: '1.5rem', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s' }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = C.purple}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
-                  >
-                    <div style={{ fontSize: '24px', marginBottom: '0.5rem' }}>🏡</div>
-                    <p style={{ fontSize: '16px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.25rem' }}>Yes, I have a property in mind</p>
-                    <p style={{ fontSize: '13px', color: C.textSecondary, margin: 0 }}>I know the purchase price and want to check if I can afford it</p>
-                  </button>
-                  <button
-                    onClick={() => setMode('discover')}
-                    style={{ background: C.inputBg, border: `2px solid transparent`, borderRadius: '16px', padding: '1.5rem', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s' }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = C.purple}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
-                  >
-                    <div style={{ fontSize: '24px', marginBottom: '0.5rem' }}>🔍</div>
-                    <p style={{ fontSize: '16px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.25rem' }}>No, I want to find out what I can afford</p>
-                    <p style={{ fontSize: '13px', color: C.textSecondary, margin: 0 }}>Tell me my maximum borrowing power based on my deposit and income</p>
-                  </button>
-                </div>
-              </>
-            ) : mode === 'know' ? (
-              <>
-                <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>What property are you looking at?</h2>
-                <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 2rem' }}>Tell us about the property you want to buy</p>
-                <MoneyField label="Purchase price" value={purchasePrice} onChange={setPurchasePrice} placeholder="650,000" />
-                <MoneyField label="How much deposit have you saved?" value={deposit} onChange={setDeposit} placeholder="130,000" />
-              </>
-            ) : (
-              <>
+            <>
                 <h2 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Tell us about your deposit</h2>
                 <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 2rem' }}>Break down where your deposit is coming from</p>
 
@@ -1868,8 +1831,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                     <p style={{ fontSize: '24px', fontWeight: '500', color: C.textPrimary, margin: 0 }}>${fmtNZD(deposit)}</p>
                   </div>
                 )}
-              </>
-            )}
+            </>
           </div>
         )}
 
@@ -2307,7 +2269,11 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                   <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem' }}>
                     <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 0.5rem' }}>Maximum borrowing</p>
                     <p style={{ fontSize: '32px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.25rem' }}>${fmtNZD(maxBorrowing.maxLoan)}</p>
-                    <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0 }}>Stressed at 7% over {maxBorrowing.loanTerm} years</p>
+                    <p style={{ fontSize: '12px', color: C.textSecondary, margin: 0 }}>
+                      {maxBorrowing.limitedByDeposit
+                        ? `Limited by your deposit (minimum ${maxBorrowing.minDepPct}% deposit)`
+                        : `Stressed at 7% over ${maxBorrowing.loanTerm} years`}
+                    </p>
                   </div>
                   <div style={{ background: C.green + '18', borderRadius: '16px', padding: '1.5rem', border: `2px solid ${C.green}` }}>
                     <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 0.5rem' }}>Maximum purchase price</p>
@@ -2370,7 +2336,9 @@ function BorrowChecker({ onSavePrompt, onSave }) {
               <div style={{ background: '#FFEBEE', borderRadius: '16px', padding: '2rem', textAlign: 'center', marginBottom: '1.5rem' }}>
                 <p style={{ fontSize: '24px', margin: '0 0 1rem' }}>😔</p>
                 <h3 style={{ fontSize: '18px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.5rem' }}>Borrowing capacity is limited</h3>
-                <p style={{ fontSize: '14px', color: C.textSecondary, margin: 0, lineHeight: '1.6' }}>Based on your current income and expenses, we're unable to calculate a borrowing capacity. Consider reducing debts or speaking with a mortgage adviser to explore your options.</p>
+                <p style={{ fontSize: '14px', color: C.textSecondary, margin: 0, lineHeight: '1.6' }}>{maxBorrowing.noDeposit
+                  ? "You'll need a deposit before a bank can lend. Go back to the first step and enter your KiwiSaver, savings or any family gift."
+                  : "Based on your current income and expenses, we're unable to calculate a borrowing capacity. Consider reducing debts or speaking with a mortgage adviser to explore your options."}</p>
               </div>
             )}
 
