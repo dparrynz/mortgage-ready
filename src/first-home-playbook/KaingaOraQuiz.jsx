@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { useScrollToTopOnChange } from '../useScrollToTopOnChange.js';
 import { C, MoneyField, useWindowWidth } from '../../ParryFSApp.jsx';
 import { PlaybookHeader, PlaybookCard, PlaybookDisclaimer } from './shared.jsx';
 import { QuizProgress, QuizQuestionTitle, AnswerButton, QuizNav, ResultCard } from './quizParts.jsx';
@@ -18,6 +19,8 @@ export default function KaingaOraQuiz({ onExit, onBackToHub, onNavigate }) {
   const [incomeA, setIncomeA] = useState(0);
   const [incomeB, setIncomeB] = useState(0);
   const [step, setStep] = useState(0);
+  const topRef = useRef(null);
+  useScrollToTopOnChange(topRef, step);
 
   const isJoint = answers.buyers === 'joint';
 
@@ -98,6 +101,7 @@ export default function KaingaOraQuiz({ onExit, onBackToHub, onNavigate }) {
   return (
     <div>
       <PlaybookHeader title="Kāinga Ora Qualifying Quiz" onExit={onExit} onBackToHub={onBackToHub} />
+      <div ref={topRef} />
       <PlaybookCard style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
         {!done && (
           <div style={{ maxWidth: '620px', margin: '0 auto' }}>
