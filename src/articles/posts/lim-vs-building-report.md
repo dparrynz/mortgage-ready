@@ -3,7 +3,7 @@ title: "LIM vs building report: what each covers, and should you trust the vendo
 description: A LIM shows what the council knows about a property. A building report checks its condition. Here's what each covers and when to get your own.
 date: 2026-11-14
 guide: journey
-draft: true
+draft: false
 ---
 A LIM and a building report answer two different questions. A **LIM (Land Information Memorandum)** tells you what the local council knows about the property and the land, such as consents, zoning, drainage, rates and natural hazards. A **building report** tells you what condition the house is actually in, based on an inspector walking through it.
 
