@@ -15,6 +15,7 @@
     <script type="text/javascript">
         // Owner opt-out: open the site once with ?notrack=1 and this browser is
         // remembered and never tracked (Clarity or Cloudflare). ?notrack=0 undoes it.
+        // Tracking also only runs on parryfs.com itself (see "live" below).
         (function () {
             var off = false, changed = null;
             try {
@@ -28,7 +29,9 @@
                     history.replaceState(history.state, '', u.pathname + u.search + u.hash);
                 }
             } catch (e) {}
-            window.__pfsNoTrack = off;
+            // Only track the live site, never Vercel previews or local builds.
+            var live = /^(www\.)?parryfs\.com$/.test(location.hostname);
+            window.__pfsNoTrack = off || !live;
             if (changed) {
                 window.addEventListener('load', function () {
                     var d = document.createElement('div');
