@@ -1,0 +1,306 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { C, primaryBtn, supabase } from '../../ParryFSApp.jsx';
+import {
+  KEY_DATES_LS_KEY, REMIND_DAYS, MAX_CONDITIONS, MAX_LABEL,
+  emptyKeyDates, normaliseKeyDates, hasAnyDate, keyDateEvents, nextEvent, dayDiff, todayIso,
+  formatDate, groupTitle, groupDetail, groupChecklist, groupUntilText, buildIcs,
+} from './keyDatesLogic.js';
+
+// Key dates for the Journey page: once an offer is accepted, people add the
+// dates from their agreement, see a countdown and timeline, can put them in
+// their phone calendar, and (with an account) get an email 3 days before each.
+//
+// Dates are kept on the device, and in the person's account when signed in.
+// Email reminders need an account, as that's where the email address is.
+
+const readLocal = () => {
+  try { return normaliseKeyDates(JSON.parse(localStorage.getItem(KEY_DATES_LS_KEY))); } catch { return normaliseKeyDates(null); }
+};
+const writeLocal = (dates) => { try { localStorage.setItem(KEY_DATES_LS_KEY, JSON.stringify(dates)); } catch {} };
+
+export function useKeyDates(user) {
+  const [dates, setDates] = useState(() => normaliseKeyDates(null));
+  const [reminders, setReminders] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState('');
+  // Someone tapped "email reminders" before signing in: turn them on once they have
+  const [wantReminders, setWantReminders] = useState(false);
+  // Set after a save so the page can bring the countdown into view
+  const [justSaved, setJustSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let d = readLocal();
+      let r = false;
+      if (user) {
+        const { data } = await supabase.getKeyDates();
+        const saved = data ? normaliseKeyDates(data.dates) : null;
+        if (saved && hasAnyDate(saved)) { d = saved; r = !!data.reminders; }
+        else if (hasAnyDate(d)) supabase.saveKeyDates(d, false); // first sign-in: keep what's on this device
+      }
+      if (!cancelled) { setDates(d); setReminders(r); writeLocal(d); setLoaded(true); }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  const persist = async (d, r) => {
+    setDates(d); setReminders(r); writeLocal(d); setError('');
+    if (user) {
+      const { error: e } = await supabase.saveKeyDates(d, r);
+      if (e) setError("We couldn't save that to your account. Check your connection and try again.");
+    }
+  };
+
+  useEffect(() => {
+    if (user && loaded && wantReminders) { setWantReminders(false); if (hasAnyDate(dates)) persist(dates, true); }
+  }, [user, loaded, wantReminders]);
+
+  return {
+    dates, reminders, loaded, editing, error,
+    has: hasAnyDate(dates),
+    startEditing: () => setEditing(true),
+    cancelEditing: () => setEditing(false),
+    justSaved,
+    clearJustSaved: () => setJustSaved(false),
+    save: (d) => { setEditing(false); setJustSaved(true); return persist(normaliseKeyDates(d), reminders && hasAnyDate(d)); },
+    clear: () => { setEditing(false); return persist(normaliseKeyDates(null), false); },
+    setReminders: (on) => persist(dates, on),
+    askForReminders: () => setWantReminders(true),
+  };
+}
+
+// Built on first use, not at load: this file and ParryFSApp.jsx import each
+// other, so the shared colours (C) aren't ready while the module is loading.
+let cached = null;
+function styles() {
+  if (cached) return cached;
+  const card = { background: 'white', border: `1px solid ${C.borderLight}`, borderRadius: '16px', padding: '1rem 1.1rem' };
+  const fieldLabel = { fontSize: '14px', fontWeight: 600, color: C.navy };
+  const dateInput = { height: '46px', width: '100%', boxSizing: 'border-box', border: '1px solid #C9D6EA', borderRadius: '10px', padding: '0 0.7rem', fontSize: '16px', color: C.navy, background: C.inputBg };
+  const outlineBtn = { minHeight: '48px', border: `1px solid ${C.sky}`, background: 'white', color: C.sky, borderRadius: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '0.5rem 0.75rem' };
+  const linkBtn = { border: 'none', background: 'transparent', color: C.accent, fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '0.6rem 0', minHeight: '44px' };
+  cached = { card, fieldLabel, dateInput, outlineBtn, linkBtn };
+  return cached;
+}
+
+const CalendarIcon = ({ colour = 'white', size = 22 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={colour} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+    <rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" />
+  </svg>
+);
+
+// Shown inside a stage once someone is at the offer, before any dates exist
+export function KeyDatesPrompt({ onStart, auction }) {
+  return (
+    <div style={{ background: C.navy, color: 'white', borderRadius: '16px', padding: '1.1rem', marginBottom: '1rem' }}>
+      <p style={{ margin: '0 0 0.4rem', fontSize: '17px', fontWeight: 700, fontFamily: C.headingFont, display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+        <CalendarIcon /> {auction ? 'Won the auction?' : 'Offer accepted?'}
+      </p>
+      <p style={{ margin: '0 0 0.9rem', fontSize: '14px', color: '#D6E2F5', lineHeight: 1.5 }}>
+        Add the dates from your agreement and we'll remind you before each one, so nothing sneaks up on you.
+      </p>
+      <button type="button" onClick={onStart} style={{ ...primaryBtn, padding: '0.8rem 1.25rem' }}>Add my key dates</button>
+      <p style={{ margin: '0.7rem 0 0', fontSize: '12px', color: '#A9B8D0' }}>Takes about 2 minutes. Have your Sale and Purchase Agreement handy.</p>
+    </div>
+  );
+}
+
+function Editor({ kd, path, isMobile }) {
+  const { card, fieldLabel, dateInput, linkBtn } = styles();
+  const [draft, setDraft] = useState(() => (kd.has ? kd.dates : emptyKeyDates(path)));
+  const [problem, setProblem] = useState('');
+  const set = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
+  const setCond = (i, patch) => setDraft((d) => ({ ...d, conditions: d.conditions.map((c, j) => (j === i ? { ...c, ...patch } : c)) }));
+  const removeCond = (i) => setDraft((d) => ({ ...d, conditions: d.conditions.filter((_, j) => j !== i) }));
+  const addCond = () => setDraft((d) => ({ ...d, conditions: [...d.conditions, { label: '', date: '' }] }));
+
+  const submit = (e) => {
+    e.preventDefault();
+    const clean = normaliseKeyDates(draft);
+    if (!hasAnyDate(clean)) { setProblem('Add at least one date to save.'); return; }
+    const first = clean.accepted;
+    const later = [...clean.conditions.map((c) => c.date), clean.deposit, clean.settlement].filter(Boolean);
+    if (first && later.some((d) => d < first)) { setProblem('One of your dates is before the day your offer was accepted. Check them and try again.'); return; }
+    if (clean.settlement && later.some((d) => d > clean.settlement)) { setProblem('One of your dates is after settlement. Check them and try again.'); return; }
+    kd.save(clean);
+  };
+
+  const row = { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 190px', gap: isMobile ? '0.35rem' : '0.75rem', alignItems: 'center' };
+
+  return (
+    <form onSubmit={submit} style={{ ...card, marginBottom: '1.25rem' }}>
+      <p style={{ margin: '0 0 0.3rem', fontSize: '18px', fontWeight: 700, color: C.navy, fontFamily: C.headingFont }}>{kd.has ? 'Edit your key dates' : 'Add your key dates'}</p>
+      <p style={{ margin: '0 0 1rem', fontSize: '14px', color: C.textSecondary, lineHeight: 1.5 }}>
+        You'll find these in your Sale and Purchase Agreement. Not sure? Your solicitor or agent can confirm them. Leave out any that don't apply.
+      </p>
+
+      <div style={{ ...row, marginBottom: '1rem' }}>
+        <label htmlFor="kd-accepted" style={fieldLabel}>{path === 'auction' ? 'Auction day' : 'Offer accepted'}</label>
+        <input id="kd-accepted" type="date" value={draft.accepted} onChange={(e) => set('accepted', e.target.value)} style={dateInput} />
+      </div>
+
+      <div style={{ background: C.inputBg, borderRadius: '14px', padding: '0.9rem', marginBottom: '1rem' }}>
+        <p style={{ margin: '0 0 0.2rem', fontSize: '15px', fontWeight: 700, color: C.navy }}>Conditions due</p>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '13px', color: C.textSecondary, lineHeight: 1.45 }}>
+          {path === 'auction'
+            ? "An auction sale is usually unconditional, so you can skip this."
+            : 'Often 10 working days after your offer is accepted, but use the dates written in your agreement.'}
+        </p>
+        {draft.conditions.map((c, i) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr) 44px' : 'minmax(0, 1fr) 190px 44px', gap: '0.5rem', alignItems: 'center', marginBottom: '0.6rem' }}>
+            <input type="text" aria-label={`Condition ${i + 1} name`} placeholder="Condition name" maxLength={MAX_LABEL} value={c.label} onChange={(e) => setCond(i, { label: e.target.value })} style={{ ...dateInput, background: 'white', gridColumn: isMobile ? '1 / 2' : 'auto' }} />
+            {isMobile && <button type="button" aria-label={`Remove ${c.label || 'this condition'}`} onClick={() => removeCond(i)} style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', color: C.textSecondary, fontSize: '22px', cursor: 'pointer' }}>×</button>}
+            <input type="date" aria-label={`${c.label || `Condition ${i + 1}`} due date`} value={c.date} onChange={(e) => setCond(i, { date: e.target.value })} style={{ ...dateInput, background: 'white', gridColumn: isMobile ? '1 / 3' : 'auto' }} />
+            {!isMobile && <button type="button" aria-label={`Remove ${c.label || 'this condition'}`} onClick={() => removeCond(i)} style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', color: C.textSecondary, fontSize: '22px', cursor: 'pointer' }}>×</button>}
+          </div>
+        ))}
+        {draft.conditions.length < MAX_CONDITIONS && (
+          <button type="button" onClick={addCond} style={linkBtn}>+ Add {draft.conditions.length ? 'another' : 'a'} condition</button>
+        )}
+      </div>
+
+      <div style={{ ...row, marginBottom: '0.3rem' }}>
+        <label htmlFor="kd-deposit" style={fieldLabel}>Deposit due</label>
+        <input id="kd-deposit" type="date" value={draft.deposit} onChange={(e) => set('deposit', e.target.value)} style={dateInput} />
+      </div>
+      <p style={{ margin: '0 0 1rem', fontSize: '13px', color: C.textSecondary, lineHeight: 1.45 }}>
+        {path === 'auction' ? 'At auction the deposit is usually paid on the day.' : 'Often the day you go unconditional. Your agreement says when.'}
+      </p>
+
+      <div style={{ ...row, marginBottom: '0.3rem' }}>
+        <label htmlFor="kd-settlement" style={fieldLabel}>Settlement</label>
+        <input id="kd-settlement" type="date" value={draft.settlement} onChange={(e) => set('settlement', e.target.value)} style={dateInput} />
+      </div>
+      <p style={{ margin: '0 0 1rem', fontSize: '13px', color: C.textSecondary, lineHeight: 1.45 }}>We'll include insurance and your pre-settlement inspection in your settlement reminder.</p>
+
+      {problem && <p role="alert" style={{ margin: '0 0 0.9rem', fontSize: '14px', color: '#B3261E', fontWeight: 600 }}>{problem}</p>}
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center' }}>
+        <button type="submit" style={{ ...primaryBtn, flex: isMobile ? '1 1 100%' : '0 0 auto' }}>Save my dates</button>
+        <button type="button" onClick={kd.cancelEditing} style={linkBtn}>Cancel</button>
+        {kd.has && <button type="button" onClick={kd.clear} style={{ ...linkBtn, color: C.textSecondary, marginLeft: 'auto' }}>Remove my dates</button>}
+      </div>
+    </form>
+  );
+}
+
+function downloadIcs(dates) {
+  const url = URL.createObjectURL(new Blob([buildIcs(dates)], { type: 'text/calendar;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'my-key-dates.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function View({ kd, user, isMobile, onSignIn, onNavigate }) {
+  const { card, outlineBtn, linkBtn } = styles();
+  const today = todayIso();
+  const events = keyDateEvents(kd.dates);
+  const next = nextEvent(kd.dates, today);
+  const days = next ? dayDiff(today, next.date) : null;
+  const settled = kd.dates.settlement && kd.dates.settlement < today;
+  const nextDetail = next ? groupDetail(next) : '';
+
+  const toggleReminders = () => {
+    if (!user) { kd.askForReminders(); onSignIn(); return; }
+    kd.setReminders(!kd.reminders);
+  };
+
+  return (
+    <section aria-label="My key dates" style={{ marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.6rem' }}>
+        <h2 style={{ margin: 0, fontSize: isMobile ? '19px' : '22px', fontWeight: 700, color: C.navy, display: 'flex', alignItems: 'center', gap: '0.55rem' }}><CalendarIcon colour={C.sky} /> My key dates</h2>
+        <button type="button" onClick={kd.startEditing} style={linkBtn}>Edit</button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.9rem', alignItems: 'start' }}>
+        <div style={{ background: C.sky, color: 'white', borderRadius: '16px', padding: '1.1rem' }}>
+          {next ? (
+            <>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '12px', fontWeight: 700, color: '#E3EEFB', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Coming up</p>
+              <p style={{ margin: '0 0 0.4rem', display: 'flex', alignItems: 'baseline', gap: '0.55rem', flexWrap: 'wrap' }}>
+                {days > 0 && <span style={{ fontFamily: C.headingFont, fontSize: '44px', fontWeight: 700, lineHeight: 1 }}>{days}</span>}
+                <span style={{ fontSize: '16px', fontWeight: 600, lineHeight: 1.35 }}>
+                  {days === 0 ? `Today: ${groupUntilText(next)}` : `${days === 1 ? 'day' : 'days'} until ${groupUntilText(next)}`}
+                </span>
+              </p>
+              <p style={{ margin: '0 0 0.8rem', fontSize: '14px', color: '#E3EEFB' }}>{formatDate(next.date)}{nextDetail ? `: ${nextDetail}` : ''}</p>
+              <div style={{ background: 'rgba(255,255,255,0.14)', borderRadius: '10px', padding: '0.75rem 0.85rem' }}>
+                <p style={{ margin: '0 0 0.4rem', fontSize: '13px', fontWeight: 700 }}>Before then</p>
+                <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '14px', lineHeight: 1.5 }}>
+                  {groupChecklist(next).map((t) => <li key={t} style={{ marginBottom: '0.2rem' }}>{t}</li>)}
+                </ul>
+              </div>
+            </>
+          ) : (
+            <p style={{ margin: 0, fontSize: '16px', fontWeight: 600, lineHeight: 1.45 }}>
+              {settled ? 'All your key dates have passed. Congratulations on your new home!' : 'No dates coming up. Tap Edit to add the rest of your dates.'}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <ol style={{ ...card, listStyle: 'none', margin: '0 0 0.75rem' }}>
+            {events.map((g) => {
+              const past = g.date < today;
+              const isNext = next && g.date === next.date;
+              const detail = groupDetail(g);
+              return (
+                <li key={g.date} style={{ display: 'flex', gap: '0.7rem', padding: '0.45rem 0', alignItems: 'flex-start' }}>
+                  <span aria-hidden="true" style={{ width: '12px', height: '12px', borderRadius: '50%', marginTop: '5px', flexShrink: 0, background: past ? '#8494AC' : isNext ? C.red : C.sky }} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: '15px', fontWeight: isNext ? 700 : 500, color: past ? C.textSecondary : C.navy, textDecoration: past ? 'line-through' : 'none' }}>{groupTitle(g)}</span>
+                    {detail && <span style={{ display: 'block', fontSize: '13px', color: C.textSecondary }}>{detail}</span>}
+                  </span>
+                  <span style={{ fontSize: '14px', fontWeight: isNext ? 700 : 500, color: past ? C.textSecondary : C.navy, whiteSpace: 'nowrap' }}>{formatDate(g.date)}</span>
+                </li>
+              );
+            })}
+          </ol>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.6rem' }}>
+            <button type="button" onClick={() => downloadIcs(kd.dates)} style={outlineBtn}>Add to my calendar</button>
+            <button type="button" onClick={toggleReminders} aria-pressed={kd.reminders} style={kd.reminders ? { ...outlineBtn, background: C.sky, color: 'white' } : outlineBtn}>
+              Email reminders: {kd.reminders ? 'On' : 'Off'}
+            </button>
+          </div>
+          <p style={{ margin: '0.55rem 0 0', fontSize: '13px', color: C.textSecondary, lineHeight: 1.45 }}>
+            {kd.reminders
+              ? `We'll email ${user?.email || 'you'} ${REMIND_DAYS} days before each date.`
+              : user
+                ? `Turn on reminders and we'll email you ${REMIND_DAYS} days before each date.`
+                : `Create a free account to get an email ${REMIND_DAYS} days before each date. Your dates are saved on this device for now.`}
+          </p>
+          {kd.error && <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '14px', color: '#B3261E', fontWeight: 600 }}>{kd.error}</p>}
+        </div>
+      </div>
+
+      <p style={{ margin: '0.75rem 0 0', fontSize: '13px', color: C.textSecondary, lineHeight: 1.45 }}>
+        These are the dates you entered, so always confirm them with your solicitor.{' '}
+        {!settled && (
+          <>Finance not sorted yet?{' '}
+            <a href="/first-home-playbook/book-a-call" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); onNavigate('/book-a-call'); }} style={{ color: C.accent, fontWeight: 600 }}>Book a call</a>
+          </>
+        )}
+      </p>
+    </section>
+  );
+}
+
+// The editor while adding or changing dates, otherwise the countdown and timeline
+export function KeyDatesPanel({ kd, user, path, isMobile, onSignIn, onNavigate }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    // After saving, bring the countdown into view (it sits above the stage they were in)
+    if (kd.justSaved && !kd.editing && kd.has && ref.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      kd.clearJustSaved();
+    }
+  }, [kd.justSaved, kd.editing, kd.has]);
+  if (!kd.loaded) return null;
+  if (kd.editing) return <Editor kd={kd} path={path} isMobile={isMobile} />;
+  if (!kd.has) return null;
+  return <div ref={ref} style={{ scrollMarginTop: '80px' }}><View kd={kd} user={user} isMobile={isMobile} onSignIn={onSignIn} onNavigate={onNavigate} /></div>;
+}

@@ -19,6 +19,7 @@
     }
   ],
   "crons": [
-    { "path": "/api/keepalive", "schedule": "17 19 * * *" }
+    { "path": "/api/keepalive", "schedule": "17 19 * * *" },
+    { "path": "/api/key-date-reminders", "schedule": "30 19 * * *" }
   ]
 }

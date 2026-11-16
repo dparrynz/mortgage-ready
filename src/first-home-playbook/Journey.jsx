@@ -11,6 +11,7 @@ import {
   JOURNEY_GLOSSARY_LINKS,
   FLOOD_VIEWER_URL,
 } from './content.js';
+import { useKeyDates, KeyDatesPanel, KeyDatesPrompt } from './KeyDates.jsx';
 
 const LS_KEY = JOURNEY_PROGRESS_LS_KEY;
 
@@ -135,6 +136,7 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
   const [checklist, setChecklist] = useState({});
   const [loaded, setLoaded] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const kd = useKeyDates(user);
 
   const stages = useMemo(() => journeyStagesForPath(path), [path]);
   const usedAnchors = useMemo(() => new Set(), [path, selectedStage, expandedFullText]);
@@ -187,6 +189,16 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
   const stage = stages[selectedStage];
   const fullText = (path === 'auction' && JOURNEY_FULL_TEXT_AUCTION[selectedStage]) || JOURNEY_FULL_TEXT[selectedStage];
 
+  // Key dates come into play once there's an offer (or on auction day)
+  const offerStage = stages.findIndex((s) => /offer|auction day/i.test(s.title));
+  const showKeyDatesPrompt = kd.loaded && !kd.has && !kd.editing && offerStage !== -1 && selectedStage >= offerStage;
+  const keyDatesPanel = (
+    <KeyDatesPanel kd={kd} user={user} path={path} isMobile={isMobile} onSignIn={() => setShowAuthModal(true)} onNavigate={onNavigate} />
+  );
+  // Adding dates for the first time happens in place, inside the stage. Once
+  // saved, they sit at the top of the page whatever stage is open.
+  const keyDatesAtTop = kd.has;
+
   const goRelated = (label) => {
     const route = JOURNEY_RELATED_ROUTES[label];
     if (route) onNavigate(route);
@@ -224,6 +236,9 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
           );
         })}
       </div>
+
+      {showKeyDatesPrompt && <KeyDatesPrompt onStart={kd.startEditing} auction={path === 'auction'} />}
+      {!keyDatesAtTop && kd.editing && keyDatesPanel}
 
       {/* The detail, in bullet points */}
           {fullText && (
@@ -401,6 +416,8 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
             Pick how the home is being sold. Your ticks carry across both, so nothing is lost if you switch.
           </p>
         </div>
+
+        {keyDatesAtTop && keyDatesPanel}
 
         {isMobile ? (
           <>

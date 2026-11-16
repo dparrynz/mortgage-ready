@@ -172,6 +172,32 @@ const supabase = (() => {
     return res.ok ? { data: data?.[0]?.completed ?? null, error: null } : { data: null, error: data };
   };
 
+  // Key dates from the Journey page (offer accepted to settlement), one row
+  // per user in a `key_dates` table (see supabase/key_dates.sql). Only dates
+  // and short labels are stored. `sent` is left out on purpose so saving
+  // never wipes the record of reminders already emailed.
+  const saveKeyDates = async (dates, reminders) => {
+    const session = await getSession();
+    if (!session?.access_token) return { error: 'Not logged in' };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/key_dates?on_conflict=user_id`, {
+      method: 'POST',
+      headers: { ...headers, 'Authorization': `Bearer ${session.access_token}`, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ user_id: userIdFrom(session), dates, reminders: !!reminders, updated_at: new Date().toISOString() })
+    });
+    return res.ok ? { error: null } : { error: 'Failed to save' };
+  };
+
+  const getKeyDates = async () => {
+    const session = await getSession();
+    if (!session?.access_token) return { data: null, error: null };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/key_dates?user_id=eq.${encodeURIComponent(userIdFrom(session))}&select=dates,reminders`, {
+      headers: { ...headers, 'Authorization': `Bearer ${session.access_token}` }
+    });
+    if (!res.ok) return { data: null, error: 'Failed to load' };
+    const data = await res.json();
+    return { data: data?.[0] ?? null, error: null };
+  };
+
   // Handle OAuth callback
   const handleOAuthCallback = async () => {
     const hash = window.location.hash;
@@ -191,7 +217,7 @@ const supabase = (() => {
     return false;
   };
 
-  return { signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, getUser, saveScenario, getScenarios, deleteScenario, saveJourneyProgress, getJourneyProgress, handleOAuthCallback };
+  return { signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, getUser, saveScenario, getScenarios, deleteScenario, saveJourneyProgress, getJourneyProgress, saveKeyDates, getKeyDates, handleOAuthCallback };
 })();
 
 // ─── WINDOW WIDTH HOOK ───────────────────────────────────────────────────────
@@ -750,7 +776,7 @@ function AuthModal({ onClose, onSuccess }) {
 
 const PRIVACY_POLICY_CONTENT = ({ onNavigate }) => (
   <div style={{ fontSize: '13px', color: '#4a4a68', lineHeight: '1.7' }}>
-    <p><strong>Parry Financial Services</strong><br />Last updated: October 2026</p>
+    <p><strong>Parry Financial Services</strong><br />Last updated: November 2026</p>
 
     <h4 style={{ color: C.textPrimary, marginTop: '1.5rem' }}>1. Introduction</h4>
     <p>Parry Financial Services ("we", "us", "our") operates the mortgage calculator tools and First Home Playbook available at parryfs.com, and runs lead forms on Facebook and Instagram. We are committed to protecting your personal information in accordance with the New Zealand Privacy Act 2020.</p>
@@ -773,6 +799,7 @@ const PRIVACY_POLICY_CONTENT = ({ onNavigate }) => (
       <li>Password (stored as an encrypted hash - we never see your actual password)</li>
       <li>Calculator inputs you choose to save (purchase price, deposit, income, debts, expenses, age)</li>
       <li>Saved scenario results</li>
+      <li>Key dates you choose to save in the Journey page (such as when your conditions are due and your settlement date), and whether you want email reminders. We store the dates only, not the address or price of the property</li>
       <li>Date and time of account creation and last sign in</li>
     </ul>
     <p><strong>If you sign in with Google:</strong><br />Your name and email address as provided by Google. We do not receive your Google password.</p>
@@ -807,7 +834,7 @@ const PRIVACY_POLICY_CONTENT = ({ onNavigate }) => (
     <ul style={{ paddingLeft: '1.25rem' }}>
       <li><strong>Supabase</strong> - Secure database and authentication (Oceania region)</li>
       <li><strong>Google</strong> - Authentication only (if you use Google sign-in)</li>
-      <li><strong>Resend</strong> - Sending confirmation and password reset emails</li>
+      <li><strong>Resend</strong> - Sending confirmation and password reset emails, and key date reminders if you turn them on</li>
       <li><strong>Vercel</strong> - Website hosting</li>
       <li><strong>Meta (Facebook and Instagram)</strong> - Running our lead forms, and advertising where people have opted in to marketing</li>
       <li><strong>Microsoft Clarity</strong> - Website analytics, including masked session recordings</li>
