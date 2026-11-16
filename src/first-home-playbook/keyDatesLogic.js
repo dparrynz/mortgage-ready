@@ -9,6 +9,8 @@ export const REMIND_DAYS = 3; // email goes out this many days before a date
 export const MAX_CONDITIONS = 8;
 export const MAX_LABEL = 40;
 export const DEFAULT_CONDITIONS = ['Finance', 'Building report', 'LIM'];
+export const DEFAULT_WORKING_DAYS = 10;
+export const MAX_WORKING_DAYS = 60;
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_MS = 86400000;
@@ -20,12 +22,159 @@ export function isIsoDate(s) {
 }
 
 const cleanDate = (s) => (isIsoDate(s) ? s : '');
+const cleanDays = (n) => (Number.isInteger(n) && n >= 1 && n <= MAX_WORKING_DAYS ? n : null);
 const cleanLabel = (s) => String(s ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, MAX_LABEL);
+
+// ---------------------------------------------------------------------------
+// NZ working days, as defined in the standard ADLS/REINZ Agreement for Sale
+// and Purchase of Real Estate. A working day is any day other than:
+//   - Saturday, Sunday, Waitangi Day, Good Friday, Easter Monday, Anzac Day,
+//     the Sovereign's Birthday and Labour Day
+//   - the Monday after Waitangi Day or Anzac Day when they fall on a weekend
+//   - 24 December to 5 January inclusive (to 15 January for the LIM condition)
+//   - the anniversary day of the province the property is in
+//   - Matariki
+// Christmas, Boxing Day and New Year all sit inside the 24 Dec to 5 Jan break.
+// ---------------------------------------------------------------------------
+
+// Matariki is set by law (Te Kāhui o Matariki Public Holiday Act 2022,
+// Schedule 1). Always a Friday. Dates after 2052 haven't been set yet.
+const MATARIKI = {
+  2022: '06-24', 2023: '07-14', 2024: '06-28', 2025: '06-20', 2026: '07-10', 2027: '06-25',
+  2028: '07-14', 2029: '07-06', 2030: '06-21', 2031: '07-11', 2032: '07-02', 2033: '06-24',
+  2034: '07-07', 2035: '06-29', 2036: '07-18', 2037: '07-10', 2038: '06-25', 2039: '07-15',
+  2040: '07-06', 2041: '07-19', 2042: '07-11', 2043: '07-03', 2044: '06-24', 2045: '07-07',
+  2046: '06-29', 2047: '07-19', 2048: '07-03', 2049: '06-25', 2050: '07-15', 2051: '06-30',
+  2052: '06-21',
+};
+
+// Provinces for anniversary days, with the regions usually included in each
+// (as listed on govt.nz). Rules follow Employment New Zealand.
+export const PROVINCES = [
+  { id: 'auckland', label: 'Auckland, Northland, Waikato, Bay of Plenty or Gisborne' },
+  { id: 'wellington', label: 'Wellington, Manawatū or Whanganui' },
+  { id: 'hawkes-bay', label: "Hawke's Bay" },
+  { id: 'taranaki', label: 'Taranaki' },
+  { id: 'nelson', label: 'Nelson, Tasman or Buller' },
+  { id: 'marlborough', label: 'Marlborough' },
+  { id: 'westland', label: 'Westland' },
+  { id: 'canterbury', label: 'Canterbury (Christchurch and north)' },
+  { id: 'south-canterbury', label: 'South Canterbury' },
+  { id: 'otago', label: 'Otago' },
+  { id: 'southland', label: 'Southland' },
+  { id: 'chatham', label: 'Chatham Islands' },
+];
+export const DEFAULT_PROVINCE = 'auckland';
+const PROVINCE_IDS = new Set(PROVINCES.map((p) => p.id));
+
+const toIso = (y, m, d) => new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10);
+const dow = (iso) => new Date(`${iso}T00:00:00Z`).getUTCDay(); // 0 Sunday ... 6 Saturday
+export function addDays(iso, n) { return new Date(Date.parse(`${iso}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10); }
+
+// Easter Sunday (Gregorian calendar)
+function easterSunday(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+  return toIso(y, month, day);
+}
+// The nth given weekday of a month (n = 1 is the first)
+function nthWeekday(y, m, weekday, n) {
+  const first = toIso(y, m, 1);
+  return addDays(first, ((weekday - dow(first) + 7) % 7) + (n - 1) * 7);
+}
+// The Monday closest to a date (Tue to Thu go back, Fri to Sun go forward)
+function mondayNearest(y, m, d) {
+  const iso = toIso(y, m, d);
+  const shift = [1, 0, -1, -2, -3, 3, 2][dow(iso)];
+  return addDays(iso, shift);
+}
+const mondayised = (iso) => (dow(iso) === 6 ? addDays(iso, 2) : dow(iso) === 0 ? addDays(iso, 1) : null);
+
+export function anniversaryDay(province, y) {
+  const labour = nthWeekday(y, 10, 1, 4);
+  switch (province) {
+    case 'wellington': return mondayNearest(y, 1, 22);
+    case 'auckland': return mondayNearest(y, 1, 29);
+    case 'nelson': return mondayNearest(y, 2, 1);
+    case 'taranaki': return nthWeekday(y, 3, 1, 2);
+    case 'otago': {
+      const day = mondayNearest(y, 3, 23);
+      return day === addDays(easterSunday(y), 1) ? addDays(day, 1) : day; // clashes with Easter Monday: the Tuesday
+    }
+    case 'southland': return addDays(easterSunday(y), 2); // Easter Tuesday
+    case 'south-canterbury': return nthWeekday(y, 9, 1, 4);
+    case 'hawkes-bay': return addDays(labour, -3); // Friday before Labour Day
+    case 'marlborough': return addDays(labour, 7); // first Monday after Labour Day
+    case 'canterbury': return addDays(nthWeekday(y, 11, 2, 1), 10); // second Friday after the first Tuesday in November
+    case 'westland': return mondayNearest(y, 12, 1);
+    case 'chatham': return mondayNearest(y, 11, 30);
+    default: return null;
+  }
+}
+
+const holidayCache = new Map();
+// Every non-working day in a year that isn't a weekend or the Christmas break
+export function nzHolidays(y, province) {
+  const key = `${y}|${province}`;
+  if (holidayCache.has(key)) return holidayCache.get(key);
+  const easter = easterSunday(y);
+  const waitangi = toIso(y, 2, 6), anzac = toIso(y, 4, 25);
+  const days = [
+    waitangi, mondayised(waitangi),
+    addDays(easter, -2), addDays(easter, 1),
+    anzac, mondayised(anzac),
+    nthWeekday(y, 6, 1, 1), // Sovereign's (King's) Birthday
+    nthWeekday(y, 10, 1, 4), // Labour Day
+    MATARIKI[y] ? `${y}-${MATARIKI[y]}` : null,
+    anniversaryDay(province, y),
+  ].filter(Boolean);
+  const set = new Set(days);
+  holidayCache.set(key, set);
+  return set;
+}
+
+// lim: the LIM condition's Christmas break runs to 15 January, not 5 January
+export function isWorkingDay(iso, province = DEFAULT_PROVINCE, { lim = false } = {}) {
+  const wd = dow(iso);
+  if (wd === 0 || wd === 6) return false;
+  const [y, m, d] = iso.split('-').map(Number);
+  if ((m === 12 && d >= 24) || (m === 1 && d <= (lim ? 15 : 5))) return false;
+  return !nzHolidays(y, province).has(iso);
+}
+
+// "n working days after" a date: counting starts the next working day
+export function addWorkingDays(iso, n, province = DEFAULT_PROVINCE, opts) {
+  if (!isIsoDate(iso) || !Number.isInteger(n) || n < 1) return '';
+  let d = iso;
+  let count = 0;
+  while (count < n) {
+    d = addDays(d, 1);
+    if (isWorkingDay(d, province, opts)) count += 1;
+  }
+  return d;
+}
+
+export const isLimCondition = (label) => /\blim\b/i.test(String(label || ''));
+
+// Works out each condition's date from its number of working days
+export function withCalculatedDates(dates) {
+  const d = normaliseKeyDates(dates);
+  if (!d.accepted) return d;
+  return {
+    ...d,
+    conditions: d.conditions.map((c) => (c.days
+      ? { ...c, date: addWorkingDays(d.accepted, c.days, d.province, { lim: isLimCondition(c.label) }) }
+      : c)),
+  };
+}
 
 export function emptyKeyDates(path) {
   return {
     accepted: '',
-    conditions: path === 'auction' ? [] : DEFAULT_CONDITIONS.map((label) => ({ label, date: '' })),
+    province: DEFAULT_PROVINCE,
+    conditions: path === 'auction' ? [] : DEFAULT_CONDITIONS.map((label) => ({ label, days: DEFAULT_WORKING_DAYS, date: '' })),
     deposit: '',
     settlement: '',
   };
@@ -36,10 +185,16 @@ export function normaliseKeyDates(raw) {
   const r = raw && typeof raw === 'object' ? raw : {};
   const conditions = Array.isArray(r.conditions)
     ? r.conditions.slice(0, MAX_CONDITIONS)
-        .map((c) => ({ label: cleanLabel(c?.label), date: cleanDate(c?.date) }))
-        .filter((c) => c.label || c.date)
+        .map((c) => ({ label: cleanLabel(c?.label), days: cleanDays(c?.days), date: cleanDate(c?.date) }))
+        .filter((c) => c.label || c.date || c.days)
     : [];
-  return { accepted: cleanDate(r.accepted), conditions, deposit: cleanDate(r.deposit), settlement: cleanDate(r.settlement) };
+  return {
+    accepted: cleanDate(r.accepted),
+    province: PROVINCE_IDS.has(r.province) ? r.province : DEFAULT_PROVINCE,
+    conditions,
+    deposit: cleanDate(r.deposit),
+    settlement: cleanDate(r.settlement),
+  };
 }
 
 export function hasAnyDate(d) {

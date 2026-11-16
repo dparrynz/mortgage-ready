@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { C, primaryBtn, supabase } from '../../ParryFSApp.jsx';
 import {
-  KEY_DATES_LS_KEY, REMIND_DAYS, MAX_CONDITIONS, MAX_LABEL,
+  KEY_DATES_LS_KEY, REMIND_DAYS, MAX_CONDITIONS, MAX_LABEL, MAX_WORKING_DAYS, DEFAULT_WORKING_DAYS, PROVINCES,
+  addWorkingDays, isLimCondition, withCalculatedDates,
   emptyKeyDates, normaliseKeyDates, hasAnyDate, keyDateEvents, nextEvent, dayDiff, todayIso,
   formatDate, groupTitle, groupDetail, groupChecklist, groupUntilText, buildIcs,
 } from './keyDatesLogic.js';
@@ -109,16 +110,42 @@ export function KeyDatesPrompt({ onStart, auction }) {
 
 function Editor({ kd, path, isMobile }) {
   const { card, fieldLabel, dateInput, linkBtn } = styles();
-  const [draft, setDraft] = useState(() => (kd.has ? kd.dates : emptyKeyDates(path)));
+  // Each condition is either "N working days after the offer" (worked out for
+  // them) or a fixed date, whichever their agreement says
+  const [draft, setDraft] = useState(() => {
+    const d = kd.has ? kd.dates : emptyKeyDates(path);
+    return { ...d, conditions: d.conditions.map((c) => ({ ...c, mode: c.days || !c.date ? 'days' : 'date' })) };
+  });
   const [problem, setProblem] = useState('');
+  useEffect(() => { setProblem(''); }, [draft]); // clear an old message once they change something
   const set = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
   const setCond = (i, patch) => setDraft((d) => ({ ...d, conditions: d.conditions.map((c, j) => (j === i ? { ...c, ...patch } : c)) }));
   const removeCond = (i) => setDraft((d) => ({ ...d, conditions: d.conditions.filter((_, j) => j !== i) }));
-  const addCond = () => setDraft((d) => ({ ...d, conditions: [...d.conditions, { label: '', date: '' }] }));
+  const addCond = () => setDraft((d) => ({ ...d, conditions: [...d.conditions, { label: '', days: DEFAULT_WORKING_DAYS, date: '', mode: 'days' }] }));
+
+  const condDate = (c) => (c.mode === 'days'
+    ? addWorkingDays(draft.accepted, c.days, draft.province, { lim: isLimCondition(c.label) })
+    : c.date);
+  const lastCondDate = draft.conditions.map(condDate).filter(Boolean).sort().pop() || '';
+
+  // What gets saved: working-day conditions keep their number and get the
+  // worked-out date; fixed-date ones drop the number
+  const toSave = () => withCalculatedDates({
+    ...draft,
+    conditions: draft.conditions.map(({ mode, ...c }) => (mode === 'days' ? { ...c, date: '' } : { ...c, days: null })),
+  });
 
   const submit = (e) => {
     e.preventDefault();
-    const clean = normaliseKeyDates(draft);
+    if (draft.conditions.some((c) => c.mode === 'days' && c.days) && !draft.accepted) {
+      setProblem('Add the date your offer was accepted, so we can work out your conditions dates.');
+      return;
+    }
+    if (draft.conditions.some((c) => c.mode === 'days' && !c.days)) {
+      setProblem(`Enter a number of working days (1 to ${MAX_WORKING_DAYS}) for each condition, or pick a date instead.`);
+      return;
+    }
+    const clean = toSave();
     if (!hasAnyDate(clean)) { setProblem('Add at least one date to save.'); return; }
     const first = clean.accepted;
     const later = [...clean.conditions.map((c) => c.date), clean.deposit, clean.settlement].filter(Boolean);
@@ -127,7 +154,9 @@ function Editor({ kd, path, isMobile }) {
     kd.save(clean);
   };
 
-  const row = { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 190px', gap: isMobile ? '0.35rem' : '0.75rem', alignItems: 'center' };
+  const row = { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 220px', gap: isMobile ? '0.35rem' : '0.75rem', alignItems: 'center' };
+  const removeBtn = { width: '44px', height: '44px', border: 'none', background: 'transparent', color: C.textSecondary, fontSize: '22px', cursor: 'pointer' };
+  const small = { margin: 0, fontSize: '13px', color: C.textSecondary, lineHeight: 1.45 };
 
   return (
     <form onSubmit={submit} style={{ ...card, marginBottom: '1.25rem' }}>
@@ -136,26 +165,54 @@ function Editor({ kd, path, isMobile }) {
         You'll find these in your Sale and Purchase Agreement. Not sure? Your solicitor or agent can confirm them. Leave out any that don't apply.
       </p>
 
-      <div style={{ ...row, marginBottom: '1rem' }}>
+      <div style={{ ...row, marginBottom: '0.9rem' }}>
         <label htmlFor="kd-accepted" style={fieldLabel}>{path === 'auction' ? 'Auction day' : 'Offer accepted'}</label>
         <input id="kd-accepted" type="date" value={draft.accepted} onChange={(e) => set('accepted', e.target.value)} style={dateInput} />
       </div>
 
+      {path !== 'auction' && (
+        <div style={{ ...row, marginBottom: '1rem' }}>
+          <label htmlFor="kd-province" style={fieldLabel}>Where's the property?</label>
+          <select id="kd-province" value={draft.province} onChange={(e) => set('province', e.target.value)} style={{ ...dateInput, appearance: 'auto' }}>
+            {PROVINCES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
+        </div>
+      )}
+
       <div style={{ background: C.inputBg, borderRadius: '14px', padding: '0.9rem', marginBottom: '1rem' }}>
         <p style={{ margin: '0 0 0.2rem', fontSize: '15px', fontWeight: 700, color: C.navy }}>Conditions due</p>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '13px', color: C.textSecondary, lineHeight: 1.45 }}>
+        <p style={{ ...small, margin: '0 0 0.8rem' }}>
           {path === 'auction'
-            ? "An auction sale is usually unconditional, so you can skip this."
-            : 'Often 10 working days after your offer is accepted, but use the dates written in your agreement.'}
+            ? 'An auction sale is usually unconditional, so you can skip this.'
+            : 'Enter the working days written in your agreement and we\'ll work out the date. We skip weekends, public holidays, your anniversary day and the Christmas break (24 December to 5 January, or to 15 January for the LIM).'}
         </p>
-        {draft.conditions.map((c, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr) 44px' : 'minmax(0, 1fr) 190px 44px', gap: '0.5rem', alignItems: 'center', marginBottom: '0.6rem' }}>
-            <input type="text" aria-label={`Condition ${i + 1} name`} placeholder="Condition name" maxLength={MAX_LABEL} value={c.label} onChange={(e) => setCond(i, { label: e.target.value })} style={{ ...dateInput, background: 'white', gridColumn: isMobile ? '1 / 2' : 'auto' }} />
-            {isMobile && <button type="button" aria-label={`Remove ${c.label || 'this condition'}`} onClick={() => removeCond(i)} style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', color: C.textSecondary, fontSize: '22px', cursor: 'pointer' }}>×</button>}
-            <input type="date" aria-label={`${c.label || `Condition ${i + 1}`} due date`} value={c.date} onChange={(e) => setCond(i, { date: e.target.value })} style={{ ...dateInput, background: 'white', gridColumn: isMobile ? '1 / 3' : 'auto' }} />
-            {!isMobile && <button type="button" aria-label={`Remove ${c.label || 'this condition'}`} onClick={() => removeCond(i)} style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', color: C.textSecondary, fontSize: '22px', cursor: 'pointer' }}>×</button>}
-          </div>
-        ))}
+        {draft.conditions.map((c, i) => {
+          const date = condDate(c);
+          const name = c.label || `Condition ${i + 1}`;
+          return (
+            <div key={i} style={{ background: 'white', borderRadius: '12px', padding: '0.6rem 0.7rem', marginBottom: '0.6rem' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <input type="text" aria-label={`Condition ${i + 1} name`} placeholder="Condition name" maxLength={MAX_LABEL} value={c.label} onChange={(e) => setCond(i, { label: e.target.value })} style={{ ...dateInput, background: 'white', flex: 1, fontWeight: 600 }} />
+                <button type="button" aria-label={`Remove ${name}`} onClick={() => removeCond(i)} style={removeBtn}>×</button>
+              </div>
+              {c.mode === 'days' ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.6rem' }}>
+                  <input type="number" inputMode="numeric" min="1" max={MAX_WORKING_DAYS} aria-label={`${name}: working days after the offer`} value={c.days ?? ''} onChange={(e) => { const n = parseInt(e.target.value, 10); setCond(i, { days: Number.isInteger(n) ? Math.min(Math.max(n, 1), MAX_WORKING_DAYS) : null }); }} style={{ ...dateInput, width: '76px', textAlign: 'center' }} />
+                  <span style={{ fontSize: '14px', color: C.navy }}>working days</span>
+                  <span aria-live="polite" style={{ fontSize: '15px', fontWeight: 700, color: date ? C.navy : C.textMuted, marginLeft: isMobile ? 0 : 'auto' }}>
+                    {date ? `→ ${formatDate(date)}` : draft.accepted ? '' : '→ add the offer date'}
+                  </span>
+                  <button type="button" onClick={() => setCond(i, { mode: 'date', date: date || c.date })} style={{ ...linkBtn, fontSize: '13px', flexBasis: '100%', textAlign: 'left', padding: '0.2rem 0', minHeight: '36px' }}>Pick a date instead</button>
+                </div>
+              ) : (
+                <div>
+                  <input type="date" aria-label={`${name} due date`} value={c.date} onChange={(e) => setCond(i, { date: e.target.value })} style={dateInput} />
+                  <button type="button" onClick={() => setCond(i, { mode: 'days', days: c.days || DEFAULT_WORKING_DAYS })} style={{ ...linkBtn, fontSize: '13px', padding: '0.2rem 0', minHeight: '36px' }}>Use working days instead</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
         {draft.conditions.length < MAX_CONDITIONS && (
           <button type="button" onClick={addCond} style={linkBtn}>+ Add {draft.conditions.length ? 'another' : 'a'} condition</button>
         )}
@@ -165,15 +222,18 @@ function Editor({ kd, path, isMobile }) {
         <label htmlFor="kd-deposit" style={fieldLabel}>Deposit due</label>
         <input id="kd-deposit" type="date" value={draft.deposit} onChange={(e) => set('deposit', e.target.value)} style={dateInput} />
       </div>
-      <p style={{ margin: '0 0 1rem', fontSize: '13px', color: C.textSecondary, lineHeight: 1.45 }}>
+      <p style={{ ...small, margin: '0 0 0.2rem' }}>
         {path === 'auction' ? 'At auction the deposit is usually paid on the day.' : 'Often the day you go unconditional. Your agreement says when.'}
       </p>
+      {path !== 'auction' && lastCondDate && draft.deposit !== lastCondDate && (
+        <button type="button" onClick={() => set('deposit', lastCondDate)} style={{ ...linkBtn, fontSize: '13px', padding: '0.2rem 0', minHeight: '36px' }}>Same day as my last condition ({formatDate(lastCondDate)})</button>
+      )}
 
-      <div style={{ ...row, marginBottom: '0.3rem' }}>
+      <div style={{ ...row, margin: '0.8rem 0 0.3rem' }}>
         <label htmlFor="kd-settlement" style={fieldLabel}>Settlement</label>
         <input id="kd-settlement" type="date" value={draft.settlement} onChange={(e) => set('settlement', e.target.value)} style={dateInput} />
       </div>
-      <p style={{ margin: '0 0 1rem', fontSize: '13px', color: C.textSecondary, lineHeight: 1.45 }}>We'll include insurance and your pre-settlement inspection in your settlement reminder.</p>
+      <p style={{ ...small, margin: '0 0 1rem' }}>We'll include insurance and your pre-settlement inspection in your settlement reminder.</p>
 
       {problem && <p role="alert" style={{ margin: '0 0 0.9rem', fontSize: '14px', color: '#B3261E', fontWeight: 600 }}>{problem}</p>}
 
@@ -182,6 +242,7 @@ function Editor({ kd, path, isMobile }) {
         <button type="button" onClick={kd.cancelEditing} style={linkBtn}>Cancel</button>
         {kd.has && <button type="button" onClick={kd.clear} style={{ ...linkBtn, color: C.textSecondary, marginLeft: 'auto' }}>Remove my dates</button>}
       </div>
+      <p style={{ ...small, marginTop: '0.8rem' }}>Worked out dates follow the standard ADLS/REINZ agreement. Always check them with your solicitor, as your agreement may differ.</p>
     </form>
   );
 }
