@@ -104,7 +104,8 @@ export default async function handler(req, res) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
-  const secret = process.env.REMINDERS_SECRET;
+  // Ignore spaces, line breaks or quote marks picked up when the value was copied
+  const secret = (process.env.REMINDERS_SECRET || '').trim().replace(/^["'`]+|["'`]+$/g, '').trim();
   const apiKey = process.env.RESEND_API_KEY;
   if (!secret || !apiKey) {
     res.status(500).json({ error: 'Reminders not configured' });
