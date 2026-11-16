@@ -116,7 +116,9 @@ export default async function handler(req, res) {
   try {
     rows = await rpc('key_date_reminders_due', { p_secret: secret });
   } catch (e) {
-    console.error('Could not load reminders', e.message);
+    // Safe to log: the secret's length and the start of its hash, never the secret
+    const { createHash } = await import('node:crypto');
+    console.error('Could not load reminders', e.message, `secret length ${secret.length}, hash starts ${createHash('sha256').update(secret, 'utf8').digest('hex').slice(0, 6)}`);
     res.status(502).json({ error: 'Could not load reminders' });
     return;
   }
