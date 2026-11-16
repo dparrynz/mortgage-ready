@@ -76,7 +76,6 @@ export function emailFor(group, firstName) {
 </td></tr></table>
 <p style="${p}">${advice}</p>
 <p style="margin:0 0 20px"><a href="${JOURNEY_URL}" style="display:inline-block;background:#D93A25;color:#FFFFFF;text-decoration:none;font-weight:600;font-size:16px;padding:13px 20px;border-radius:10px">See my key dates</a></p>
-<p style="${p}">Thanks, Dan</p>
 <p style="margin:0;font-size:13px;line-height:1.5;color:#5C6B85">This reminder uses the dates you entered, so always confirm them with your solicitor. You're getting it because you turned on reminders in the First Home Playbook. To stop them, open <a href="${JOURNEY_URL}" style="color:#1572D3">your key dates</a> and turn reminders off.</p>
 </td></tr></table>
 </td></tr></table>
@@ -91,8 +90,6 @@ ${groupChecklist(group).map((t) => `- ${t}`).join('\n')}
 ${advice}
 
 See my key dates: ${JOURNEY_URL}
-
-Thanks, Dan
 
 This reminder uses the dates you entered, so always confirm them with your solicitor. To stop reminders, open your key dates and turn them off.`;
   return { html, text };
