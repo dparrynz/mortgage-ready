@@ -87,8 +87,8 @@ export const SEO_PAGES = {
     priority: 0.9,
   },
   '/loan-repayment': {
-    title: brand('Loan Repayment Calculator'),
-    description: 'Calculate your mortgage repayments and compare multiple loans.',
+    title: brand('Mortgage repayment calculator: weekly, fortnightly or monthly'),
+    description: 'Work out your mortgage repayments weekly, fortnightly or monthly, including interest only and split loans. Free and simple to use.',
     priority: 0.5,
   },
   '/quick-repay': {
@@ -200,7 +200,12 @@ export function seoHeadHtml(path) {
     `<meta property="og:title" content="${esc(s.title)}" />`,
     `<meta property="og:description" content="${esc(s.description)}" />`,
     `<meta property="og:url" content="${esc(s.canonicalUrl)}" />`,
-    `<meta name="twitter:card" content="summary" />`,
+    `<meta property="og:image" content="${SITE_URL}/og-image.jpg" />`,
+    `<meta property="og:image:width" content="1200" />`,
+    `<meta property="og:image:height" content="630" />`,
+    `<meta property="og:image:alt" content="First Home Playbook: buying your first home, made simple" />`,
+    `<meta name="twitter:card" content="summary_large_image" />`,
+    `<meta name="twitter:image" content="${SITE_URL}/og-image.jpg" />`,
     ...(s.article ? [`<script type="application/ld+json">${JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'Article',
