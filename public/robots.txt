@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://parryfs.com/sitemap.xml
+Sitemap: https://www.parryfs.com/sitemap.xml

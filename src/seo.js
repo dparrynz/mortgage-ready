@@ -12,7 +12,9 @@
 
 import { ARTICLES, ARTICLES_ROOT } from './articles/index.js';
 
-export const SITE_URL = 'https://parryfs.com';
+// The live site redirects parryfs.com to www.parryfs.com (Vercel), so www is
+// the address Google indexes. Canonical links and the sitemap must match it.
+export const SITE_URL = 'https://www.parryfs.com';
 export const SITE_NAME = 'First Home Playbook';
 
 const brand = (title) => `${title} | ${SITE_NAME}`;
