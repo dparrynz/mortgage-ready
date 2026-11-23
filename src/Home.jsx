@@ -1,6 +1,7 @@
 import React from 'react';
 import { C, useWindowWidth } from '../ParryFSApp.jsx';
 import Reviews from './Reviews.jsx';
+import { ARTICLES, formatDate } from './articles/index.js';
 
 // Homepage: "Bold and simple", all blue with red for the main actions.
 // Two quiet colours (sky blue and white) and one loud one (red), so the red
@@ -102,6 +103,27 @@ export default function Home({ go }) {
           </div>
         </div>
       </section>
+
+      {/* Latest articles (hidden until there are some) */}
+      {ARTICLES.length > 0 && (
+        <section style={{ padding: isMobile ? '0 20px 48px' : '0 24px 96px' }}>
+          <div style={wrap}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem', margin: '0 0 22px' }}>
+              <h2 style={{ margin: 0, fontFamily: HEADING, fontSize: isMobile ? '24px' : '32px', fontWeight: 700 }}>Latest articles</h2>
+              <Link to="/articles" go={go} style={{ fontSize: isMobile ? '15px' : '16px', fontWeight: 600, color: C.accent, textDecoration: 'none', whiteSpace: 'nowrap' }}>All articles →</Link>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: isMobile ? '10px' : '16px' }}>
+              {ARTICLES.slice(0, 3).map((a) => (
+                <Link key={a.path} to={a.path} go={go} style={{ display: 'block', padding: isMobile ? '18px' : '24px', borderRadius: '18px', border: '1px solid #DCE6F7', textDecoration: 'none', color: C.navy }}>
+                  <span style={{ display: 'block', fontSize: '13px', color: '#6B7A93', marginBottom: '8px' }}>{formatDate(a.date)}</span>
+                  <span style={{ display: 'block', fontSize: isMobile ? '17px' : '19px', fontWeight: 600, lineHeight: 1.35, marginBottom: '8px' }}>{a.title}</span>
+                  <span style={{ display: 'block', fontSize: isMobile ? '14px' : '15px', color: '#4A5872', lineHeight: 1.5 }}>{a.description}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Reviews */}
       <section style={{ padding: isMobile ? '8px 20px 48px' : '0 24px 96px' }}>

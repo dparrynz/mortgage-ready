@@ -188,6 +188,23 @@ export function applySeo(path) {
   set('meta[name="robots"]', 'content', s.noindex ? 'noindex, follow' : 'index, follow', meta('robots', 'name'));
 }
 
+// Breadcrumb trail for Google results, e.g. Home › Articles › This article.
+const SECTION_NAMES = { '/first-home-playbook': 'The Playbook', '/articles': 'Articles' };
+const shortTitle = (t) => t.replace(/ \| .*$/, '');
+function breadcrumbs(path) {
+  const clean = normalise(path);
+  if (clean === '/' || !SEO_PAGES[clean]) return null;
+  const trail = [{ name: 'Home', url: `${SITE_URL}/` }];
+  const section = Object.keys(SECTION_NAMES).find((p) => clean.startsWith(p + '/'));
+  if (section) trail.push({ name: SECTION_NAMES[section], url: `${SITE_URL}${section}` });
+  trail.push({ name: SECTION_NAMES[clean] || shortTitle(SEO_PAGES[clean].title), url: `${SITE_URL}${clean}` });
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: trail.map((t, i) => ({ '@type': 'ListItem', position: i + 1, name: t.name, item: t.url })),
+  };
+}
+
 // The same tags as HTML, for the build step.
 const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 export function seoHeadHtml(path) {
@@ -208,6 +225,7 @@ export function seoHeadHtml(path) {
     `<meta property="og:image:alt" content="First Home Playbook: buying your first home, made simple" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:image" content="${SITE_URL}/og-image.jpg" />`,
+    ...(!s.noindex && breadcrumbs(path) ? [`<script type="application/ld+json">${JSON.stringify(breadcrumbs(path)).replace(/</g, '\\u003c')}</script>`] : []),
     ...(s.article ? [`<script type="application/ld+json">${JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'Article',
