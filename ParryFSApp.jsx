@@ -5,6 +5,7 @@ import Home from './src/Home.jsx';
 import Welcome from './src/Welcome.jsx';
 import { useScrollToTopOnChange } from './src/useScrollToTopOnChange.js';
 import ArticlesPage from './src/articles/ArticlesPage.jsx';
+import RelatedArticles from './src/articles/RelatedArticles.jsx';
 import { ARTICLES } from './src/articles/index.js';
 import PageHero, { heroFor } from './src/PageHero.jsx';
 import { SEO_PAGES, applySeo } from './src/seo.js';
@@ -3472,6 +3473,7 @@ export default function App({ prerender = false }) {
       <PageHero hero={hero} go={go} />
       <div style={{ maxWidth: '1100px', margin: hero ? '-64px auto 0' : '0 auto', padding: hero ? '0 1rem 1.5rem' : activeTab === 'home' ? '0.5rem 1rem 1.5rem' : '1.5rem 1rem', boxSizing: 'border-box', position: 'relative' }}>
         {activeTab !== 'home' && renderTab()}
+        {activeTab !== 'home' && activeTab !== 'articles' && <RelatedArticles path={path} go={go} />}
         <p style={{ textAlign: 'center', fontSize: '13px', color: C.textMuted, marginTop: '2rem' }}>
           First Home Playbook and Borrow Checker · parryfs.com · General information only · <a href="/privacy" onClick={e => { e.preventDefault(); handleSetActiveTab('privacy'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Privacy Policy</a> · <a href="/terms" onClick={e => { e.preventDefault(); handleSetActiveTab('terms'); }} style={{ color: C.textMuted, fontSize: '13px', textDecoration: 'underline' }}>Terms of Use</a>
         </p>
