@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+// The chart library is large, so it loads only when Quick Repay needs it.
+const BalanceChart = lazy(() => import('./src/BalanceChart.jsx'));
 import FirstHomePlaybookRouter from './src/first-home-playbook/FirstHomePlaybookRouter.jsx';
 import Home from './src/Home.jsx';
 import Welcome from './src/Welcome.jsx';
@@ -472,9 +473,13 @@ function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.handleOAuthCallback().then(() => {
-      supabase.getUser().then(u => { setUser(u); setLoading(false); });
-    });
+    // If Supabase can't be reached (e.g. it's paused), carry on signed out
+    // rather than leaving the page waiting.
+    supabase.handleOAuthCallback()
+      .then(() => supabase.getUser())
+      .then(u => setUser(u))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
   }, []);
 
   const signOut = async () => { await supabase.signOut(); setUser(null); };
@@ -1153,7 +1158,7 @@ const NavLink = ({ to, go, children, style, onClick }) => (
   </a>
 );
 
-const TopNav = ({ path, go, user, onSignIn, onSignOut, onSavedScenarios }) => {
+const TopNav = ({ path, go, user, authLoading, onSignIn, onSignOut, onSavedScenarios }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef(null);
@@ -1177,7 +1182,9 @@ const TopNav = ({ path, go, user, onSignIn, onSignOut, onSavedScenarios }) => {
   const account = user ? (
     <UserMenu user={user} onSignOut={onSignOut} onSavedScenarios={onSavedScenarios} />
   ) : (
-    <button onClick={onSignIn} style={{ background: 'white', border: 'none', color: C.navy, padding: '0.6rem 1.1rem', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+    // Kept in place but invisible while the sign-in check runs, so a signed-in
+    // visitor doesn't see "Sign in" flash before their menu appears.
+    <button onClick={onSignIn} aria-hidden={authLoading || undefined} tabIndex={authLoading ? -1 : undefined} style={{ background: 'white', border: 'none', color: C.navy, padding: '0.6rem 1.1rem', borderRadius: '999px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, whiteSpace: 'nowrap', visibility: authLoading ? 'hidden' : 'visible' }}>
       Sign in
     </button>
   );
@@ -2942,16 +2949,9 @@ function QuickRepay() {
 
           <div style={card}>
             <h3 style={sectionTitle}>Loan balance over time</h3>
-            <ResponsiveContainer width="100%" height={isMobile ? 220 : 280}>
-              <LineChart data={results.chart} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
-                <XAxis dataKey="year" type="number" domain={[0, 'dataMax']} tickCount={7} label={{ value: 'Years', position: 'insideBottom', offset: -10 }} />
-                <YAxis width={56} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={v => `$${fmtNZD(v)}`} labelFormatter={y => `Year ${y}`} />
-                <Legend verticalAlign="top" height={30} />
-                <Line type="monotone" dataKey="original" stroke={C.orange} name="Original" dot={false} strokeDasharray="5 5" isAnimationActive={false} connectNulls={false} />
-                <Line type="monotone" dataKey="withExtra" stroke={C.accent} name="With extra" dot={false} strokeWidth={2.5} isAnimationActive={false} connectNulls={false} />
-              </LineChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<div style={{ height: isMobile ? 220 : 280 }} />}>
+              <BalanceChart data={results.chart} height={isMobile ? 220 : 280} colors={{ original: C.orange, withExtra: C.accent }} fmtNZD={fmtNZD} />
+            </Suspense>
           </div>
 
           <div style={card}>
@@ -3369,9 +3369,9 @@ function CostToWait() {
 // LEGAL_PAGES is kept for the legal page components that read it.
 const LEGAL_PAGES = { privacy: SEO_PAGES['/privacy'], terms: SEO_PAGES['/terms'] };
 
-// prerender: set only by the build step (vite.config.js), which renders each
-// public page to plain HTML. It skips the signed-in check, which can't run there.
-export default function App({ prerender = false }) {
+// prerender is passed by the build step (vite.config.js), which renders each
+// public page to plain HTML. The app renders the same either way.
+export default function App({ prerender = false }) { // eslint-disable-line no-unused-vars
   const [path, setPath] = useState(window.location.pathname);
   const activeTab = tabFromPath(path);
   const hero = heroFor(activeTab, path);
@@ -3453,11 +3453,9 @@ export default function App({ prerender = false }) {
   // Page title, description and canonical link for the current page.
   useEffect(() => { applySeo(path); }, [path]);
 
-  if (loading && !prerender) return (
-    <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <p style={{ color: C.textSecondary }}>Loading...</p>
-    </div>
-  );
+  // No full-page "Loading..." screen: the page (already in the HTML from the
+  // build step) stays on screen while the sign-in check runs in the background.
+
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, width: '100%', boxSizing: 'border-box' }}>
@@ -3465,6 +3463,7 @@ export default function App({ prerender = false }) {
         path={path}
         go={go}
         user={user}
+        authLoading={loading}
         onSignIn={() => setShowAuthModal(true)}
         onSignOut={signOut}
         onSavedScenarios={() => setShowSavedScenarios(true)}
