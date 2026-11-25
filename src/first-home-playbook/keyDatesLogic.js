@@ -6,6 +6,10 @@
 
 export const KEY_DATES_LS_KEY = 'fhp_key_dates_v1';
 export const REMIND_DAYS = 3; // email goes out this many days before a date
+// A pre-approval running out needs more notice, so there's time to renew it
+export const PREAPPROVAL_REMIND_DAYS = 14;
+// Suggested pre-settlement inspection: this many working days before settlement
+export const INSPECTION_WORKING_DAYS_BEFORE = 2;
 export const MAX_CONDITIONS = 8;
 export const MAX_LABEL = 40;
 export const DEFAULT_CONDITIONS = ['Finance', 'Building report', 'LIM'];
@@ -156,6 +160,18 @@ export function addWorkingDays(iso, n, province = DEFAULT_PROVINCE, opts) {
   return d;
 }
 
+// The working day n working days before a date (counting back from the day before)
+export function workingDaysBefore(iso, n, province = DEFAULT_PROVINCE) {
+  if (!isIsoDate(iso) || !Number.isInteger(n) || n < 1) return '';
+  let d = iso;
+  let count = 0;
+  while (count < n) {
+    d = addDays(d, -1);
+    if (isWorkingDay(d, province)) count += 1;
+  }
+  return d;
+}
+
 export const isLimCondition = (label) => /\blim\b/i.test(String(label || ''));
 
 // Works out each condition's date from its number of working days
@@ -176,7 +192,9 @@ export function emptyKeyDates(path) {
     province: DEFAULT_PROVINCE,
     conditions: path === 'auction' ? [] : DEFAULT_CONDITIONS.map((label) => ({ label, days: DEFAULT_WORKING_DAYS, date: '' })),
     deposit: '',
+    inspection: '',
     settlement: '',
+    preapproval: '',
   };
 }
 
@@ -193,12 +211,19 @@ export function normaliseKeyDates(raw) {
     province: PROVINCE_IDS.has(r.province) ? r.province : DEFAULT_PROVINCE,
     conditions,
     deposit: cleanDate(r.deposit),
+    inspection: cleanDate(r.inspection),
     settlement: cleanDate(r.settlement),
+    preapproval: cleanDate(r.preapproval),
   };
 }
 
 export function hasAnyDate(d) {
-  return !!(d && (d.accepted || d.deposit || d.settlement || (d.conditions || []).some((c) => c.date)));
+  return !!(d && (hasOfferDates(d) || d.preapproval));
+}
+
+// Dates from an accepted offer onwards (everything except the pre-approval)
+export function hasOfferDates(d) {
+  return !!(d && (d.accepted || d.deposit || d.inspection || d.settlement || (d.conditions || []).some((c) => c.date)));
 }
 
 // Whole days from one date to another (both "YYYY-MM-DD")
@@ -230,11 +255,14 @@ const lowerFirst = (s) => (s && s[0] === s[0].toUpperCase() && s.slice(1) === s.
 export function keyDateEvents(dates) {
   const d = normaliseKeyDates(dates);
   const all = [];
+  // Once an offer is accepted the pre-approval has done its job
+  if (d.preapproval && !d.accepted) all.push({ date: d.preapproval, type: 'preapproval', label: 'Pre-approval expires' });
   if (d.accepted) all.push({ date: d.accepted, type: 'accepted', label: 'Offer accepted' });
   d.conditions.forEach((c) => { if (c.date) all.push({ date: c.date, type: 'condition', label: c.label || 'Condition' }); });
   if (d.deposit) all.push({ date: d.deposit, type: 'deposit', label: 'Deposit due' });
+  if (d.inspection) all.push({ date: d.inspection, type: 'inspection', label: 'Pre-settlement inspection' });
   if (d.settlement) all.push({ date: d.settlement, type: 'settlement', label: 'Settlement and keys' });
-  const order = { accepted: 0, condition: 1, deposit: 2, settlement: 3 };
+  const order = { preapproval: -1, accepted: 0, condition: 1, deposit: 2, inspection: 3, settlement: 4 };
   all.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : order[a.type] - order[b.type]));
   const groups = [];
   all.forEach((e) => {
@@ -249,10 +277,12 @@ export function keyDateEvents(dates) {
 export function groupTitle(group) {
   const parts = [];
   const conds = group.items.filter((i) => i.type === 'condition');
+  if (group.items.some((i) => i.type === 'preapproval')) parts.push('Pre-approval expires');
   if (group.items.some((i) => i.type === 'accepted')) parts.push('Offer accepted');
   if (conds.length === 1) parts.push(`${conds[0].label} due`);
   if (conds.length > 1) parts.push('Conditions due');
   if (group.items.some((i) => i.type === 'deposit')) parts.push('Deposit due');
+  if (group.items.some((i) => i.type === 'inspection')) parts.push('Pre-settlement inspection');
   if (group.items.some((i) => i.type === 'settlement')) parts.push('Settlement and keys');
   return parts.join(', ');
 }
@@ -261,9 +291,11 @@ export function groupTitle(group) {
 export function groupUntilText(group) {
   const parts = [];
   const conds = group.items.filter((i) => i.type === 'condition');
+  if (group.items.some((i) => i.type === 'preapproval')) parts.push('your pre-approval expires');
   if (conds.length === 1) parts.push(`your ${lowerFirst(conds[0].label)} condition is due`);
   if (conds.length > 1) parts.push('your conditions are due');
   if (group.items.some((i) => i.type === 'deposit')) parts.push('your deposit is due');
+  if (group.items.some((i) => i.type === 'inspection')) parts.push('your pre-settlement inspection');
   if (group.items.some((i) => i.type === 'settlement')) parts.push('settlement day');
   return joinList(parts);
 }
@@ -278,18 +310,34 @@ export function groupDetail(group) {
 export function groupChecklist(group) {
   const out = [];
   group.items.forEach((i) => {
+    if (i.type === 'preapproval') {
+      out.push('Talk to your mortgage adviser or bank about renewing your pre-approval');
+      out.push('Have your latest payslips and bank statements ready, as the bank may want updated ones');
+      out.push('Let them know about any changes to your income, debts or deposit');
+    }
     if (i.type === 'condition') {
       const l = i.label.toLowerCase();
-      if (l === 'finance') out.push('Confirm your finance is approved');
+      if (l === 'finance') {
+        out.push('Confirm your finance is approved');
+        out.push('Check you can get house insurance for the property, as the bank needs it in place');
+      }
       else if (l === 'building report') out.push('Read your building report and raise any concerns with your solicitor');
       else if (l === 'lim') out.push('Check your solicitor has reviewed the LIM');
       else out.push(`Check your ${lowerFirst(i.label)} condition is sorted`);
     }
     if (i.type === 'deposit') out.push('Have your deposit ready, and ask your solicitor how to pay it');
+    if (i.type === 'inspection') {
+      out.push('Book a time with the agent and take your agreement or a list of the chattels');
+      out.push('Check the chattels are there and working: oven, hob, heat pumps, dishwasher, lights');
+      out.push('Run the taps and shower, flush the toilets, and check the hot water');
+      out.push('Open and lock the windows and doors, and look for any new damage');
+      out.push('Check anything the seller agreed to fix has been done, and rubbish is gone');
+      out.push('Tell your solicitor straight away if anything is wrong');
+    }
     if (i.type === 'settlement') {
       out.push('Sign your loan documents with your solicitor');
       out.push('Make sure your insurance starts on settlement day');
-      out.push('Do your pre-settlement inspection');
+      if (!group.items.some((x) => x.type === 'inspection')) out.push('Do your pre-settlement inspection, if you have not already');
       out.push("If you're using KiwiSaver, check with your solicitor that it has come through");
     }
   });
@@ -304,19 +352,23 @@ export function nextEvent(dates, today) {
   return keyDateEvents(dates).find((g) => actionable(g) && g.date >= today) || null;
 }
 
-// Reminder emails to send today: anything due in the next REMIND_DAYS days
-// that hasn't had one yet. Normally that's exactly 3 days out; the window
-// also catches dates added late or a day the job didn't run.
+// How many days ahead a day's reminder goes out
+export const remindDaysFor = (group) => (group.items.some((i) => i.type === 'preapproval') ? PREAPPROVAL_REMIND_DAYS : REMIND_DAYS);
+
+// Reminder emails to send today: anything due within its reminder window
+// (3 days, or 14 for a pre-approval) that hasn't had one yet. Normally that's
+// exactly 3 (or 14) days out; the window also catches dates added late or a
+// day the job didn't run.
 export function dueReminders(dates, sent, today) {
   const done = sent && typeof sent === 'object' ? sent : {};
   return keyDateEvents(dates)
     .filter(actionable)
     .map((g) => ({ ...g, daysAway: dayDiff(today, g.date) }))
-    .filter((g) => g.daysAway >= 1 && g.daysAway <= REMIND_DAYS && !done[g.date]);
+    .filter((g) => g.daysAway >= 1 && g.daysAway <= remindDaysFor(g) && !done[g.date]);
 }
 
 // A calendar file (.ics) with each day as an all-day event and an alert at
-// 9am three days before
+// 9am three days before (14 days before a pre-approval runs out)
 export function buildIcs(dates) {
   const esc = (s) => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
   const compact = (iso) => iso.replace(/-/g, '');
@@ -336,7 +388,7 @@ export function buildIcs(dates) {
       `SUMMARY:${esc(title)}`,
       `DESCRIPTION:${esc(`Before this date:\n${todo}\n\nAlways confirm your dates with your solicitor.\nhttps://www.parryfs.com/first-home-playbook/journey`)}`,
       'TRANSP:TRANSPARENT',
-      'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(`${title} in ${REMIND_DAYS} days`)}`, `TRIGGER:-P${REMIND_DAYS - 1}DT15H`, 'END:VALARM',
+      'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(`${title} in ${remindDaysFor(g)} days`)}`, `TRIGGER:-P${remindDaysFor(g) - 1}DT15H`, 'END:VALARM',
       'END:VEVENT',
     );
   });
