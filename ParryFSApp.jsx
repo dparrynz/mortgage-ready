@@ -2408,7 +2408,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                           ? `Banks need at least a ${maxBorrowing.minDepPct}% deposit, so your deposit caps the price you can buy at. Growing your deposit is what lifts this number.${maxBorrowing.insights.debtsHeldBack ? " Clearing debts won't raise it yet, but it will help once your deposit grows." : ''}`
                           : maxBorrowing.insights.limit === 'income-cap'
                             ? 'Banks generally cap total lending at about 6 times your income before tax, including any credit card limits, so lowering limits or growing your income lifts this number.'
-                            : "Banks check you could still afford repayments if rates rose to 7%, after your living costs and other commitments. Lowering what goes out each month, or adding income, lifts this number."}
+                            : "Banks check you could still afford repayments if rates rose to 7%, after your living costs and other commitments, like loans and credit cards. Reducing those commitments, or adding income, lifts this number."}
                       </p>
                     </div>
                     {maxBorrowing.insights.levers.length > 0 && (
