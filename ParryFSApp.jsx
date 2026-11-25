@@ -1674,7 +1674,10 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     setResults({ loan, lvr, depPass, minDep, minDepPct, isFullDeposit, netMonthly, dti, dtiPass, stressedPmt, loanTerm, isOver55, livingExp, ccExp, bnplExp, slMonthly, umi, reqUmi, umiPass, umiStatus, isKO, feedback, usingGlee });
   }
 
-  function calculateMaxBorrowing() {
+  // The borrowing calculation. Its inputs are named exactly like the form's
+  // values, so the body below reads (and works) the same as before; the
+  // insights just run it again with one of these changed.
+  function computeMaxBorrowing({ deposit, creditCardLimit, bnplLimit, otherMonthlyLoans, numBoarders, boarderWeeklyIncome }) {
     const shadedVar = salaryMode === 'net' ? 0 : variableIncome * 0.8;
     const shadedPVar = (applicationType === 'joint' && partnerSalaryMode !== 'net') ? partnerVariableIncome * 0.8 : 0;
 
@@ -1742,8 +1745,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
     }
 
     if (maxLoan <= 0) {
-      setMaxBorrowing({ maxLoan: 0, maxPurchase: deposit, canBorrow: false, tips: [], noDeposit: deposit <= 0 });
-      return;
+      return { maxLoan: 0, maxPurchase: deposit, canBorrow: false, tips: [], noDeposit: deposit <= 0 };
     }
 
     const limitedByDeposit = maxLoan >= maxLoanFromDeposit - 1;
@@ -1767,7 +1769,48 @@ function BorrowChecker({ onSavePrompt, onSave }) {
       if (amountTo20 > 0) tips.push({ type: 'deposit', message: `Saving an additional $${fmtNZD(Math.round(amountTo20 / 1000) * 1000)} would get you to a 20% deposit, opening up more lenders and potentially a better interest rate.` });
     }
 
-    setMaxBorrowing({ maxLoan: Math.round(maxLoan), maxPurchase: Math.round(maxPurchase), canBorrow: maxLoan > 0, tips, depositPct: currentDepositPct, isKO, loanTerm, netMonthly, livingExp, limitedByDeposit, minDepPct: minDepPct * 100 });
+    return { maxLoan: Math.round(maxLoan), maxPurchase: Math.round(maxPurchase), canBorrow: maxLoan > 0, tips, depositPct: currentDepositPct, isKO, loanTerm, netMonthly, livingExp, limitedByDeposit, minDepPct: minDepPct * 100,
+      limitedByIncomeCap: !limitedByDeposit && maxLoan >= maxLoanFromDTI - 1 };
+  }
+
+  function calculateMaxBorrowing() {
+    const inputs = { deposit, creditCardLimit, bnplLimit, otherMonthlyLoans, numBoarders, boarderWeeklyIncome };
+    const result = computeMaxBorrowing(inputs);
+    result.insights = result.canBorrow ? borrowingInsights(inputs, result) : null;
+    setMaxBorrowing(result);
+  }
+
+  // "What's shaping your number": runs the same calculation again with one
+  // thing changed and reports the difference. Nothing here changes the result.
+  function borrowingInsights(inputs, base) {
+    const roundK = (n) => Math.round(n / 1000) * 1000;
+    const gainFrom = (change) => {
+      const r = computeMaxBorrowing({ ...inputs, ...change });
+      return { loan: roundK(r.maxLoan - base.maxLoan), purchase: roundK(r.maxPurchase - base.maxPurchase) };
+    };
+
+    const limit = base.limitedByDeposit ? 'deposit' : base.limitedByIncomeCap ? 'income-cap' : 'servicing';
+
+    const levers = [];
+    if (inputs.otherMonthlyLoans > 0) {
+      levers.push({ debt: true, icon: '🚗', label: `Paying off your car or personal loans ($${fmtNZD(inputs.otherMonthlyLoans)} a month)`, ...gainFrom({ otherMonthlyLoans: 0 }) });
+    }
+    if (inputs.creditCardLimit > 0) {
+      levers.push({ debt: true, icon: '💳', label: `Closing your $${fmtNZD(inputs.creditCardLimit)} of credit card limits`, ...gainFrom({ creditCardLimit: 0 }) });
+    }
+    if (inputs.bnplLimit > 0) {
+      levers.push({ debt: true, icon: '📱', label: 'Closing your Buy Now Pay Later accounts', ...gainFrom({ bnplLimit: 0 }) });
+    }
+    if (!(Number(inputs.numBoarders) > 0)) {
+      levers.push({ icon: '🏠', label: 'Taking in a boarder paying $200 a week', ...gainFrom({ numBoarders: 1, boarderWeeklyIncome: 200 }), note: 'Lenders treat boarder income differently, so check with an adviser.' });
+    }
+    levers.push({ icon: '💰', label: 'Saving another $10,000 of deposit', ...gainFrom({ deposit: (inputs.deposit || 0) + 10000 }), deposit: true });
+
+    // Only show changes that make a real difference
+    const shown = levers.filter((l) => l.purchase >= 5000);
+    const debtsHeldBack = limit === 'deposit' && levers.some((l) => l.debt);
+
+    return { limit, levers: shown, debtsHeldBack };
   }
 
   const ProgressBar = () => (
@@ -2351,12 +2394,49 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                   </p>
                 </div>
 
-                {/* Tips section */}
-                {maxBorrowing.tips.length > 0 && (
+                {/* What's shaping your number: the same calculation re-run with one thing changed */}
+                {maxBorrowing.insights && (
                   <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: '500', color: C.textPrimary, margin: '0 0 1rem' }}>💡 Ways to increase your borrowing power</h3>
+                    <h3 style={{ fontSize: '16px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.75rem' }}>What's shaping your number</h3>
+                    <div style={{ background: C.inputBg, borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '0.875rem' }}>
+                      <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 0.25rem' }}>What's setting your limit</p>
+                      <p style={{ fontSize: '15px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.35rem' }}>
+                        {maxBorrowing.insights.limit === 'deposit' ? 'Your deposit' : maxBorrowing.insights.limit === 'income-cap' ? 'The limit on borrowing compared with your income' : 'Your income after expenses'}
+                      </p>
+                      <p style={{ fontSize: '14px', color: C.textSecondary, margin: 0, lineHeight: '1.6' }}>
+                        {maxBorrowing.insights.limit === 'deposit'
+                          ? `Banks need at least a ${maxBorrowing.minDepPct}% deposit, so your deposit caps the price you can buy at. Growing your deposit is what lifts this number.${maxBorrowing.insights.debtsHeldBack ? " Clearing debts won't raise it yet, but it will help once your deposit grows." : ''}`
+                          : maxBorrowing.insights.limit === 'income-cap'
+                            ? 'Banks generally cap total lending at about 6 times your income before tax, including any credit card limits, so lowering limits or growing your income lifts this number.'
+                            : "Banks check you could still afford repayments if rates rose to 7%, after your living costs and other commitments. Lowering what goes out each month, or adding income, lifts this number."}
+                      </p>
+                    </div>
+                    {maxBorrowing.insights.levers.length > 0 && (
+                      <>
+                        <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 0.6rem' }}>What could change it</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                          {maxBorrowing.insights.levers.map((l) => (
+                            <div key={l.label} style={{ background: '#FFF8E7', borderRadius: '12px', padding: '0.875rem 1.25rem', border: '1px solid #FFE082', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                              <span aria-hidden="true" style={{ fontSize: '18px' }}>{l.icon}</span>
+                              <span style={{ flex: 1, minWidth: 0 }}>
+                                <span style={{ display: 'block', fontSize: '14px', color: C.textPrimary, lineHeight: '1.5' }}>{l.label}</span>
+                                {l.note && <span style={{ display: 'block', fontSize: '12px', color: C.textSecondary, lineHeight: '1.45' }}>{l.note}</span>}
+                              </span>
+                              <span style={{ fontSize: '15px', fontWeight: '600', color: C.green, whiteSpace: 'nowrap' }}>+${fmtNZD(l.purchase)}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <p style={{ fontSize: '12px', color: C.textSecondary, margin: '0.6rem 0 0', lineHeight: '1.5' }}>Each figure is the change to your maximum purchase price if you made just that one change, using the same calculation as above.</p>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Tips section (credit card and Buy Now Pay Later tips are covered above) */}
+                {maxBorrowing.tips.filter((t) => t.type === 'deposit').length > 0 && (
+                  <div style={{ marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-                      {maxBorrowing.tips.map((tip, i) => (
+                      {maxBorrowing.tips.filter((t) => t.type === 'deposit').map((tip, i) => (
                         <div key={i} style={{ background: '#FFF8E7', borderRadius: '12px', padding: '1rem 1.25rem', border: '1px solid #FFE082' }}>
                           <p style={{ fontSize: '14px', color: C.textPrimary, margin: 0, lineHeight: '1.6' }}>
                             {tip.type === 'credit_card' && '💳 '}

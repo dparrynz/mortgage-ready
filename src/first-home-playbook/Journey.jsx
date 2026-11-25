@@ -11,7 +11,8 @@ import {
   JOURNEY_GLOSSARY_LINKS,
   FLOOD_VIEWER_URL,
 } from './content.js';
-import { useKeyDates, KeyDatesPanel, KeyDatesPrompt } from './KeyDates.jsx';
+import { useKeyDates, KeyDatesPanel, KeyDatesPrompt, PreapprovalPrompt } from './KeyDates.jsx';
+import { hasOfferDates } from './keyDatesLogic.js';
 
 const LS_KEY = JOURNEY_PROGRESS_LS_KEY;
 
@@ -191,7 +192,9 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
 
   // Key dates come into play once there's an offer (or on auction day)
   const offerStage = stages.findIndex((s) => /offer|auction day/i.test(s.title));
-  const showKeyDatesPrompt = kd.loaded && !kd.has && !kd.editing && offerStage !== -1 && selectedStage >= offerStage;
+  const showKeyDatesPrompt = kd.loaded && !hasOfferDates(kd.dates) && !kd.editing && offerStage !== -1 && selectedStage >= offerStage;
+  // Before the offer: a quick way to track when a pre-approval runs out
+  const showPreapprovalPrompt = kd.loaded && !kd.dates.preapproval && !hasOfferDates(kd.dates) && !kd.editing && offerStage !== -1 && selectedStage < offerStage;
   const keyDatesPanel = (
     <KeyDatesPanel kd={kd} user={user} path={path} isMobile={isMobile} onSignIn={() => setShowAuthModal(true)} onNavigate={onNavigate} />
   );
@@ -238,6 +241,7 @@ export default function Journey({ onExit, onBackToHub, onNavigate }) {
       </div>
 
       {showKeyDatesPrompt && <KeyDatesPrompt onStart={kd.startEditing} auction={path === 'auction'} />}
+      {showPreapprovalPrompt && <PreapprovalPrompt kd={kd} />}
       {!keyDatesAtTop && kd.editing && keyDatesPanel}
 
       {/* The detail, in bullet points */}

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { C, primaryBtn, supabase } from '../../ParryFSApp.jsx';
 import {
-  KEY_DATES_LS_KEY, REMIND_DAYS, MAX_CONDITIONS, MAX_LABEL, MAX_WORKING_DAYS, DEFAULT_WORKING_DAYS, PROVINCES,
-  addWorkingDays, isLimCondition, withCalculatedDates,
-  emptyKeyDates, normaliseKeyDates, hasAnyDate, keyDateEvents, nextEvent, dayDiff, todayIso,
+  KEY_DATES_LS_KEY, REMIND_DAYS, PREAPPROVAL_REMIND_DAYS, INSPECTION_WORKING_DAYS_BEFORE, MAX_CONDITIONS, MAX_LABEL, MAX_WORKING_DAYS, DEFAULT_WORKING_DAYS, PROVINCES,
+  addWorkingDays, workingDaysBefore, isLimCondition, withCalculatedDates,
+  emptyKeyDates, normaliseKeyDates, hasAnyDate, hasOfferDates, keyDateEvents, nextEvent, dayDiff, todayIso,
   formatDate, groupTitle, groupDetail, groupChecklist, groupUntilText, buildIcs,
 } from './keyDatesLogic.js';
 
@@ -108,17 +108,56 @@ export function KeyDatesPrompt({ onStart, auction }) {
   );
 }
 
+// Shown in the early stages (pre-approval, house hunting, homework): one date,
+// so a pre-approval doesn't quietly run out while they're looking
+export function PreapprovalPrompt({ kd }) {
+  const { card, fieldLabel, dateInput } = styles();
+  const [date, setDate] = useState('');
+  const [problem, setProblem] = useState('');
+  const today = todayIso();
+  const submit = (e) => {
+    e.preventDefault();
+    if (!date) { setProblem('Pick the date your pre-approval expires.'); return; }
+    if (date <= today) { setProblem('That date has already passed. Talk to your adviser or bank about renewing it.'); return; }
+    kd.save({ ...kd.dates, preapproval: date });
+  };
+  return (
+    <form onSubmit={submit} style={{ ...card, marginBottom: '1rem' }}>
+      <p style={{ margin: '0 0 0.35rem', fontSize: '16px', fontWeight: 700, color: C.navy, fontFamily: C.headingFont, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <CalendarIcon colour={C.sky} size={20} /> Pre-approved?
+      </p>
+      <p style={{ margin: '0 0 0.8rem', fontSize: '14px', color: C.textSecondary, lineHeight: 1.5 }}>
+        Most pre-approvals last 3 to 6 months. Add the date yours expires and we'll remind you {PREAPPROVAL_REMIND_DAYS / 7} weeks before, so it doesn't run out while you're looking.
+      </p>
+      <label htmlFor="kd-preapproval-quick" style={{ ...fieldLabel, display: 'block', marginBottom: '0.35rem' }}>Pre-approval expires</label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
+        <input id="kd-preapproval-quick" type="date" min={today} value={date} onChange={(e) => { setDate(e.target.value); setProblem(''); }} style={{ ...dateInput, flex: '1 1 180px', width: 'auto' }} />
+        <button type="submit" style={{ ...primaryBtn, padding: '0.7rem 1.25rem' }}>Save</button>
+      </div>
+      {problem && <p role="alert" style={{ margin: '0.6rem 0 0', fontSize: '14px', color: '#B3261E', fontWeight: 600 }}>{problem}</p>}
+      <p style={{ margin: '0.6rem 0 0', fontSize: '12px', color: C.textSecondary }}>Your approval letter or your adviser can tell you the date.</p>
+    </form>
+  );
+}
+
 function Editor({ kd, path, isMobile }) {
   const { card, fieldLabel, dateInput, linkBtn } = styles();
   // Each condition is either "N working days after the offer" (worked out for
   // them) or a fixed date, whichever their agreement says
   const [draft, setDraft] = useState(() => {
-    const d = kd.has ? kd.dates : emptyKeyDates(path);
+    const d = hasOfferDates(kd.dates) ? kd.dates : { ...emptyKeyDates(path), preapproval: kd.dates.preapproval };
     return { ...d, conditions: d.conditions.map((c) => ({ ...c, mode: c.days || !c.date ? 'days' : 'date' })) };
   });
   const [problem, setProblem] = useState('');
   useEffect(() => { setProblem(''); }, [draft]); // clear an old message once they change something
   const set = (k, v) => setDraft((d) => ({ ...d, [k]: v }));
+  // Suggest a pre-settlement inspection a couple of working days before
+  // settlement, and keep it in step if settlement moves (unless they've changed it)
+  const suggestedInspection = (d, settlement) => (settlement ? workingDaysBefore(settlement, INSPECTION_WORKING_DAYS_BEFORE, d.province) : '');
+  const setSettlement = (v) => setDraft((d) => {
+    const followSuggestion = !d.inspection || d.inspection === suggestedInspection(d, d.settlement);
+    return { ...d, settlement: v, inspection: followSuggestion ? suggestedInspection(d, v) : d.inspection };
+  });
   const setCond = (i, patch) => setDraft((d) => ({ ...d, conditions: d.conditions.map((c, j) => (j === i ? { ...c, ...patch } : c)) }));
   const removeCond = (i) => setDraft((d) => ({ ...d, conditions: d.conditions.filter((_, j) => j !== i) }));
   const addCond = () => setDraft((d) => ({ ...d, conditions: [...d.conditions, { label: '', days: DEFAULT_WORKING_DAYS, date: '', mode: 'days' }] }));
@@ -137,6 +176,9 @@ function Editor({ kd, path, isMobile }) {
 
   const submit = (e) => {
     e.preventDefault();
+    // Only a pre-approval date so far (no offer yet): save just that
+    const offerStarted = draft.accepted || draft.deposit || draft.inspection || draft.settlement || draft.conditions.some((c) => c.mode === 'date' && c.date);
+    if (!offerStarted && draft.preapproval) { kd.save({ ...normaliseKeyDates(null), preapproval: draft.preapproval }); return; }
     if (draft.conditions.some((c) => c.mode === 'days' && c.days) && !draft.accepted) {
       setProblem('Add the date your offer was accepted, so we can work out your conditions dates.');
       return;
@@ -148,7 +190,7 @@ function Editor({ kd, path, isMobile }) {
     const clean = toSave();
     if (!hasAnyDate(clean)) { setProblem('Add at least one date to save.'); return; }
     const first = clean.accepted;
-    const later = [...clean.conditions.map((c) => c.date), clean.deposit, clean.settlement].filter(Boolean);
+    const later = [...clean.conditions.map((c) => c.date), clean.deposit, clean.inspection, clean.settlement].filter(Boolean);
     if (first && later.some((d) => d < first)) { setProblem('One of your dates is before the day your offer was accepted. Check them and try again.'); return; }
     if (clean.settlement && later.some((d) => d > clean.settlement)) { setProblem('One of your dates is after settlement. Check them and try again.'); return; }
     kd.save(clean);
@@ -164,6 +206,16 @@ function Editor({ kd, path, isMobile }) {
       <p style={{ margin: '0 0 1rem', fontSize: '14px', color: C.textSecondary, lineHeight: 1.5 }}>
         You'll find these in your Sale and Purchase Agreement. Not sure? Your solicitor or agent can confirm them. Leave out any that don't apply.
       </p>
+
+      {!draft.accepted && path !== 'auction' && (
+        <>
+          <div style={{ ...row, marginBottom: '0.3rem' }}>
+            <label htmlFor="kd-preapproval" style={fieldLabel}>Pre-approval expires</label>
+            <input id="kd-preapproval" type="date" value={draft.preapproval} onChange={(e) => set('preapproval', e.target.value)} style={dateInput} />
+          </div>
+          <p style={{ ...small, margin: '0 0 0.9rem' }}>Still looking? Add just this and we'll remind you {PREAPPROVAL_REMIND_DAYS / 7} weeks before it runs out.</p>
+        </>
+      )}
 
       <div style={{ ...row, marginBottom: '0.9rem' }}>
         <label htmlFor="kd-accepted" style={fieldLabel}>{path === 'auction' ? 'Auction day' : 'Offer accepted'}</label>
@@ -231,9 +283,19 @@ function Editor({ kd, path, isMobile }) {
 
       <div style={{ ...row, margin: '0.8rem 0 0.3rem' }}>
         <label htmlFor="kd-settlement" style={fieldLabel}>Settlement</label>
-        <input id="kd-settlement" type="date" value={draft.settlement} onChange={(e) => set('settlement', e.target.value)} style={dateInput} />
+        <input id="kd-settlement" type="date" value={draft.settlement} onChange={(e) => setSettlement(e.target.value)} style={dateInput} />
       </div>
-      <p style={{ ...small, margin: '0 0 1rem' }}>We'll include insurance and your pre-settlement inspection in your settlement reminder.</p>
+      <p style={{ ...small, margin: '0 0 0.8rem' }}>We'll include insurance and signing your loan documents in your settlement reminder.</p>
+
+      <div style={{ ...row, marginBottom: '0.3rem' }}>
+        <label htmlFor="kd-inspection" style={fieldLabel}>Pre-settlement inspection</label>
+        <input id="kd-inspection" type="date" value={draft.inspection} onChange={(e) => set('inspection', e.target.value)} style={dateInput} />
+      </div>
+      <p style={{ ...small, margin: '0 0 1rem' }}>
+        {draft.settlement
+          ? `Usually a day or two before settlement, so there's time to sort anything with your solicitor. We've suggested ${INSPECTION_WORKING_DAYS_BEFORE} working days before; change it to suit.`
+          : "Add your settlement date and we'll suggest one. Usually a day or two before settlement."}
+      </p>
 
       {problem && <p role="alert" style={{ margin: '0 0 0.9rem', fontSize: '14px', color: '#B3261E', fontWeight: 600 }}>{problem}</p>}
 
@@ -329,17 +391,21 @@ function View({ kd, user, isMobile, onSignIn, onNavigate }) {
           </div>
           <p style={{ margin: '0.55rem 0 0', fontSize: '13px', color: C.textSecondary, lineHeight: 1.45 }}>
             {kd.reminders
-              ? `We'll email ${user?.email || 'you'} ${REMIND_DAYS} days before each date.`
-              : user
-                ? `Turn on reminders and we'll email you ${REMIND_DAYS} days before each date.`
-                : `Create a free account to get an email ${REMIND_DAYS} days before each date. Your dates are saved on this device for now.`}
+              ? `We'll email ${user?.email || 'you'} ${REMIND_DAYS} days before each date${kd.dates.preapproval && !kd.dates.accepted ? `, and ${PREAPPROVAL_REMIND_DAYS / 7} weeks before your pre-approval expires` : ''}.`
+              : !hasOfferDates(kd.dates)
+                ? (user
+                  ? `Turn on reminders and we'll email you ${PREAPPROVAL_REMIND_DAYS / 7} weeks before your pre-approval expires.`
+                  : `Create a free account to get an email ${PREAPPROVAL_REMIND_DAYS / 7} weeks before your pre-approval expires. Your date is saved on this device for now.`)
+                : user
+                  ? `Turn on reminders and we'll email you ${REMIND_DAYS} days before each date.`
+                  : `Create a free account to get an email ${REMIND_DAYS} days before each date. Your dates are saved on this device for now.`}
           </p>
           {kd.error && <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '14px', color: '#B3261E', fontWeight: 600 }}>{kd.error}</p>}
         </div>
       </div>
 
       <p style={{ margin: '0.75rem 0 0', fontSize: '13px', color: C.textSecondary, lineHeight: 1.45 }}>
-        These are the dates you entered, so always confirm them with your solicitor.{' '}
+        {hasOfferDates(kd.dates) ? 'These are the dates you entered, so always confirm them with your solicitor.' : 'Your approval letter has the exact expiry date. Once an offer is accepted, tap Edit to add the rest of your dates.'}{' '}
         {!settled && (
           <>Finance not sorted yet?{' '}
             <a href="/first-home-playbook/book-a-call" onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); onNavigate('/book-a-call'); }} style={{ color: C.accent, fontWeight: 600 }}>Book a call</a>
@@ -360,8 +426,12 @@ export function KeyDatesPanel({ kd, user, path, isMobile, onSignIn, onNavigate }
       kd.clearJustSaved();
     }
   }, [kd.justSaved, kd.editing, kd.has]);
+  useEffect(() => {
+    // Opening the editor when it sits at the top of the page: bring it into view
+    if (kd.editing && ref.current) ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [kd.editing]);
   if (!kd.loaded) return null;
-  if (kd.editing) return <Editor kd={kd} path={path} isMobile={isMobile} />;
+  if (kd.editing) return <div ref={ref} style={{ scrollMarginTop: '80px' }}><Editor kd={kd} path={path} isMobile={isMobile} /></div>;
   if (!kd.has) return null;
   return <div ref={ref} style={{ scrollMarginTop: '80px' }}><View kd={kd} user={user} isMobile={isMobile} onSignIn={onSignIn} onNavigate={onNavigate} /></div>;
 }

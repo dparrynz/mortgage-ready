@@ -46,6 +46,8 @@ export function subjectFor(group, firstName) {
   if (types.size > 1) s = `you have key dates coming up ${day}`;
   else if (types.has('settlement')) s = `settlement day is ${day}`;
   else if (types.has('deposit')) s = `your deposit is due ${day}`;
+  else if (types.has('preapproval')) s = `your pre-approval expires ${day}`;
+  else if (types.has('inspection')) s = `your pre-settlement inspection is ${day}`;
   else s = `${groupUntilText(group)} ${day}`;
   const name = oneLine(firstName || '').slice(0, 40);
   return name ? `${name}, ${s}` : s[0].toUpperCase() + s.slice(1);
@@ -58,8 +60,11 @@ export function emailFor(group, firstName) {
   const what = escapeHtml(detail ? `${groupTitle(group)} (${detail})` : groupTitle(group));
   const when = escapeHtml(formatDate(group.date, 'long'));
   const todo = groupChecklist(group).map((t) => `<li style="margin:0 0 6px">${escapeHtml(t)}</li>`).join('');
-  const isSettlement = group.items.some((i) => i.type === 'settlement');
-  const advice = isSettlement
+  const isSettlement = group.items.some((i) => i.type === 'settlement' || i.type === 'inspection');
+  const isPreapproval = group.items.every((i) => i.type === 'preapproval');
+  const advice = isPreapproval
+    ? "Renewing usually means sending the bank updated payslips and statements, so it's worth starting now rather than when you find the right home."
+    : isSettlement
     ? 'If anything looks like it might not be ready in time, talk to your solicitor now.'
     : "If anything isn't sorted, talk to your solicitor now. It's much easier to extend a date before it passes.";
   const p = 'margin:0 0 16px;font-size:16px;line-height:1.55;color:#0F1E3A';
