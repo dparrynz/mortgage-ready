@@ -2398,7 +2398,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                 {maxBorrowing.insights && (
                   <div style={{ marginBottom: '1.5rem' }}>
                     <h3 style={{ fontSize: '16px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.75rem' }}>What's shaping your number</h3>
-                    <div style={{ background: C.inputBg, borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '0.875rem' }}>
+                    <div style={{ background: C.inputBg, borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '1.25rem' }}>
                       <p style={{ fontSize: '13px', color: C.textSecondary, margin: '0 0 0.25rem' }}>What's setting your limit</p>
                       <p style={{ fontSize: '15px', fontWeight: '500', color: C.textPrimary, margin: '0 0 0.35rem' }}>
                         {maxBorrowing.insights.limit === 'deposit' ? 'Your deposit' : maxBorrowing.insights.limit === 'income-cap' ? 'The limit on borrowing compared with your income' : 'Your income after expenses'}
@@ -2413,10 +2413,10 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                     </div>
                     {maxBorrowing.insights.levers.length > 0 && (
                       <>
-                        <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 0.6rem' }}>What could change it</p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 0.75rem' }}>What could change it</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                           {maxBorrowing.insights.levers.map((l) => (
-                            <div key={l.label} style={{ background: '#FFF8E7', borderRadius: '12px', padding: '0.875rem 1.25rem', border: '1px solid #FFE082', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                            <div key={l.label} style={{ background: '#FFF8E7', borderRadius: '12px', padding: '1rem 1.25rem', border: '1px solid #FFE082', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                               <span aria-hidden="true" style={{ fontSize: '18px' }}>{l.icon}</span>
                               <span style={{ flex: 1, minWidth: 0 }}>
                                 <span style={{ display: 'block', fontSize: '14px', color: C.textPrimary, lineHeight: '1.5' }}>{l.label}</span>
@@ -2426,7 +2426,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
                             </div>
                           ))}
                         </div>
-                        <p style={{ fontSize: '12px', color: C.textSecondary, margin: '0.6rem 0 0', lineHeight: '1.5' }}>Each figure is the change to your maximum purchase price if you made just that one change, using the same calculation as above.</p>
+                        <p style={{ fontSize: '12px', color: C.textSecondary, margin: '0.75rem 0 0', lineHeight: '1.5' }}>Each figure is the change to your maximum purchase price if you made just that one change, using the same calculation as above.</p>
                       </>
                     )}
                   </div>
@@ -2434,7 +2434,7 @@ function BorrowChecker({ onSavePrompt, onSave }) {
 
                 {/* Tips section (credit card and Buy Now Pay Later tips are covered above) */}
                 {maxBorrowing.tips.filter((t) => t.type === 'deposit').length > 0 && (
-                  <div style={{ marginBottom: '1.5rem' }}>
+                  <div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
                       {maxBorrowing.tips.filter((t) => t.type === 'deposit').map((tip, i) => (
                         <div key={i} style={{ background: '#FFF8E7', borderRadius: '12px', padding: '1rem 1.25rem', border: '1px solid #FFE082' }}>
@@ -2461,15 +2461,15 @@ function BorrowChecker({ onSavePrompt, onSave }) {
             )}
 
             {declaredExpenses === 0 && (
-              <div style={{ background: '#FFF8E7', borderRadius: '12px', padding: '1rem 1.25rem', border: '1px solid #FFE082', marginTop: '1rem' }}>
-                <p style={{ fontSize: '13px', color: C.textPrimary, margin: 0, lineHeight: '1.6' }}>
+              <div style={{ background: '#FFF8E7', borderRadius: '12px', padding: '1rem 1.25rem', border: '1px solid #FFE082', marginTop: '0.75rem' }}>
+                <p style={{ fontSize: '14px', color: C.textPrimary, margin: 0, lineHeight: '1.6' }}>
                   💡 Your result is based on bank minimum living costs. For a more accurate picture, go back and use the expense calculator.
                 </p>
               </div>
             )}
 
             {onSavePrompt && (
-              <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem', marginTop: '1rem', textAlign: 'center' }}>
+              <div style={{ background: C.accentLight, borderRadius: '16px', padding: '1.5rem', marginTop: '1.5rem', textAlign: 'center' }}>
                 <h4 style={{ fontSize: '16px', fontWeight: '500', margin: '0 0 0.5rem', color: C.textPrimary }}>Save your results</h4>
                 <p style={{ fontSize: '14px', color: C.textSecondary, margin: '0 0 1rem' }}>Create a free account to save this and come back anytime.</p>
                 <button onClick={onSavePrompt} style={{ ...primaryBtn }}>Save my results</button>
